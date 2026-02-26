@@ -3,6 +3,9 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import SyntaxHighlighter from 'react-syntax-highlighter';
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { Check, Copy } from 'lucide-react';
 
 interface NodeLabelInlineProps {
   id: string;
@@ -69,6 +72,91 @@ interface MarkdownWithNodeTokensProps {
   onNodeClick?: (nodeId: number) => void;
 }
 
+function maybeWrapAsciiTreeAsCode(content: string): string {
+  if (!content || content.includes('```')) return content;
+
+  const lines = content.split('\n');
+  if (lines.length < 5) return content;
+
+  const treeLikeLines = lines.filter((line) => {
+    const t = line.trim();
+    return (
+      t.startsWith('|') ||
+      t.includes('|--') ||
+      t.includes('\\--') ||
+      t.includes('└──') ||
+      t.includes('├──')
+    );
+  }).length;
+
+  if (treeLikeLines >= 4 && treeLikeLines / lines.length >= 0.45) {
+    return `\`\`\`text\n${content}\n\`\`\``;
+  }
+
+  return content;
+}
+
+function CodeBlock({ code, language }: { code: string; language: string }) {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // no-op
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '8px', marginBottom: '10px', position: 'relative' }}>
+      <button
+        onClick={handleCopy}
+        title={copied ? 'Copied' : 'Copy code'}
+        aria-label={copied ? 'Copied' : 'Copy code'}
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          border: '1px solid #30363d',
+          background: copied ? '#1f6feb22' : '#0d1117cc',
+          color: copied ? '#58a6ff' : '#8b949e',
+          borderRadius: 6,
+          width: 28,
+          height: 28,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          zIndex: 2,
+        }}
+      >
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+      <SyntaxHighlighter
+        language={language}
+        style={atomOneDark}
+        customStyle={{
+          margin: 0,
+          padding: '14px 16px',
+          borderRadius: 6,
+          border: '1px solid #30363d',
+          background: '#161b22',
+          fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace',
+          fontSize: '13px',
+          lineHeight: 1.45,
+          maxHeight: '360px',
+          overflow: 'auto',
+        }}
+        wrapLongLines={false}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
+
 export default function MarkdownWithNodeTokens({ content, onNodeClick }: MarkdownWithNodeTokensProps) {
   if (!content) return null;
 
@@ -77,7 +165,8 @@ export default function MarkdownWithNodeTokens({ content, onNodeClick }: Markdow
 
   // Replace node tokens with placeholders before markdown parsing
   nodePattern.lastIndex = 0;
-  const contentWithPlaceholders = content.replace(nodePattern, (_match, id, title) => {
+  const normalizedContent = maybeWrapAsciiTreeAsCode(content);
+  const contentWithPlaceholders = normalizedContent.replace(nodePattern, (_match, id, title) => {
     const index = placeholders.length;
     placeholders.push({ id, title });
     return `%%NODE_PLACEHOLDER_${index}%%`;
@@ -141,9 +230,15 @@ export default function MarkdownWithNodeTokens({ content, onNodeClick }: Markdow
   };
 
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
+    <>
+      <style jsx>{`
+        .markdown-table tbody tr:nth-child(even) {
+          background: #0f1621;
+        }
+      `}</style>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
         // Style headings
         h1: ({ children }) => (
           <h1 style={{ fontSize: '1.5em', fontWeight: 'bold', marginTop: '16px', marginBottom: '8px', color: '#e5e5e5' }}>
@@ -193,6 +288,58 @@ export default function MarkdownWithNodeTokens({ content, onNodeClick }: Markdow
             {processChildren(children, 'li')}
           </li>
         ),
+        table: ({ children }) => (
+          <div style={{ overflowX: 'auto', marginTop: '8px', marginBottom: '10px' }}>
+            <table
+              className="markdown-table"
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                borderSpacing: 0,
+                border: '1px solid #3d444d',
+                fontSize: 'inherit',
+              }}
+            >
+              {children}
+            </table>
+          </div>
+        ),
+        thead: ({ children }) => (
+          <thead>{children}</thead>
+        ),
+        tbody: ({ children }) => (
+          <tbody>{children}</tbody>
+        ),
+        tr: ({ children }) => (
+          <tr style={{ borderBottom: '1px solid #3d444d' }}>{children}</tr>
+        ),
+        th: ({ children }) => (
+          <th
+            style={{
+              padding: '6px 13px',
+              borderRight: '1px solid #3d444d',
+              textAlign: 'left',
+              fontWeight: 700,
+              color: '#e6edf3',
+              verticalAlign: 'top',
+            }}
+          >
+            {processChildren(children, 'th')}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td
+            style={{
+              padding: '6px 13px',
+              borderRight: '1px solid #3d444d',
+              verticalAlign: 'top',
+              color: '#d0d7de',
+              lineHeight: 1.45,
+            }}
+          >
+            {processChildren(children, 'td')}
+          </td>
+        ),
         // Style links
         a: ({ href, children }) => (
           <a
@@ -205,39 +352,28 @@ export default function MarkdownWithNodeTokens({ content, onNodeClick }: Markdow
           </a>
         ),
         // Style code
-        code: ({ children, className }) => {
-          const isInline = !className;
+        code: ({ children, className, ...props }: any) => {
+          const codeText = String(children).replace(/\n$/, '');
+          const explicitInline = typeof props?.inline === 'boolean' ? props.inline : undefined;
+          // Fenced blocks without language don't provide className; detect them by multiline content.
+          const isInline = explicitInline ?? (!className && !codeText.includes('\n'));
+          const language = className?.replace('language-', '').toLowerCase() || 'text';
           if (isInline) {
             return (
               <code style={{
-                background: '#1a1a1a',
-                padding: '2px 4px',
-                borderRadius: '3px',
-                fontSize: '0.9em',
-                fontFamily: 'monospace'
+                background: 'rgba(110, 118, 129, 0.4)',
+                padding: '0.2em 0.4em',
+                borderRadius: '6px',
+                fontSize: '85%',
+                fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace'
               }}>
                 {processChildren(children, 'code')}
               </code>
             );
           }
-          return (
-            <code style={{ fontFamily: 'monospace' }}>
-              {processChildren(children, 'code-block')}
-            </code>
-          );
+          return <CodeBlock code={codeText} language={language} />;
         },
-        pre: ({ children }) => (
-          <pre style={{
-            background: '#1a1a1a',
-            padding: '12px',
-            borderRadius: '4px',
-            overflow: 'auto',
-            marginTop: '8px',
-            marginBottom: '8px'
-          }}>
-            {children}
-          </pre>
-        ),
+        pre: ({ children }) => <>{children}</>,
         // Style blockquotes
         blockquote: ({ children }) => (
           <blockquote style={{
@@ -251,9 +387,10 @@ export default function MarkdownWithNodeTokens({ content, onNodeClick }: Markdow
             {processChildren(children, 'blockquote')}
           </blockquote>
         )
-      }}
-    >
-      {contentWithPlaceholders}
-    </ReactMarkdown>
+        }}
+      >
+        {contentWithPlaceholders}
+      </ReactMarkdown>
+    </>
   );
 }

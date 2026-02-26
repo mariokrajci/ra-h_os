@@ -7,6 +7,41 @@ import { formatNodeForChat } from '../infrastructure/nodeFormatter';
 import { getOpenAIChatModel } from '@/config/openaiModels';
 import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
 
+function normalizeWebsiteTitle(url: string, extractedTitle?: string): string {
+  let parsed: URL | null = null;
+  try {
+    parsed = new URL(url);
+  } catch {
+    parsed = null;
+  }
+
+  if (parsed && parsed.hostname === 'github.com') {
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    if (segments.length >= 2) {
+      return `${segments[0]}/${segments[1].replace(/\.git$/i, '')}`;
+    }
+  }
+
+  const title = (extractedTitle || '').trim();
+  if (!title) {
+    return parsed ? `Website: ${parsed.hostname}` : 'Website';
+  }
+
+  // Remove common page-title wrappers
+  let normalized = title
+    .replace(/^GitHub\s*-\s*/i, '')
+    .replace(/\s*[-|]\s*GitHub$/i, '')
+    .replace(/\s*[-|]\s*X$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return parsed ? `Website: ${parsed.hostname}` : 'Website';
+  }
+
+  return normalized.slice(0, 160);
+}
+
 // AI-powered content analysis
 async function analyzeContentWithAI(title: string, description: string, contentType: string) {
   try {
@@ -133,14 +168,15 @@ export const websiteExtractTool = tool({
       console.log('🎯 Website extraction successful, analyzing with AI...');
 
       // Step 2: AI Analysis for enhanced metadata
+      const normalizedTitle = normalizeWebsiteTitle(url, result.metadata?.title);
       const aiAnalysis = await analyzeContentWithAI(
-        result.metadata?.title || `Website: ${new URL(url).hostname}`, 
+        normalizedTitle,
         result.notes?.substring(0, 2000) || 'Website content', 
         'website'
       );
 
       // Step 3: Create node with extracted content and AI analysis
-      const nodeTitle = title || result.metadata?.title || `Website: ${new URL(url).hostname}`;
+      const nodeTitle = title || normalizedTitle;
       const enhancedDescription = aiAnalysis?.enhancedDescription || `Website content from ${new URL(url).hostname}`;
       
       const suppliedDimensions = Array.isArray(dimensions) ? dimensions : [];

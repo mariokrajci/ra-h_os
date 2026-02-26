@@ -31,10 +31,10 @@ export async function GET(request: NextRequest) {
     }>(
       `
       SELECT
-        COALESCE(SUM(CAST(json_extract(metadata, '$.estimated_cost_usd') AS REAL)), 0) AS total_cost_usd,
-        COALESCE(SUM(CAST(json_extract(metadata, '$.total_tokens') AS INTEGER)), 0) AS total_tokens,
+        COALESCE(SUM(CAST(estimated_cost_usd AS REAL)), 0) AS total_cost_usd,
+        COALESCE(SUM(CAST(total_tokens AS INTEGER)), 0) AS total_tokens,
         COUNT(*) AS action_count,
-        COALESCE(AVG(CAST(json_extract(metadata, '$.estimated_cost_usd') AS REAL)), 0) AS avg_cost_per_action
+        COALESCE(AVG(CAST(estimated_cost_usd AS REAL)), 0) AS avg_cost_per_action
       FROM ai_usage
       WHERE 1 = 1
         AND julianday(created_at) >= julianday('now', ?)

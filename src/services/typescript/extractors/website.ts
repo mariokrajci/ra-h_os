@@ -4,6 +4,7 @@
  */
 
 import * as cheerio from 'cheerio';
+import TurndownService from 'turndown';
 
 interface WebsiteMetadata {
   title: string;
@@ -22,10 +23,73 @@ interface ExtractionResult {
   url: string;
 }
 
+const UI_NOISE_PATTERNS: RegExp[] = [
+  /\b(sign in|log in|notifications|watch|fork|star)\b/i,
+  /\b(pull requests?|issues?|releases?|packages|contributors?)\b/i,
+  /\b(latest commit|view all files|repository files navigation)\b/i,
+  /\b(cookie policy|privacy policy|terms of service)\b/i,
+  /\b(there was an error while loading|please reload this page)\b/i,
+  /^\s*(home|about|pricing|contact|search|menu)\s*$/i,
+];
+
+const GITHUB_README_SELECTORS = [
+  '#readme article.markdown-body',
+  'article.markdown-body.entry-content',
+  '.repository-content article.markdown-body',
+  '.Box-body article.markdown-body',
+];
+
+function normalizeLine(line: string): string {
+  return line.replace(/\s+/g, ' ').trim();
+}
+
+function isLikelyNoise(line: string): boolean {
+  if (!line) return true;
+  if (line.length < 20) return true;
+  if (line.length > 500) return false;
+  return UI_NOISE_PATTERNS.some((pattern) => pattern.test(line));
+}
+
+export function sanitizeWebsiteText(raw: string): string {
+  const lines = raw
+    .split('\n')
+    .map(normalizeLine)
+    .filter((line) => line.length > 0);
+
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+
+  for (const line of lines) {
+    if (isLikelyNoise(line)) continue;
+    const key = line.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(line);
+  }
+
+  // If filtering is too aggressive, keep the best-effort normalized content.
+  if (deduped.length < 3) {
+    return lines.join('\n\n').slice(0, 120_000);
+  }
+
+  return deduped.join('\n\n').slice(0, 120_000);
+}
+
 export class WebsiteExtractor {
   private headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
   };
+  private turndown: TurndownService;
+
+  constructor() {
+    this.turndown = new TurndownService({
+      headingStyle: 'atx',
+      codeBlockStyle: 'fenced',
+      bulletListMarker: '-',
+      emDelimiter: '*',
+      strongDelimiter: '**',
+    });
+  }
 
   /**
    * Extract content using Jina.ai Reader API
@@ -50,6 +114,8 @@ export class WebsiteExtractor {
     const titleMatch = markdown.match(/^#\s+(.+)$/m) || markdown.match(/^(.+)$/m);
     const title = titleMatch?.[1]?.trim() || 'Extracted Content';
 
+    const cleanedMarkdown = this.cleanMarkdown(markdown);
+
     // Build metadata
     const metadata: WebsiteMetadata = {
       title,
@@ -57,13 +123,82 @@ export class WebsiteExtractor {
     };
 
     // Format content consistently with cheerio output
-    const content = this.formatContent(metadata, markdown);
+    const content = this.formatContent(metadata, cleanedMarkdown);
 
     return {
       content,
-      chunk: markdown,
+      chunk: cleanedMarkdown,
       metadata,
       url,
+    };
+  }
+
+  private parseGitHubRepo(url: string): { owner: string; repo: string } | null {
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname !== 'github.com') return null;
+      const segments = parsed.pathname.split('/').filter(Boolean);
+      if (segments.length < 2) return null;
+      const owner = segments[0];
+      const repo = segments[1].replace(/\.git$/i, '');
+      if (!owner || !repo) return null;
+      return { owner, repo };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Extract raw README markdown from GitHub API.
+   * This preserves markdown/code blocks and avoids scraping noisy repo chrome.
+   */
+  private async extractWithGitHubReadme(url: string): Promise<ExtractionResult | null> {
+    const repo = this.parseGitHubRepo(url);
+    if (!repo) return null;
+
+    const apiUrl = `https://api.github.com/repos/${repo.owner}/${repo.repo}/readme`;
+    const response = await fetch(apiUrl, {
+      headers: {
+        'User-Agent': 'RA-H/1.0',
+        Accept: 'application/vnd.github+json',
+      },
+      signal: AbortSignal.timeout(20000),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json() as {
+      name?: string;
+      content?: string;
+      encoding?: string;
+      html_url?: string;
+    };
+
+    let markdown = '';
+    if (typeof data.content === 'string' && data.encoding === 'base64') {
+      markdown = Buffer.from(data.content.replace(/\n/g, ''), 'base64').toString('utf-8');
+    }
+
+    if (!markdown.trim()) {
+      return null;
+    }
+
+    const metadata: WebsiteMetadata = {
+      title: `${repo.owner}/${repo.repo}`,
+      site_name: 'GitHub',
+      extraction_method: 'github_readme_api',
+      description: data.name ? `Repository README (${data.name})` : 'Repository README',
+    };
+
+    const cleanedMarkdown = this.cleanMarkdown(markdown);
+
+    return {
+      content: this.formatContent(metadata, cleanedMarkdown),
+      chunk: cleanedMarkdown.slice(0, 200_000),
+      metadata,
+      url: data.html_url || url,
     };
   }
 
@@ -71,19 +206,78 @@ export class WebsiteExtractor {
    * Clean extracted content for better readability
    */
   private cleanContent(content: string): string {
-    // Remove excessive whitespace
-    content = content.replace(/\s+/g, ' ').trim();
-    
-    // Remove cookie/privacy policy mentions
-    content = content.replace(/cookie\s+policy|privacy\s+policy|terms\s+of\s+service/gi, '');
-    
-    // Split into paragraphs and clean
-    const paragraphs = content
-      .split('\n')
-      .map(p => p.trim())
-      .filter(p => p.length > 20); // Remove very short paragraphs (likely nav/UI)
-    
-    return paragraphs.join('\n\n');
+    return sanitizeWebsiteText(content);
+  }
+
+  /**
+   * Keep markdown structure intact while removing obvious UI noise lines.
+   */
+  private cleanMarkdown(markdown: string): string {
+    const headingToMarkdown = (_match: string, level: string, inner: string) => {
+      const text = inner
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!text) return '\n';
+      return `\n${'#'.repeat(Number(level))} ${text}\n`;
+    };
+
+    const cleanedHtmlish = markdown
+      .replace(/\r\n/g, '\n')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, headingToMarkdown)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
+      .replace(/<img\s+[^>]*>/gi, '')
+      .replace(/<\/?(p|div|span|center|strong|em|b|i|u)[^>]*>/gi, '')
+      .replace(/<\/?h([1-6])[^>]*>/gi, '');
+
+    const lines = cleanedHtmlish.split('\n');
+    const out: string[] = [];
+    let inFence = false;
+
+    for (const originalLine of lines) {
+      const line = originalLine.replace(/\u00a0/g, ' ');
+      const trimmed = line.trim();
+
+      if (trimmed.startsWith('```')) {
+        inFence = !inFence;
+        out.push(trimmed);
+        continue;
+      }
+
+      if (inFence) {
+        out.push(line);
+        continue;
+      }
+
+      if (!trimmed) {
+        out.push('');
+        continue;
+      }
+
+      if (UI_NOISE_PATTERNS.some((pattern) => pattern.test(trimmed))) {
+        continue;
+      }
+
+      out.push(line);
+    }
+
+    const normalized: string[] = [];
+    let previousBlank = false;
+    for (const line of out) {
+      const blank = line.trim().length === 0;
+      if (blank && previousBlank) continue;
+      normalized.push(line);
+      previousBlank = blank;
+    }
+
+    return normalized.join('\n').trim().slice(0, 200_000);
+  }
+
+  private htmlToMarkdown(html: string): string {
+    const converted = this.turndown.turndown(html);
+    return this.cleanMarkdown(converted);
   }
 
   /**
@@ -143,15 +337,34 @@ export class WebsiteExtractor {
   private extractMainContent($: cheerio.CheerioAPI): string {
     // Remove script and style elements
     $('script, style, noscript').remove();
-    
+
     // Remove common navigation and footer elements
-    $('nav, header, footer, aside, .nav, .header, .footer, .sidebar, .menu, .advertisement').remove();
-    
+    $(
+      'nav, header, footer, aside, .nav, .header, .footer, .sidebar, .menu, .advertisement,' +
+      '[aria-label*="navigation" i], [aria-label*="menu" i], .breadcrumb, .breadcrumbs'
+    ).remove();
+
+    // GitHub repositories are noisy; prioritize README markdown body.
+    for (const selector of GITHUB_README_SELECTORS) {
+      const readme = $(selector).first();
+      if (readme.length > 0) {
+        const readmeHtml = readme.html();
+        if (readmeHtml && readmeHtml.length > 100) {
+          const markdown = this.htmlToMarkdown(readmeHtml);
+          if (markdown.length > 200) {
+            return markdown;
+          }
+        }
+      }
+    }
+
     // Try to find main content areas (in priority order)
     const contentSelectors = [
-      'main',
       'article',
+      'main',
       '[role="main"]',
+      '.markdown-body',
+      '.prose',
       '.content',
       '.post',
       '.article-body',
@@ -166,20 +379,13 @@ export class WebsiteExtractor {
     for (const selector of contentSelectors) {
       const element = $(selector).first();
       if (element.length > 0) {
-        // Extract text from paragraphs, headings, lists
-        const textElements = element.find('p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th');
-        
-        if (textElements.length > 0) {
-          const texts: string[] = [];
-          textElements.each((_, el) => {
-            const text = $(el).text().trim();
-            if (text.length > 0) {
-              texts.push(text);
-            }
-          });
-          
-          if (texts.length > 0) {
-            mainContent = texts.join('\n\n');
+        const cloned = element.clone();
+        cloned.find('nav, header, footer, aside, .nav, .header, .footer, .sidebar, .menu, .advertisement, .breadcrumb, .breadcrumbs').remove();
+        const html = cloned.html();
+        if (html && html.trim().length > 0) {
+          const markdown = this.htmlToMarkdown(html);
+          if (markdown.length > 200) {
+            mainContent = markdown;
             break;
           }
         }
@@ -188,10 +394,15 @@ export class WebsiteExtractor {
     
     // Fallback to all text if no main content found
     if (!mainContent) {
-      mainContent = $('body').text();
+      const bodyHtml = $('body').html() || '';
+      if (bodyHtml.trim()) {
+        mainContent = this.htmlToMarkdown(bodyHtml);
+      } else {
+        mainContent = this.cleanContent($('body').text());
+      }
     }
-    
-    return this.cleanContent(mainContent);
+
+    return mainContent;
   }
 
   /**
@@ -268,6 +479,16 @@ export class WebsiteExtractor {
     // Validate URL
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       throw new Error('Invalid URL format - must start with http:// or https://');
+    }
+
+    // GitHub repositories: prefer raw README markdown via API.
+    try {
+      const githubReadme = await this.extractWithGitHubReadme(url);
+      if (githubReadme && githubReadme.chunk.length > 100) {
+        return githubReadme;
+      }
+    } catch (error: any) {
+      console.log('[WebsiteExtractor] GitHub README extraction failed, falling back...', error?.message || error);
     }
 
     // Try cheerio first (fast, no external call)
