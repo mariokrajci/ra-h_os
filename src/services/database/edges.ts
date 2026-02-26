@@ -6,6 +6,7 @@ import { generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { getOpenAIChatModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
 
 const inferredEdgeContextSchema = z.object({
   type: z.enum(['created_by', 'part_of', 'source_of', 'related_to']),
@@ -82,12 +83,22 @@ async function inferEdgeContext(params: {
   ].join('\n');
 
   try {
-    const { text } = await generateText({
+    const response = await generateText({
       model: provider(getOpenAIChatModel()),
       prompt,
       temperature: 0.0,
       maxOutputTokens: 120,
     });
+    const usage = normalizeUsageFromAiSdk(response);
+    if (usage) {
+      logAiUsage({
+        feature: 'edge_inference_context',
+        provider: 'openai',
+        modelId: getOpenAIChatModel(),
+        usage,
+      });
+    }
+    const text = response.text;
 
     const parsedJson = (() => {
       try {
@@ -156,12 +167,22 @@ async function autoInferEdge(params: {
   ].join('\n');
 
   try {
-    const { text } = await generateText({
+    const response = await generateText({
       model: provider(getOpenAIChatModel()),
       prompt,
       temperature: 0.0,
       maxOutputTokens: 150,
     });
+    const usage = normalizeUsageFromAiSdk(response);
+    if (usage) {
+      logAiUsage({
+        feature: 'edge_auto_infer',
+        provider: 'openai',
+        modelId: getOpenAIChatModel(),
+        usage,
+      });
+    }
+    const text = response.text;
 
     const parsedJson = (() => {
       try {

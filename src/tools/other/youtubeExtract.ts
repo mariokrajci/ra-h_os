@@ -5,6 +5,7 @@ import { generateText } from 'ai';
 import { extractYouTube } from '@/services/typescript/extractors/youtube';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
 import { getOpenAIChatModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
 
 // AI-powered content analysis
 async function analyzeContentWithAI(title: string, description: string, contentType: string) {
@@ -43,6 +44,15 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
       prompt,
       maxOutputTokens: 800
     });
+    const analysisUsage = normalizeUsageFromAiSdk(response);
+    if (analysisUsage) {
+      logAiUsage({
+        feature: 'youtube_content_analysis',
+        provider: 'openai',
+        modelId: getOpenAIChatModel(),
+        usage: analysisUsage,
+      });
+    }
 
     let content = response.text || '{}';
 
@@ -99,6 +109,15 @@ ${excerpt}
       prompt,
       maxOutputTokens: 400
     });
+    const summaryUsage = normalizeUsageFromAiSdk(response);
+    if (summaryUsage) {
+      logAiUsage({
+        feature: 'youtube_transcript_summary',
+        provider: 'openai',
+        modelId: getOpenAIChatModel(),
+        usage: summaryUsage,
+      });
+    }
     return response.text?.trim() || null;
   } catch (error) {
     console.warn('Transcript summarisation failed, falling back to AI analysis description:', error);

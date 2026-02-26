@@ -2,8 +2,28 @@
 
 import { useState, useEffect, type CSSProperties } from 'react';
 
+type UsageRange = '24h' | '7d' | '30d';
+
+interface UsageKpis {
+  range: UsageRange;
+  totalCostUsd: number;
+  totalTokens: number;
+  actionCount: number;
+  avgCostPerActionUsd: number;
+  byModel: Array<{
+    model: string;
+    costUsd: number;
+    tokens: number;
+    actionCount: number;
+  }>;
+}
+
 export default function ApiKeysViewer() {
   const [status, setStatus] = useState<'checking' | 'configured' | 'not-set'>('checking');
+  const [usageRange, setUsageRange] = useState<UsageRange>('24h');
+  const [usageLoading, setUsageLoading] = useState(true);
+  const [usageError, setUsageError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageKpis | null>(null);
 
   useEffect(() => {
     // Check via health endpoint (server-side check of process.env)
@@ -14,6 +34,34 @@ export default function ApiKeysViewer() {
       })
       .catch(() => setStatus('not-set'));
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setUsageLoading(true);
+    setUsageError(null);
+
+    fetch(`/api/usage/kpis?range=${usageRange}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load usage');
+        return res.json();
+      })
+      .then((payload) => {
+        if (cancelled) return;
+        setUsage(payload.data ?? null);
+      })
+      .catch((error: any) => {
+        if (cancelled) return;
+        setUsageError(error?.message || 'Failed to load usage');
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setUsageLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [usageRange]);
 
   return (
     <div style={containerStyle}>
@@ -67,6 +115,83 @@ export default function ApiKeysViewer() {
         >
           Get your API key from OpenAI →
         </a>
+      </div>
+
+      <div style={usageCardStyle}>
+        <div style={usageHeaderStyle}>
+          <span style={cardTitleStyle}>Usage KPIs</span>
+          <div style={rangeToggleStyle}>
+            {(['24h', '7d', '30d'] as UsageRange[]).map((range) => (
+              <button
+                key={range}
+                onClick={() => setUsageRange(range)}
+                style={{
+                  ...rangeButtonStyle,
+                  ...(usageRange === range ? activeRangeButtonStyle : null),
+                }}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {usageLoading ? (
+          <div style={usageMetaStyle}>Loading usage…</div>
+        ) : usageError ? (
+          <div style={usageErrorStyle}>{usageError}</div>
+        ) : usage ? (
+          <>
+            <div style={kpiGridStyle}>
+              <div style={kpiTileStyle}>
+                <div style={kpiLabelStyle}>Total Cost</div>
+                <div style={kpiValueStyle}>${usage.totalCostUsd.toFixed(4)}</div>
+              </div>
+              <div style={kpiTileStyle}>
+                <div style={kpiLabelStyle}>Total Tokens</div>
+                <div style={kpiValueStyle}>{usage.totalTokens.toLocaleString()}</div>
+              </div>
+              <div style={kpiTileStyle}>
+                <div style={kpiLabelStyle}>AI Actions</div>
+                <div style={kpiValueStyle}>{usage.actionCount.toLocaleString()}</div>
+              </div>
+              <div style={kpiTileStyle}>
+                <div style={kpiLabelStyle}>Avg Cost / Action</div>
+                <div style={kpiValueStyle}>${usage.avgCostPerActionUsd.toFixed(5)}</div>
+              </div>
+            </div>
+
+            {usage.byModel.length > 0 ? (
+              <div style={modelTableWrapStyle}>
+                <div style={kpiLabelStyle}>By Model</div>
+                <table style={modelTableStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Model</th>
+                      <th style={thStyle}>Cost</th>
+                      <th style={thStyle}>Tokens</th>
+                      <th style={thStyle}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usage.byModel.map((row) => (
+                      <tr key={row.model}>
+                        <td style={tdStyle}>{row.model}</td>
+                        <td style={tdStyle}>${row.costUsd.toFixed(4)}</td>
+                        <td style={tdStyle}>{row.tokens.toLocaleString()}</td>
+                        <td style={tdStyle}>{row.actionCount.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={usageMetaStyle}>No usage data for this range yet.</div>
+            )}
+          </>
+        ) : (
+          <div style={usageMetaStyle}>No usage data available.</div>
+        )}
       </div>
     </div>
   );
@@ -158,9 +283,109 @@ const codeBlockStyle: CSSProperties = {
 const helpStyle: CSSProperties = {
   fontSize: 12,
   color: '#6b7280',
+  marginBottom: 16,
 };
 
 const linkStyle: CSSProperties = {
   color: '#22c55e',
   textDecoration: 'none',
+};
+
+const usageCardStyle: CSSProperties = {
+  background: 'rgba(255, 255, 255, 0.02)',
+  border: '1px solid rgba(255, 255, 255, 0.06)',
+  borderRadius: 8,
+  padding: 16,
+};
+
+const usageHeaderStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 12,
+  marginBottom: 12,
+};
+
+const rangeToggleStyle: CSSProperties = {
+  display: 'flex',
+  gap: 6,
+};
+
+const rangeButtonStyle: CSSProperties = {
+  border: '1px solid #2a2a2a',
+  background: '#101010',
+  color: '#aaa',
+  borderRadius: 6,
+  fontSize: 12,
+  padding: '4px 8px',
+  cursor: 'pointer',
+};
+
+const activeRangeButtonStyle: CSSProperties = {
+  background: '#16331f',
+  color: '#22c55e',
+  border: '1px solid #1f4f2d',
+};
+
+const kpiGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  gap: 10,
+  marginBottom: 12,
+};
+
+const kpiTileStyle: CSSProperties = {
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+  borderRadius: 8,
+  padding: '10px 12px',
+  background: 'rgba(0, 0, 0, 0.25)',
+};
+
+const kpiLabelStyle: CSSProperties = {
+  fontSize: 11,
+  color: '#8d8d8d',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  marginBottom: 4,
+};
+
+const kpiValueStyle: CSSProperties = {
+  fontSize: 16,
+  color: '#e5e7eb',
+  fontWeight: 600,
+};
+
+const usageMetaStyle: CSSProperties = {
+  fontSize: 12,
+  color: '#8a8a8a',
+};
+
+const usageErrorStyle: CSSProperties = {
+  fontSize: 12,
+  color: '#ef4444',
+};
+
+const modelTableWrapStyle: CSSProperties = {
+  marginTop: 12,
+};
+
+const modelTableStyle: CSSProperties = {
+  width: '100%',
+  borderCollapse: 'collapse',
+  fontSize: 12,
+  marginTop: 6,
+};
+
+const thStyle: CSSProperties = {
+  textAlign: 'left',
+  fontWeight: 500,
+  color: '#8a8a8a',
+  borderBottom: '1px solid #2a2a2a',
+  padding: '6px 4px',
+};
+
+const tdStyle: CSSProperties = {
+  color: '#d4d4d4',
+  borderBottom: '1px solid #1f1f1f',
+  padding: '6px 4px',
 };

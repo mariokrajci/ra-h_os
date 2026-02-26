@@ -2,6 +2,7 @@ import { openai as openaiProvider } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { hasValidOpenAiKey } from '../storage/apiKeys';
 import { getOpenAIChatModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
 
 export interface DescriptionInput {
   title: string;
@@ -75,6 +76,15 @@ export async function generateDescription(input: DescriptionInput): Promise<stri
       maxOutputTokens: 100,
       temperature: 0.3,
     });
+    const usage = normalizeUsageFromAiSdk(response);
+    if (usage) {
+      logAiUsage({
+        feature: 'node_description',
+        provider: 'openai',
+        modelId: getOpenAIChatModel(),
+        usage,
+      });
+    }
 
     const description = response.text.trim();
 

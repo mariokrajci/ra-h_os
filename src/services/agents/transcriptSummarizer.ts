@@ -1,6 +1,7 @@
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { getOpenAIChatModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
 
 export interface TranscriptSummaryResult {
   subject?: string;
@@ -54,6 +55,15 @@ export async function summarizeTranscript(transcript: string): Promise<Transcrip
       prompt: buildPrompt(limited),
       maxOutputTokens: 600,
     });
+    const usage = normalizeUsageFromAiSdk(response);
+    if (usage) {
+      logAiUsage({
+        feature: 'transcript_summary',
+        provider: 'openai',
+        modelId: getOpenAIChatModel(),
+        usage,
+      });
+    }
 
     let content = response.text || '';
     content = content.replace(/```json/gi, '').replace(/```/g, '').trim();

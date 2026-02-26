@@ -5,6 +5,7 @@ import { generateText } from 'ai';
 import { extractPaper } from '@/services/typescript/extractors/paper';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
 import { getOpenAIChatModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
 
 // AI-powered content analysis
 async function analyzeContentWithAI(title: string, description: string, contentType: string) {
@@ -43,6 +44,15 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
       prompt,
       maxOutputTokens: 800
     });
+    const usage = normalizeUsageFromAiSdk(response);
+    if (usage) {
+      logAiUsage({
+        feature: 'paper_content_analysis',
+        provider: 'openai',
+        modelId: getOpenAIChatModel(),
+        usage,
+      });
+    }
 
     let content = response.text || '{}';
 

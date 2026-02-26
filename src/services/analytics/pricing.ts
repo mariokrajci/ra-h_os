@@ -40,6 +40,16 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
     inputPer1M: 1.25,
     outputPer1M: 10.00,
   },
+  'text-embedding-3-small': {
+    provider: 'openai',
+    inputPer1M: 0.02,
+    outputPer1M: 0,
+  },
+  'text-embedding-3-large': {
+    provider: 'openai',
+    inputPer1M: 0.13,
+    outputPer1M: 0,
+  },
 };
 
 export interface CostCalculationInput {

@@ -11,6 +11,7 @@ import {
   batchProcess 
 } from './sqlite-vec';
 import { getOpenAIEmbeddingModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromOpenAI } from '@/services/analytics/usageLogger';
 
 interface Node {
   id: number;
@@ -76,6 +77,15 @@ export class UniversalEmbedder {
       model: getOpenAIEmbeddingModel(),
       input: text,
     });
+    const usage = normalizeUsageFromOpenAI(response.usage);
+    if (usage) {
+      logAiUsage({
+        feature: 'chunk_embedding',
+        provider: 'openai',
+        modelId: getOpenAIEmbeddingModel(),
+        usage,
+      });
+    }
     
     return response.data[0].embedding;
   }

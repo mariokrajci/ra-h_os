@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { getOpenAIEmbeddingModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromOpenAI } from '@/services/analytics/usageLogger';
 
 function getOpenAiClient(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -22,6 +23,15 @@ export class EmbeddingService {
         input: query.trim(),
         encoding_format: "float"
       });
+      const usage = normalizeUsageFromOpenAI(response.usage);
+      if (usage) {
+        logAiUsage({
+          feature: 'query_embedding',
+          provider: 'openai',
+          modelId: getOpenAIEmbeddingModel(),
+          usage,
+        });
+      }
 
       if (!response.data?.[0]?.embedding) {
         throw new Error('No embedding returned from OpenAI API');

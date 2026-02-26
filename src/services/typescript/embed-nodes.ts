@@ -13,6 +13,7 @@ import {
   batchProcess 
 } from './sqlite-vec';
 import { getOpenAIChatModel, getOpenAIEmbeddingModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromAiSdk, normalizeUsageFromOpenAI } from '@/services/analytics/usageLogger';
 
 interface NodeRecord {
   id: number;
@@ -65,14 +66,24 @@ Dimensions: ${dimensionsText}
 Focus on the main concepts, key relationships, and practical implications.`;
 
     try {
-      const { text } = await generateText({
+      const response = await generateText({
         model: this.openaiProvider(getOpenAIChatModel()),
         prompt,
         maxOutputTokens: 150,
         temperature: 0.3,
       });
+      const usage = normalizeUsageFromAiSdk(response);
+      if (usage) {
+        logAiUsage({
+          feature: 'node_embedding_analysis',
+          provider: 'openai',
+          modelId: getOpenAIChatModel(),
+          usage,
+          metadata: { nodeId: node.id },
+        });
+      }
 
-      return text;
+      return response.text;
     } catch (error) {
       console.error(`AI analysis failed for node ${node.id}:`, error);
       return '';
@@ -87,6 +98,15 @@ Focus on the main concepts, key relationships, and practical implications.`;
       model: getOpenAIEmbeddingModel(),
       input: text,
     });
+    const usage = normalizeUsageFromOpenAI(response.usage);
+    if (usage) {
+      logAiUsage({
+        feature: 'node_embedding',
+        provider: 'openai',
+        modelId: getOpenAIEmbeddingModel(),
+        usage,
+      });
+    }
     
     return response.data[0].embedding;
   }

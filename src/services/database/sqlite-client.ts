@@ -397,6 +397,26 @@ class SQLiteClient {
       `);
 
       this.db.exec(`
+        CREATE TABLE IF NOT EXISTS ai_usage (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          created_at TEXT NOT NULL,
+          feature TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          model TEXT NOT NULL,
+          input_tokens INTEGER NOT NULL DEFAULT 0,
+          output_tokens INTEGER NOT NULL DEFAULT 0,
+          total_tokens INTEGER NOT NULL DEFAULT 0,
+          cache_write_tokens INTEGER,
+          cache_read_tokens INTEGER,
+          estimated_cost_usd REAL,
+          metadata TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_ai_usage_created_at ON ai_usage(created_at);
+        CREATE INDEX IF NOT EXISTS idx_ai_usage_feature ON ai_usage(feature, created_at);
+        CREATE INDEX IF NOT EXISTS idx_ai_usage_model ON ai_usage(model, created_at);
+      `);
+
+      this.db.exec(`
         CREATE TABLE IF NOT EXISTS wiki_topics (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT NOT NULL,

@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import type { Node } from '@/types/database';
 import { getOpenAIChatModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromOpenAI } from '@/services/analytics/usageLogger';
 
 function getOpenAIClient(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -35,6 +36,16 @@ export async function groupDimensionsIntoTopics(dimensions: string[]): Promise<D
       },
     ],
   });
+  const groupingUsage = normalizeUsageFromOpenAI(response.usage);
+  if (groupingUsage) {
+    logAiUsage({
+      feature: 'wiki_group_dimensions',
+      provider: 'openai',
+      modelId: getOpenAIChatModel(),
+      usage: groupingUsage,
+      metadata: { dimensionCount: dimensions.length },
+    });
+  }
 
   // response_format: json_object guarantees valid JSON — parse directly
   const raw = response.choices[0]?.message?.content ?? '{}';
@@ -106,6 +117,16 @@ export async function summarizeDimension(
       },
     ],
   });
+  const summaryUsage = normalizeUsageFromOpenAI(response.usage);
+  if (summaryUsage) {
+    logAiUsage({
+      feature: 'wiki_summarize_dimension',
+      provider: 'openai',
+      modelId: getOpenAIChatModel(),
+      usage: summaryUsage,
+      metadata: { dimensionName, nodeCount: nodes.length },
+    });
+  }
 
   return {
     summary: (response.choices[0]?.message?.content || '').trim(),
@@ -144,6 +165,16 @@ export async function synthesizeFullArticle(
       },
     ],
   });
+  const articleUsage = normalizeUsageFromOpenAI(response.usage);
+  if (articleUsage) {
+    logAiUsage({
+      feature: 'wiki_synthesize_article',
+      provider: 'openai',
+      modelId: getOpenAIChatModel(),
+      usage: articleUsage,
+      metadata: { subtopicTitle, nodeCount: nodes.length },
+    });
+  }
 
   return {
     article: response.choices[0]?.message?.content || '',

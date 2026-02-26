@@ -3,6 +3,7 @@ import { openai as openaiProvider } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { hasValidOpenAiKey } from '../storage/apiKeys';
 import { getOpenAIChatModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
 
 export interface Dimension {
   name: string;
@@ -84,6 +85,15 @@ export class DimensionService {
         maxOutputTokens: 300, // Increased to accommodate more dimensions
         temperature: 0.1,
       });
+      const usage = normalizeUsageFromAiSdk(response);
+      if (usage) {
+        logAiUsage({
+          feature: 'dimension_assignment',
+          provider: 'openai',
+          modelId: getOpenAIChatModel(),
+          usage,
+        });
+      }
 
       console.log(`[DimensionAssignment] AI Response:\n${response.text}`);
 
