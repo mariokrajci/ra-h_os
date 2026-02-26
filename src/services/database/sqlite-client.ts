@@ -396,6 +396,24 @@ class SQLiteClient {
         CREATE INDEX IF NOT EXISTS idx_voice_usage_chat ON voice_usage(chat_id);
       `);
 
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS wiki_topics (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          parent_id INTEGER,
+          dimension TEXT,
+          node_ids TEXT NOT NULL DEFAULT '[]',
+          summary TEXT,
+          article TEXT,
+          article_status TEXT DEFAULT 'none',
+          article_generated_at TEXT,
+          order_index INTEGER DEFAULT 0,
+          generated_at TEXT,
+          FOREIGN KEY (parent_id) REFERENCES wiki_topics(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_wiki_topics_parent ON wiki_topics(parent_id, order_index);
+      `);
+
       // 5) Views: logs_v (drop any legacy memory_v alias)
       this.db.exec(`DROP VIEW IF EXISTS logs_v; DROP VIEW IF EXISTS memory_v;`);
       try {

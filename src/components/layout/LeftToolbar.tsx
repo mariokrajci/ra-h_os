@@ -9,6 +9,7 @@ import {
   Map,
   Folder,
   Table2,
+  BookOpen,
   Settings,
 } from 'lucide-react';
 import type { PaneType } from '../panes/types';
@@ -30,6 +31,7 @@ const PANE_TYPE_ICONS: Record<string, typeof LayoutList> = {
   map: Map,
   dimensions: Folder,
   table: Table2,
+  wiki: BookOpen,
 };
 
 const PANE_TYPE_LABELS: Record<string, string> = {
@@ -37,10 +39,11 @@ const PANE_TYPE_LABELS: Record<string, string> = {
   map: 'Map',
   dimensions: 'Dimensions',
   table: 'Table',
+  wiki: 'Wiki',
 };
 
 // Pane types shown in the toolbar (excludes 'node', 'chat', and 'guides' which is in settings)
-const TOOLBAR_PANE_TYPES: PaneType[] = ['views', 'map', 'dimensions', 'table'];
+const TOOLBAR_PANE_TYPES: PaneType[] = ['views', 'map', 'dimensions', 'table', 'wiki'];
 
 interface ToolbarButtonProps {
   icon: typeof Search;

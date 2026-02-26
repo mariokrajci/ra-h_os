@@ -35,7 +35,7 @@ import LeftToolbar from './LeftToolbar';
 import SplitHandle from './SplitHandle';
 
 // Pane components (ChatPane removed in rah-light, GuidesPane moved to settings)
-import { NodePane, DimensionsPane, MapPane, ViewsPane, TablePane } from '../panes';
+import { NodePane, DimensionsPane, MapPane, ViewsPane, TablePane, WikiPane } from '../panes';
 import QuickAddInput from '../agents/QuickAddInput';
 import type { PaneType, SlotState, PaneAction } from '../panes/types';
 
@@ -960,6 +960,21 @@ export default function ThreePanelLayout() {
           />
         );
 
+      case 'wiki':
+        return (
+          <WikiPane
+            slot={slot}
+            isActive={isActive}
+            onPaneAction={slot === 'A' ? handleSlotAAction : handleSlotBAction}
+            onCollapse={onCollapse}
+            onSwapPanes={slotB ? handleSwapPanes : undefined}
+            onNodeClick={(nodeId) => {
+              handleNodeSelect(nodeId, false);
+              setActivePane(slot);
+            }}
+          />
+        );
+
       default:
         return null;
     }
@@ -1029,7 +1044,7 @@ export default function ThreePanelLayout() {
               display: 'flex',
               flexDirection: 'column',
               // Center single pane (except map)
-              ...((!slotB && slotA.type !== 'map' && slotA.type !== 'table') ? {
+              ...((!slotB && slotA.type !== 'map' && slotA.type !== 'table' && slotA.type !== 'wiki') ? {
                 maxWidth: '900px',
                 margin: '0 auto',
                 width: '100%',

@@ -14,8 +14,8 @@ export type AgentDelegation = {
   updatedAt: string;
 };
 
-// The four pane types (chat removed in rah-light, guides moved to settings)
-export type PaneType = 'node' | 'dimensions' | 'map' | 'views' | 'table';
+// Pane types (chat removed in rah-light, guides moved to settings)
+export type PaneType = 'node' | 'dimensions' | 'map' | 'views' | 'table' | 'wiki';
 
 // State for each slot
 export interface SlotState {
@@ -95,6 +95,11 @@ export interface TablePaneProps extends BasePaneProps {
   refreshToken?: number;
 }
 
+// WikiPane specific props
+export interface WikiPaneProps extends BasePaneProps {
+  onNodeClick: (nodeId: number) => void;
+}
+
 // Pane header props
 export interface PaneHeaderProps {
   slot?: 'A' | 'B';
@@ -111,6 +116,7 @@ export const PANE_LABELS: Record<PaneType, string> = {
   map: 'Map',
   views: 'Feed',
   table: 'Table',
+  wiki: 'Wiki',
 };
 
 // Default slot states
