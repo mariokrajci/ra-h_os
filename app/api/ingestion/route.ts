@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const statusCode = results.success ? 200 : 500;
+    const statusCode = results.success || results.errorCode === 'INSUFFICIENT_QUOTA' ? 200 : 500;
     return NextResponse.json(results, { status: statusCode });
     
   } catch (error) {

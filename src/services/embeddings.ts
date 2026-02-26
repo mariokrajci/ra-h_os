@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { getOpenAIEmbeddingModel } from '@/config/openaiModels';
 
 function getOpenAiClient(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -17,7 +18,7 @@ export class EmbeddingService {
     try {
       const openai = getOpenAiClient();
       const response = await openai.embeddings.create({
-        model: "text-embedding-3-small",
+        model: getOpenAIEmbeddingModel(),
         input: query.trim(),
         encoding_format: "float"
       });

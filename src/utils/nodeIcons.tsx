@@ -10,10 +10,18 @@ interface FaviconIconProps {
   size?: number;
 }
 
+const NO_FAVICON_DOMAINS = new Set(['example.com', 'www.example.com', 'localhost', '127.0.0.1', '0.0.0.0']);
+
+export function shouldFetchFavicon(domain: string): boolean {
+  const normalized = (domain || '').toLowerCase().trim();
+  if (!normalized) return false;
+  return !NO_FAVICON_DOMAINS.has(normalized);
+}
+
 const FaviconIcon = ({ domain, size = 16 }: FaviconIconProps) => {
   const [failed, setFailed] = useState(false);
 
-  if (failed) {
+  if (failed || !shouldFetchFavicon(domain)) {
     return <Globe size={size} color="#94a3b8" />;
   }
 

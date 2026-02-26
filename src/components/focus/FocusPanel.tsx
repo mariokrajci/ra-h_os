@@ -12,6 +12,7 @@ import { getNodeIcon } from '@/utils/nodeIcons';
 import { useDimensionIcons } from '@/context/DimensionIconsContext';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { SourceReader } from './source';
+import { getQuotaWarningMessage, isInsufficientQuotaError } from '@/services/embedding/errors';
 
 interface PopularDimension {
   dimension: string;
@@ -42,6 +43,14 @@ interface FocusPanelProps {
   hideTabBar?: boolean;
   onTextSelect?: (nodeId: number, nodeTitle: string, text: string) => void;
   highlightedPassage?: { nodeId: number; selectedText: string } | null;
+}
+
+interface IngestionResult {
+  success?: boolean;
+  error?: string;
+  errorCode?: string;
+  node_embedding?: { status?: string };
+  chunk_embeddings?: { status?: string; chunks_created?: number };
 }
 
 export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeClick, onTabClose, refreshTrigger, onOpenInOtherSlot, hideTabBar, onTextSelect, highlightedPassage }: FocusPanelProps) {
@@ -525,6 +534,26 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   };
 
   // Sync description to source (chunk) and re-embed
+  const runIngestion = async (nodeId: number): Promise<{ ok: boolean; message?: string; result?: IngestionResult }> => {
+    const response = await fetch('/api/ingestion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nodeId }),
+    });
+
+    const result: IngestionResult = await response.json();
+    const quotaError = result.errorCode === 'INSUFFICIENT_QUOTA' || isInsufficientQuotaError(result.error);
+    if (quotaError) {
+      return { ok: false, message: getQuotaWarningMessage(), result };
+    }
+
+    if (!response.ok || !result.success) {
+      return { ok: false, message: result.error || 'Failed to embed content', result };
+    }
+
+    return { ok: true, result };
+  };
+
   const syncDescToSource = async () => {
     if (!activeTab) return;
     setDescSaving(true);
@@ -541,15 +570,15 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
         setNodesData(prev => ({ ...prev, [activeTab]: result.node }));
       }
 
-      // Trigger re-embedding
-      await fetch('/api/ingestion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodeId: activeTab }),
-      });
+      const ingestion = await runIngestion(activeTab);
 
       // Refresh chunks data
       fetchChunksData(activeTab);
+
+      if (!ingestion.ok) {
+        alert(ingestion.message || 'Description synced, but embedding did not complete.');
+        return;
+      }
 
       alert('Description synced to source and re-embedded successfully.');
     } catch (e) {
@@ -680,15 +709,15 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
         setNodesData(prev => ({ ...prev, [activeTab]: result.node }));
       }
 
-      // Then trigger re-embedding
-      await fetch('/api/ingestion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodeId: activeTab }),
-      });
+      const ingestion = await runIngestion(activeTab);
 
       // Refresh chunks data
       fetchChunksData(activeTab);
+
+      if (!ingestion.ok) {
+        alert(ingestion.message || 'Content synced, but embedding did not complete.');
+        return;
+      }
 
       // Stay in edit mode but show success
       alert('Content synced to source and re-embedded successfully.');
@@ -1052,18 +1081,12 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     }
     setEmbeddingNode(nodeId);
     try {
-      const response = await fetch('/api/ingestion', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ nodeId }),
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to embed content');
+      const ingestion = await runIngestion(nodeId);
+      const result = ingestion.result || {};
+      if (!ingestion.ok) {
+        alert(ingestion.message || 'Embedding could not be completed.');
+        await fetchNodeData(nodeId);
+        return;
       }
 
       // Show result details
@@ -1082,7 +1105,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
       await fetchNodeData(nodeId);
       
     } catch (error) {
-      console.error('Error embedding content:', error);
+      console.warn('Error embedding content:', error);
       alert(`Failed to embed content: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setEmbeddingNode(null);

@@ -4,6 +4,7 @@ import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { extractPaper } from '@/services/typescript/extractors/paper';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
+import { getOpenAIChatModel } from '@/config/openaiModels';
 
 // AI-powered content analysis
 async function analyzeContentWithAI(title: string, description: string, contentType: string) {
@@ -38,7 +39,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
 }`;
 
     const response = await generateText({
-      model: openai('gpt-4o-mini'),
+      model: openai(getOpenAIChatModel()),
       prompt,
       maxOutputTokens: 800
     });

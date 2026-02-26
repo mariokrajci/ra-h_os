@@ -2,6 +2,7 @@ import { getSQLiteClient } from './sqlite-client';
 import { openai as openaiProvider } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { hasValidOpenAiKey } from '../storage/apiKeys';
+import { getOpenAIChatModel } from '@/config/openaiModels';
 
 export interface Dimension {
   name: string;
@@ -78,7 +79,7 @@ export class DimensionService {
       console.log(`[DimensionAssignment] Processing: "${nodeData.title}"`);
 
       const response = await generateText({
-        model: openaiProvider('gpt-4o-mini'),
+        model: openaiProvider(getOpenAIChatModel()),
         prompt,
         maxOutputTokens: 300, // Increased to accommodate more dimensions
         temperature: 0.1,

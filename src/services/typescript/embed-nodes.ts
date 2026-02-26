@@ -12,6 +12,7 @@ import {
   formatEmbeddingText,
   batchProcess 
 } from './sqlite-vec';
+import { getOpenAIChatModel, getOpenAIEmbeddingModel } from '@/config/openaiModels';
 
 interface NodeRecord {
   id: number;
@@ -65,7 +66,7 @@ Focus on the main concepts, key relationships, and practical implications.`;
 
     try {
       const { text } = await generateText({
-        model: this.openaiProvider('gpt-4o-mini'),
+        model: this.openaiProvider(getOpenAIChatModel()),
         prompt,
         maxOutputTokens: 150,
         temperature: 0.3,
@@ -83,7 +84,7 @@ Focus on the main concepts, key relationships, and practical implications.`;
    */
   private async generateEmbedding(text: string): Promise<number[]> {
     const response = await this.openaiClient.embeddings.create({
-      model: 'text-embedding-3-small',
+      model: getOpenAIEmbeddingModel(),
       input: text,
     });
     
@@ -168,8 +169,9 @@ Focus on the main concepts, key relationships, and practical implications.`;
   /**
    * Embed nodes based on options
    */
-  async embedNodes(options: EmbedNodeOptions = {}): Promise<{ processed: number; failed: number }> {
+  async embedNodes(options: EmbedNodeOptions = {}): Promise<{ processed: number; failed: number; firstError?: string }> {
     const { nodeId, forceReEmbed = false, verbose = false } = options;
+    let firstError: string | undefined;
     
     let query: string;
     let params: any[] = [];
@@ -177,7 +179,7 @@ Focus on the main concepts, key relationships, and practical implications.`;
     if (nodeId) {
       // Single node
       query = `
-        SELECT n.id, n.title, n.content, n.description,
+        SELECT n.id, n.title, n.notes, n.description,
                COALESCE((SELECT JSON_GROUP_ARRAY(d.dimension)
                         FROM node_dimensions d WHERE d.node_id = n.id), '[]') as dimensions_json,
                n.embedding, n.embedding_updated_at
@@ -188,7 +190,7 @@ Focus on the main concepts, key relationships, and practical implications.`;
     } else if (forceReEmbed) {
       // All nodes
       query = `
-        SELECT n.id, n.title, n.content, n.description,
+        SELECT n.id, n.title, n.notes, n.description,
                COALESCE((SELECT JSON_GROUP_ARRAY(d.dimension)
                         FROM node_dimensions d WHERE d.node_id = n.id), '[]') as dimensions_json,
                n.embedding, n.embedding_updated_at
@@ -198,7 +200,7 @@ Focus on the main concepts, key relationships, and practical implications.`;
     } else {
       // Only nodes without embeddings
       query = `
-        SELECT n.id, n.title, n.content, n.description,
+        SELECT n.id, n.title, n.notes, n.description,
                COALESCE((SELECT JSON_GROUP_ARRAY(d.dimension)
                         FROM node_dimensions d WHERE d.node_id = n.id), '[]') as dimensions_json,
                n.embedding, n.embedding_updated_at
@@ -226,6 +228,9 @@ Focus on the main concepts, key relationships, and practical implications.`;
           await this.embedNode(node, forceReEmbed);
         } catch (error) {
           // Error already logged in embedNode
+          if (!firstError) {
+            firstError = error instanceof Error ? error.message : String(error);
+          }
         }
       },
       5, // Batch size
@@ -238,7 +243,8 @@ Focus on the main concepts, key relationships, and practical implications.`;
     
     return {
       processed: this.processedCount,
-      failed: this.failedCount
+      failed: this.failedCount,
+      firstError
     };
   }
 

@@ -67,6 +67,17 @@ With a key, you get:
 
 Get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 
+### Optional model overrides
+
+You can override default OpenAI models in `.env.local`:
+
+```bash
+OPENAI_CHAT_MODEL=gpt-4o-mini
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+```
+
+If unset, the app uses the defaults above.
+
 ---
 
 ## Where Your Data Lives

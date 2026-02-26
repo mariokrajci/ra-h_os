@@ -2,6 +2,7 @@ import { nodeService } from '@/services/database';
 import { NodeEmbedder } from '@/services/typescript/embed-nodes';
 import { UniversalEmbedder } from '@/services/typescript/embed-universal';
 import type { Node } from '@/types/database';
+import { getQuotaWarningMessage, isInsufficientQuotaError } from './errors';
 
 export interface EmbeddingStageStatus {
   status: 'pending' | 'completed' | 'failed' | 'skipped';
@@ -12,6 +13,7 @@ export interface EmbeddingStageStatus {
 export interface EmbeddingPipelineResult {
   success: boolean;
   error?: string;
+  errorCode?: 'INSUFFICIENT_QUOTA';
   node_embedding: EmbeddingStageStatus;
   chunk_embeddings: EmbeddingStageStatus;
   overall_status: 'pending' | 'fully_embedded' | 'partially_embedded' | 'no_content' | 'failed';
@@ -31,7 +33,7 @@ async function runNodeEmbedding(nodeId: number): Promise<EmbeddingResult> {
       return { success: true, output: `Embedded ${result.processed} nodes` };
     }
     if (result.failed > 0) {
-      return { success: false, error: 'Failed to embed node' };
+      return { success: false, error: result.firstError || 'Failed to embed node' };
     }
     return { success: true, output: 'Node already has embedding' };
   } catch (error) {
@@ -150,9 +152,13 @@ export async function embedNodeContent(nodeId: number): Promise<EmbeddingPipelin
     errorParts.push(`chunks: ${results.chunk_embeddings.message}`);
   }
 
+  const combinedError = errorParts.length ? errorParts.join('; ') : undefined;
+  const quotaError = isInsufficientQuotaError(combinedError);
+
   return {
     success: results.overall_status !== 'failed',
-    error: errorParts.length ? errorParts.join('; ') : undefined,
+    error: quotaError ? getQuotaWarningMessage() : combinedError,
+    errorCode: quotaError ? 'INSUFFICIENT_QUOTA' : undefined,
     ...results
   };
 }

@@ -5,6 +5,7 @@ import { nodeService } from './nodes';
 import { generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
+import { getOpenAIChatModel } from '@/config/openaiModels';
 
 const inferredEdgeContextSchema = z.object({
   type: z.enum(['created_by', 'part_of', 'source_of', 'related_to']),
@@ -82,7 +83,7 @@ async function inferEdgeContext(params: {
 
   try {
     const { text } = await generateText({
-      model: provider('gpt-4o-mini'),
+      model: provider(getOpenAIChatModel()),
       prompt,
       temperature: 0.0,
       maxOutputTokens: 120,
@@ -156,7 +157,7 @@ async function autoInferEdge(params: {
 
   try {
     const { text } = await generateText({
-      model: provider('gpt-4o-mini'),
+      model: provider(getOpenAIChatModel()),
       prompt,
       temperature: 0.0,
       maxOutputTokens: 150,

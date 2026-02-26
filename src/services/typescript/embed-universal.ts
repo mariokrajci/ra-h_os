@@ -10,6 +10,7 @@ import {
   serializeFloat32Vector,
   batchProcess 
 } from './sqlite-vec';
+import { getOpenAIEmbeddingModel } from '@/config/openaiModels';
 
 interface Node {
   id: number;
@@ -72,7 +73,7 @@ export class UniversalEmbedder {
    */
   private async generateEmbedding(text: string): Promise<number[]> {
     const response = await this.openaiClient.embeddings.create({
-      model: 'text-embedding-3-small',
+      model: getOpenAIEmbeddingModel(),
       input: text,
     });
     
@@ -124,7 +125,7 @@ export class UniversalEmbedder {
       nodeId,
       chunkIndex,
       chunkContent,
-      'text-embedding-3-small',
+      getOpenAIEmbeddingModel(),
       JSON.stringify(metadata),
       now
     );

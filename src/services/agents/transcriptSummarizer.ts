@@ -1,5 +1,6 @@
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
+import { getOpenAIChatModel } from '@/config/openaiModels';
 
 export interface TranscriptSummaryResult {
   subject?: string;
@@ -49,7 +50,7 @@ export async function summarizeTranscript(transcript: string): Promise<Transcrip
 
   try {
     const response = await generateText({
-      model: openai('gpt-4o-mini'),
+      model: openai(getOpenAIChatModel()),
       prompt: buildPrompt(limited),
       maxOutputTokens: 600,
     });

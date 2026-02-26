@@ -1,6 +1,7 @@
 import { openai as openaiProvider } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { hasValidOpenAiKey } from '../storage/apiKeys';
+import { getOpenAIChatModel } from '@/config/openaiModels';
 
 export interface DescriptionInput {
   title: string;
@@ -69,7 +70,7 @@ export async function generateDescription(input: DescriptionInput): Promise<stri
     console.log(`[DescriptionService] Generating description for: "${input.title}"`);
 
     const response = await generateText({
-      model: openaiProvider('gpt-4o-mini'),
+      model: openaiProvider(getOpenAIChatModel()),
       prompt,
       maxOutputTokens: 100,
       temperature: 0.3,
