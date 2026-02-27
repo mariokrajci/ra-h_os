@@ -252,68 +252,14 @@ async function resolveSpotifyUrl(url: string): Promise<Partial<PodcastEpisodeRes
       }
     } catch { /* proceed with Unknown Podcast */ }
 
+    // Resolve RSS feed URL via iTunes show search (deterministic by show name).
+    // Podcast Index is the fallback for indie podcasts not in iTunes.
+    // Episode search is intentionally avoided — it's non-deterministic across requests.
     let rss_feed_url: string | undefined;
-    let audio_url: string | undefined;
-    let publisher_url: string | undefined;
-    let duration_minutes: number | undefined;
-    let published_at: string | undefined;
-    let description: string | undefined;
-
-    // Search iTunes for this specific episode (show name + title fragment).
-    // A single call returns feedUrl, episodeUrl (audio), duration, and release date.
-    // Verified: searching "No Stupid Questions Ability Compromise" returns the right episode
-    // with feedUrl = https://feeds.simplecast.com/dfh_verV directly.
-    try {
-      const fragment = episodeTitle.substring(0, 40);
-      const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(showName + ' ' + fragment)}&entity=podcastEpisode&limit=5`;
-      const itunesRes = await fetch(itunesUrl);
-      if (itunesRes.ok) {
-        const itunesData = await itunesRes.json();
-        const titleLower = episodeTitle.toLowerCase();
-        const match = (itunesData.results as any[])?.find((r: any) => {
-          const rLower: string = (r.trackName || '').toLowerCase();
-          return rLower.includes(titleLower.substring(0, 40)) || titleLower.includes(rLower.substring(0, 40));
-        });
-        if (match) {
-          rss_feed_url = match.feedUrl;
-          audio_url = match.episodeUrl;
-          duration_minutes = match.trackTimeMillis ? Math.round(match.trackTimeMillis / 60000) : undefined;
-          published_at = match.releaseDate;
-          description = match.description;
-          // Some shows provide an episode-specific page URL in the RSS <link>.
-          // Try parsing the RSS to recover it; fall through silently on failure.
-          if (rss_feed_url) {
-            try {
-              const rssRes = await fetch(rss_feed_url, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RAH-bot/1.0)' },
-              });
-              if (rssRes.ok) {
-                const xml = await rssRes.text();
-                const feed = parseRssFeed(xml);
-                const epLower = episodeTitle.toLowerCase();
-                const rssEp = feed.episodes.find(ep => {
-                  const t = ep.episode_title.toLowerCase();
-                  return t.includes(epLower.substring(0, 40)) || epLower.includes(t.substring(0, 40));
-                });
-                // Only store the RSS <link> as publisher_url if it's an episode-specific page
-                // (not just the show homepage). Heuristic: path must be longer than "/".
-                if (rssEp?.episode_url) {
-                  try {
-                    const parsed = new URL(rssEp.episode_url);
-                    if (parsed.pathname.length > 1 && !/spotify\.com/i.test(rssEp.episode_url)) {
-                      publisher_url = rssEp.episode_url;
-                    }
-                  } catch { /* invalid URL */ }
-                }
-              }
-            } catch { /* rss_feed_url still set */ }
-          }
-        }
-      }
-    } catch { /* leave all fields undefined */ }
-
-    // Fallback 1: Podcast Index feed search by show name (optional — only when API key configured)
-    if (!rss_feed_url) {
+    const itunesShow = await searchItunesPodcast(showName);
+    if (itunesShow?.feedUrl) {
+      rss_feed_url = itunesShow.feedUrl;
+    } else {
       const piHeaders = buildPodcastIndexHeaders();
       if (piHeaders) {
         try {
@@ -324,14 +270,51 @@ async function resolveSpotifyUrl(url: string): Promise<Partial<PodcastEpisodeRes
             const feed = (piData.feeds as any[])?.[0];
             if (feed?.url) rss_feed_url = feed.url as string;
           }
-        } catch { /* proceed to iTunes fallback */ }
+        } catch { /* no feed found */ }
       }
     }
 
-    // Fallback 2: iTunes show-level search
-    if (!rss_feed_url) {
-      const showResult = await searchItunesPodcast(showName);
-      rss_feed_url = showResult?.feedUrl;
+    // Parse the RSS feed to find this specific episode by title.
+    // RSS enclosure gives the audio URL; RSS <link> may give the publisher page.
+    let audio_url: string | undefined;
+    let publisher_url: string | undefined;
+    let duration_minutes: number | undefined;
+    let published_at: string | undefined;
+    let description: string | undefined;
+    let transcript_url: string | undefined;
+
+    if (rss_feed_url) {
+      try {
+        const rssRes = await fetch(rss_feed_url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RAH-bot/1.0)' },
+        });
+        if (rssRes.ok) {
+          const xml = await rssRes.text();
+          const feed = parseRssFeed(xml);
+          const epLower = episodeTitle.toLowerCase();
+          const rssEp = feed.episodes.find(ep => {
+            const t = ep.episode_title.toLowerCase();
+            return t.includes(epLower.substring(0, 40)) || epLower.includes(t.substring(0, 40));
+          });
+          if (rssEp) {
+            audio_url = rssEp.audio_url;
+            duration_minutes = rssEp.duration_minutes;
+            published_at = rssEp.published_at;
+            description = rssEp.description;
+            transcript_url = rssEp.transcript_url;
+            // Only store RSS <link> as publisher_url if it's an episode-specific page
+            // (not the show homepage). Heuristic: path must be longer than "/".
+            if (rssEp.episode_url) {
+              try {
+                const parsed = new URL(rssEp.episode_url);
+                if (parsed.pathname.length > 1 && !/spotify\.com/i.test(rssEp.episode_url)) {
+                  publisher_url = rssEp.episode_url;
+                }
+              } catch { /* invalid URL */ }
+            }
+          }
+        }
+      } catch { /* rss_feed_url still set, episode fields remain undefined */ }
     }
 
     return {
@@ -344,6 +327,7 @@ async function resolveSpotifyUrl(url: string): Promise<Partial<PodcastEpisodeRes
       duration_minutes,
       published_at,
       description,
+      transcript_url,
       cover_image_url: data.thumbnail_url,
       resolution_source: 'spotify' as PodcastSource,
     };
