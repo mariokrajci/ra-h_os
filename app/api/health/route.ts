@@ -18,6 +18,7 @@ export async function GET() {
       database: dbHealth.connected ? 'connected' : 'disconnected',
       vectorSearch: dbHealth.vectorExtension ? 'enabled' : 'disabled',
       aiFeatures: hasValidOpenAiKey() ? 'enabled' : 'disabled (no API key)',
+      podcastIndex: process.env.PODCAST_INDEX_API_KEY ? 'enabled' : 'disabled (no API key)',
       timestamp: new Date().toISOString(),
     };
 
