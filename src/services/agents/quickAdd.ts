@@ -2,6 +2,7 @@ import { summarizeToolExecution } from './toolResultUtils';
 import { youtubeExtractTool } from '@/tools/other/youtubeExtract';
 import { websiteExtractTool } from '@/tools/other/websiteExtract';
 import { paperExtractTool } from '@/tools/other/paperExtract';
+import { podcastExtractTool } from '@/tools/other/podcastExtract';
 import { formatNodeForChat } from '@/tools/infrastructure/nodeFormatter';
 import { summarizeTranscript } from './transcriptSummarizer';
 import { eventBroadcaster } from '@/services/events';
@@ -61,10 +62,11 @@ function buildTaskPrompt(type: QuickAddInputType, input: string): string {
   }
 }
 
-type ExtractionQuickAddType = Extract<QuickAddInputType, 'youtube' | 'website' | 'pdf'>;
+type ExtractionQuickAddType = Extract<QuickAddInputType, 'youtube' | 'podcast' | 'website' | 'pdf'>;
 
 const EXTRACTION_TOOL_MAP = {
   youtube: { toolName: 'youtubeExtract' as const, execute: youtubeExtractTool.execute },
+  podcast: { toolName: 'podcastExtract' as const, execute: podcastExtractTool.execute },
   website: { toolName: 'websiteExtract' as const, execute: websiteExtractTool.execute },
   pdf: { toolName: 'paperExtract' as const, execute: paperExtractTool.execute },
 };
