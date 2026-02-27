@@ -11,6 +11,8 @@ export interface PodcastEpisodeResult {
   podcast_name: string;
   episode_title: string;
   episode_url: string;
+  /** Publisher's own episode page, distinct from the streaming service URL that was submitted */
+  publisher_url?: string;
   rss_feed_url?: string;
   audio_url?: string;
   published_at?: string;
@@ -182,16 +184,84 @@ async function resolveApplePodcastsUrl(url: string): Promise<Partial<PodcastEpis
   }
 }
 
+/**
+ * Search iTunes for a podcast by show name and return its RSS feed URL.
+ * Free, no API key required.
+ */
+async function searchItunesPodcast(showName: string): Promise<{ feedUrl: string } | null> {
+  try {
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(showName)}&entity=podcast&limit=5`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const podcast = (data.results as any[])?.[0];
+    return podcast?.feedUrl ? { feedUrl: podcast.feedUrl as string } : null;
+  } catch {
+    return null;
+  }
+}
+
 async function resolveSpotifyUrl(url: string): Promise<Partial<PodcastEpisodeResult> | null> {
   try {
     const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`;
     const res = await fetch(oembedUrl);
     if (!res.ok) return null;
     const data = await res.json();
+
+    const episodeTitle: string = data.title || 'Unknown Episode';
+    const showName: string = data.provider_name || 'Spotify Podcast';
+
+    let rss_feed_url: string | undefined;
+    let audio_url: string | undefined;
+    let publisher_url: string | undefined;
+    let duration_minutes: number | undefined;
+    let published_at: string | undefined;
+    let description: string | undefined;
+
+    // Use iTunes search to find the RSS feed (free, no auth required)
+    const itunesResult = await searchItunesPodcast(showName);
+    if (itunesResult?.feedUrl) {
+      rss_feed_url = itunesResult.feedUrl;
+      // Parse RSS to find this specific episode's publisher URL and audio URL
+      try {
+        const rssRes = await fetch(rss_feed_url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RAH-bot/1.0)' },
+        });
+        if (rssRes.ok) {
+          const xml = await rssRes.text();
+          const feed = parseRssFeed(xml);
+          const titleLower = episodeTitle.toLowerCase();
+          const episode = feed.episodes.find(ep => {
+            const epLower = ep.episode_title.toLowerCase();
+            return (
+              epLower.includes(titleLower.substring(0, 40)) ||
+              titleLower.includes(epLower.substring(0, 40))
+            );
+          });
+          if (episode) {
+            audio_url = episode.audio_url;
+            duration_minutes = episode.duration_minutes;
+            published_at = episode.published_at;
+            description = episode.description;
+            // RSS <link> / guid is the publisher's episode page (not Spotify)
+            if (episode.episode_url && !/spotify\.com/i.test(episode.episode_url)) {
+              publisher_url = episode.episode_url;
+            }
+          }
+        }
+      } catch { /* ignore — rss_feed_url still stored for later discovery */ }
+    }
+
     return {
-      episode_title: data.title || 'Unknown Episode',
-      podcast_name: data.provider_name || 'Spotify Podcast',
+      episode_title: episodeTitle,
+      podcast_name: showName,
       episode_url: url,
+      publisher_url,
+      rss_feed_url,
+      audio_url,
+      duration_minutes,
+      published_at,
+      description,
       cover_image_url: data.thumbnail_url,
       resolution_source: 'spotify' as PodcastSource,
     };
@@ -328,6 +398,7 @@ export async function extractPodcast(url: string): Promise<ExtractionResult> {
     podcast_name: resolved.podcast_name || 'Unknown Podcast',
     episode_title: resolved.episode_title || 'Unknown Episode',
     episode_url: resolved.episode_url || url,
+    publisher_url: resolved.publisher_url,
     rss_feed_url: resolved.rss_feed_url,
     audio_url: resolved.audio_url,
     published_at: resolved.published_at,
