@@ -31,6 +31,14 @@ export async function transcribeWithLocalWhisper(
   audioUrl: string,
   model: WhisperLocalModel = 'whisper-small'
 ): Promise<ASRResult> {
+  // Polyfill AudioContext for Node.js — transformers.js uses the Web Audio API
+  // to decode audio from file paths, which doesn't exist in Node.js environments.
+  // node-web-audio-api implements it using native codecs (MP3, WAV, OGG, etc.).
+  if (typeof AudioContext === 'undefined') {
+    const { AudioContext: NodeAudioContext } = await import('node-web-audio-api');
+    (globalThis as any).AudioContext = NodeAudioContext;
+  }
+
   // Dynamic import so the large @huggingface/transformers package
   // is only loaded when local ASR is actually requested.
   const { pipeline } = await import('@huggingface/transformers');
