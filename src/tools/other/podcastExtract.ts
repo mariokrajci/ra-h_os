@@ -151,9 +151,15 @@ export const podcastExtractTool = tool({
       });
       const dimsDisplay = actualDimensions.length > 0 ? actualDimensions.join(', ') : 'none';
 
+      const transcriptMessage = meta.transcript_status === 'available'
+        ? 'Transcript imported.'
+        : meta.transcript_status === 'queued'
+          ? 'Transcript discovery running in background.'
+          : 'Transcript not available yet.';
+
       return {
         success: true,
-        message: `Added ${formattedNode} with dimensions: ${dimsDisplay}. Transcript discovery running in background.`,
+        message: `Added ${formattedNode} with dimensions: ${dimsDisplay}. ${transcriptMessage}`,
         data: {
           nodeId,
           title: episodeTitle,

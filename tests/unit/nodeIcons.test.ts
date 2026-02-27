@@ -21,6 +21,8 @@ describe('nodeIcons favicon guards', () => {
   test('detects fixed icon kinds for known links', () => {
     expect(getLinkIconKind('https://github.com/brendanhogan/hermitclaw')).toBe('github');
     expect(getLinkIconKind('https://www.youtube.com/watch?v=123')).toBe('youtube');
+    expect(getLinkIconKind('https://open.spotify.com/episode/123')).toBe('podcast');
+    expect(getLinkIconKind('podcasts.apple.com/us/podcast/example/id1?i=2')).toBe('podcast');
     expect(getLinkIconKind('https://example.com/file.pdf')).toBe('pdf');
     expect(getLinkIconKind('https://www.nytimes.com/article')).toBe('favicon');
   });

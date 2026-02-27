@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Video, FileText, File, Globe, Folder, Github } from 'lucide-react';
+import { Video, FileText, File, Globe, Folder, Github, Mic2 } from 'lucide-react';
 import { Node } from '@/types/database';
 import { getIconByName } from '@/components/common/LucideIconPicker';
 
@@ -10,7 +10,7 @@ interface FaviconIconProps {
   size?: number;
 }
 
-export type LinkIconKind = 'youtube' | 'pdf' | 'github' | 'favicon' | 'globe';
+export type LinkIconKind = 'youtube' | 'podcast' | 'pdf' | 'github' | 'favicon' | 'globe';
 
 const NO_FAVICON_DOMAINS = new Set(['example.com', 'www.example.com', 'localhost', '127.0.0.1', '0.0.0.0']);
 
@@ -34,13 +34,36 @@ export function extractDomain(input?: string): string {
   }
 }
 
+function normalizeUrlishInput(input?: string): string {
+  const trimmed = input?.trim() || '';
+  if (!trimmed) return '';
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed;
+  if (/\s/.test(trimmed)) return trimmed;
+  if (/^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+([/?#].*)?$/i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+  return trimmed;
+}
+
 export function getLinkIconKind(url?: string, metadataType?: string | null): LinkIconKind {
   if (!url) return 'globe';
 
-  const normalized = url.toLowerCase();
+  const normalizedUrl = normalizeUrlishInput(url);
+  const normalized = normalizedUrl.toLowerCase();
 
   if (normalized.includes('youtube.com') || normalized.includes('youtu.be')) {
     return 'youtube';
+  }
+
+  if (
+    normalized.includes('open.spotify.com/episode') ||
+    normalized.includes('podcasts.apple.com') ||
+    normalized.includes('pca.st/') ||
+    normalized.includes('play.pocketcasts.com') ||
+    normalized.includes('/feed') ||
+    normalized.includes('/rss')
+  ) {
+    return 'podcast';
   }
 
   if (normalized.includes('github.com')) {
@@ -52,7 +75,7 @@ export function getLinkIconKind(url?: string, metadataType?: string | null): Lin
   }
 
   try {
-    const domain = new URL(url).hostname;
+    const domain = new URL(normalizedUrl).hostname;
     return shouldFetchFavicon(domain) ? 'favicon' : 'globe';
   } catch {
     return 'globe';
@@ -106,6 +129,10 @@ export function getNodeIcon(
 
     if (kind === 'github') {
       return <Github size={size} color="#94a3b8" />;
+    }
+
+    if (kind === 'podcast') {
+      return <Mic2 size={size} color="#94a3b8" />;
     }
 
     if (kind === 'pdf') {

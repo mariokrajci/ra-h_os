@@ -44,7 +44,7 @@ export interface ExtractionResult {
   chunk: string;
   metadata: PodcastEpisodeResult & {
     source: 'podcast_episode';
-    transcript_status: 'queued' | 'available' | 'unavailable';
+    transcript_status: 'queued' | 'processing' | 'available' | 'unavailable';
     transcript_source?: string;
     transcript_confidence?: 'high' | 'medium' | 'low';
   };

@@ -25,11 +25,22 @@ function isLikelyChatTranscript(raw: string): boolean {
   return false;
 }
 
+function normalizeUrlLikeInput(raw: string): string {
+  const input = raw.trim();
+  if (!input) return input;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(input)) return input;
+  if (/\s/.test(input)) return input;
+  if (/^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+([/?#].*)?$/i.test(input)) {
+    return `https://${input}`;
+  }
+  return input;
+}
+
 export function detectInputType(raw: string, mode?: QuickAddMode): QuickAddInputType {
   if (mode === 'chat') return 'chat';
   if (mode === 'note') return 'note';
 
-  const input = raw.trim();
+  const input = normalizeUrlLikeInput(raw);
   if (/youtu(\.be|be\.com)/i.test(input)) return 'youtube';
   if (
     /open\.spotify\.com\/episode/i.test(input) ||
@@ -172,7 +183,8 @@ async function handleExtractionQuickAdd(type: ExtractionQuickAddType, url: strin
   if (!execute) {
     throw new Error(`Tool ${toolName} does not have an execute function`);
   }
-  const rawResult = await execute({ url }, { toolCallId: 'quickadd-extract', messages: [] });
+  const normalizedUrl = normalizeUrlLikeInput(url);
+  const rawResult = await execute({ url: normalizedUrl }, { toolCallId: 'quickadd-extract', messages: [] });
 
   if (!isExtractionToolResult(rawResult)) {
     throw new Error(`Unexpected response from ${toolName}`);
@@ -185,7 +197,7 @@ async function handleExtractionQuickAdd(type: ExtractionQuickAddType, url: strin
     throw new Error(errorMessage);
   }
 
-  const summaryLine = summarizeToolExecution(toolName, { url }, toolResult);
+  const summaryLine = summarizeToolExecution(toolName, { url: normalizedUrl }, toolResult);
   const nodeId = toolResult.data?.nodeId;
   const nodeTitle = typeof toolResult.data?.title === 'string' && toolResult.data.title.trim().length > 0
     ? toolResult.data.title.trim()

@@ -2,22 +2,64 @@
  * Async podcast transcript discovery pipeline
  * Tries sources in order:
  *   1. RSS podcast:transcript tag (Podcasting 2.0 standard — highest fidelity)
- *   2. Publisher episode page (HTML scrape)
- *   3. Podcast Index API (optional — requires PODCAST_INDEX_API_KEY + PODCAST_INDEX_API_SECRET)
+ *   2. Podscripts transcript mirror (pragmatic fallback for podcast apps)
+ *   3. Publisher episode page (HTML scrape)
+ *   4. Podcast Index API (optional — requires PODCAST_INDEX_API_KEY + PODCAST_INDEX_API_SECRET)
  *
  * On success:  updates node.chunk + chunk_status + metadata.transcript_*
- * On failure:  sets metadata.transcript_status = 'asr_pending_user'
+ * On failure:  sets metadata.transcript_status = 'unavailable'
  */
 import * as cheerio from 'cheerio';
-import { nodeService } from '@/services/database';
 import { parseRssFeed, buildPodcastIndexHeaders } from './podcast';
 
 type TranscriptResult = {
   text: string;
-  source: 'publisher_page' | 'rss_tag' | 'podcast_index';
+  source: 'publisher_page' | 'rss_tag' | 'podscripts' | 'podcast_index';
   url?: string;
   confidence: 'high' | 'medium' | 'low';
 };
+
+function slugifySegment(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/['"]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-');
+}
+
+export function buildPodscriptsTranscriptUrl(showTitle: string, episodeTitle: string): string {
+  return `https://podscripts.co/podcasts/${slugifySegment(showTitle)}/${slugifySegment(episodeTitle)}`;
+}
+
+function normalizeTimestamp(label: string): string {
+  const match = label.match(/(\d{2}:\d{2}:\d{2}|\d{1,2}:\d{2})/);
+  return match?.[1] || label.trim();
+}
+
+export function extractPodscriptsTranscriptText(html: string): string {
+  const $ = cheerio.load(html);
+  const groups = $('.podcast-transcript .single-sentence');
+  if (!groups.length) return '';
+
+  const segments: string[] = [];
+
+  groups.each((_, el) => {
+    const group = $(el);
+    const timestamp = normalizeTimestamp(group.find('.pod_timestamp_indicator').first().text().trim());
+    const parts = group
+      .find('.transcript-text, .pod_text')
+      .map((__, span) => $(span).text().replace(/\s+/g, ' ').trim())
+      .get()
+      .filter(Boolean);
+
+    if (!timestamp || parts.length === 0) return;
+    segments.push(`${timestamp}\n${parts.join(' ')}`);
+  });
+
+  return segments.join('\n\n').trim();
+}
 
 /**
  * Strip VTT/SRT timing metadata and sequence numbers to return plain prose text.
@@ -99,6 +141,33 @@ async function scrapePublisherPage(episodeUrl: string): Promise<TranscriptResult
     }
 
     return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchPodscriptsTranscript(
+  podcastName: string,
+  episodeTitle: string,
+): Promise<TranscriptResult | null> {
+  const transcriptUrl = buildPodscriptsTranscriptUrl(podcastName, episodeTitle);
+
+  try {
+    const res = await fetch(transcriptUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RAH-bot/1.0)' },
+    });
+    if (!res.ok) return null;
+
+    const html = await res.text();
+    const text = extractPodscriptsTranscriptText(html);
+    if (text.length < 500) return null;
+
+    return {
+      text,
+      source: 'podscripts',
+      url: transcriptUrl,
+      confidence: 'medium',
+    };
   } catch {
     return null;
   }
@@ -203,6 +272,7 @@ async function updateNodeWithTranscript(
   transcript: TranscriptResult,
   existingMetadata: any
 ): Promise<void> {
+  const { nodeService } = await import('@/services/database');
   // updateNode replaces metadata entirely, so spread existing fields to preserve them
   await nodeService.updateNode(nodeId, {
     chunk: transcript.text,
@@ -220,9 +290,10 @@ async function updateNodeWithTranscript(
 
 async function updateNodeTranscriptStatus(
   nodeId: number,
-  status: 'asr_pending_user' | 'unavailable',
+  status: 'unavailable',
   existingMetadata: any
 ): Promise<void> {
+  const { nodeService } = await import('@/services/database');
   // updateNode replaces metadata entirely, so spread existing fields to preserve them
   await nodeService.updateNode(nodeId, {
     metadata: {
@@ -234,6 +305,7 @@ async function updateNodeTranscriptStatus(
 }
 
 export async function discoverTranscript(nodeId: number): Promise<void> {
+  const { nodeService } = await import('@/services/database');
   const node = await nodeService.getNodeById(nodeId);
   if (!node?.metadata) return;
 
@@ -251,7 +323,12 @@ export async function discoverTranscript(nodeId: number): Promise<void> {
     result = await fetchRssTranscript(meta.rss_feed_url, meta.episode_title);
   }
 
-  // Step 2: Publisher episode page scrape
+  // Step 2: Podscripts transcript mirror
+  if (!result && meta.podcast_name && meta.episode_title) {
+    result = await fetchPodscriptsTranscript(meta.podcast_name, meta.episode_title);
+  }
+
+  // Step 3: Publisher episode page scrape
   // Prefer publisher_url (the show's own website) over episode_url which may be
   // a streaming service URL (Spotify, Apple, Pocket Casts) that won't have a transcript.
   if (!result) {
@@ -263,7 +340,7 @@ export async function discoverTranscript(nodeId: number): Promise<void> {
     }
   }
 
-  // Step 3: Podcast Index API (optional — only runs when API key is configured)
+  // Step 4: Podcast Index API (optional — only runs when API key is configured)
   if (!result && meta.rss_feed_url && meta.episode_title) {
     result = await fetchPodcastIndexTranscript(meta.rss_feed_url, meta.episode_title);
   }
@@ -271,6 +348,6 @@ export async function discoverTranscript(nodeId: number): Promise<void> {
   if (result && result.text.length > 200) {
     await updateNodeWithTranscript(nodeId, result, meta);
   } else {
-    await updateNodeTranscriptStatus(nodeId, 'asr_pending_user', meta);
+    await updateNodeTranscriptStatus(nodeId, 'unavailable', meta);
   }
 }

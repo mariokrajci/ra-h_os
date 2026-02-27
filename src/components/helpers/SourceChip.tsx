@@ -1,6 +1,6 @@
 "use client";
 
-import { Github } from 'lucide-react';
+import { Github, Mic2 } from 'lucide-react';
 import { extractDomain, getFaviconUrl, getLinkIconKind } from '@/utils/nodeIcons';
 
 interface SourceChipProps {
@@ -30,6 +30,8 @@ export default function SourceChip({ url, domain }: SourceChipProps) {
     >
       {kind === 'github' ? (
         <Github size={12} color="#bdbdbd" />
+      ) : kind === 'podcast' ? (
+        <Mic2 size={12} color="#bdbdbd" />
       ) : d ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
