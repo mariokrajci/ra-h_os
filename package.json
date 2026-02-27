@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.7",
+    "@huggingface/transformers": "^3.8.1",
     "@langchain/core": "^1.0.1",
     "@langchain/textsplitters": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.25.3",

@@ -8,7 +8,7 @@ import { eventBroadcaster } from '@/services/events';
 
 export type QuickAddMode = 'link' | 'note' | 'chat';
 
-export type QuickAddInputType = 'youtube' | 'website' | 'pdf' | 'note' | 'chat';
+export type QuickAddInputType = 'youtube' | 'podcast' | 'website' | 'pdf' | 'note' | 'chat';
 
 export interface QuickAddInput {
   rawInput: string;
@@ -30,6 +30,14 @@ export function detectInputType(raw: string, mode?: QuickAddMode): QuickAddInput
 
   const input = raw.trim();
   if (/youtu(\.be|be\.com)/i.test(input)) return 'youtube';
+  if (
+    /open\.spotify\.com\/episode/i.test(input) ||
+    /podcasts\.apple\.com/i.test(input) ||
+    /pca\.st\//i.test(input) ||
+    /play\.pocketcasts\.com/i.test(input) ||
+    /feeds\.[a-z0-9-]+\.(com|fm|net|io)/i.test(input) ||
+    /\/(feed|rss)(\/|$|\?)/i.test(input)
+  ) return 'podcast';
   if (/\.pdf($|\?)/i.test(input) || /arxiv\.org\//i.test(input)) return 'pdf';
   if (/^https?:\/\//i.test(input)) return 'website';
   if (!mode && isLikelyChatTranscript(input)) return 'chat';
@@ -40,6 +48,8 @@ function buildTaskPrompt(type: QuickAddInputType, input: string): string {
   switch (type) {
     case 'youtube':
       return `Quick Add: extract YouTube video and create node → ${input}`;
+    case 'podcast':
+      return `Quick Add: extract podcast episode and create node → ${input}`;
     case 'website':
       return `Quick Add: extract webpage and create node → ${input}`;
     case 'pdf':
