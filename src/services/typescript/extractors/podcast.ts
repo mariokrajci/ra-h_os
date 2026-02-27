@@ -1,3 +1,8 @@
+/**
+ * Podcast episode extraction for RA-H knowledge management system
+ * Resolves podcast app URLs (Spotify, Apple, Pocket Casts, RSS) to episode metadata.
+ * Transcript discovery runs asynchronously via podcast-transcript.ts.
+ */
 import * as cheerio from 'cheerio';
 
 export type PodcastSource = 'spotify' | 'apple' | 'pocket_casts' | 'rss_direct' | 'website_fallback';
@@ -40,6 +45,9 @@ export interface ExtractionResult {
     transcript_source?: string;
     transcript_confidence?: 'high' | 'medium' | 'low';
   };
+  // `error` is reserved for callers that wrap this function and may inject a
+  // failure result. `extractPodcast` itself always returns `success: true`
+  // because the website_fallback resolver guarantees a non-null result.
   error?: string;
 }
 
@@ -70,7 +78,7 @@ export function parseRssFeed(xml: string): RssFeedResult {
       // Fallback: search by tag name substring match via each
       $item.find('*').each((__, el) => {
         const tagName = (el as any).name || '';
-        if (tagName === 'itunes:duration' || tagName.endsWith(':duration')) {
+        if (tagName === 'itunes:duration') {
           const text = $(el).text().trim();
           if (text) durationRaw = text;
         }
@@ -82,7 +90,7 @@ export function parseRssFeed(xml: string): RssFeedResult {
     if (!transcriptEl.length) {
       $item.find('*').each((__, el) => {
         const tagName = (el as any).name || '';
-        if (tagName === 'podcast:transcript' || tagName.endsWith(':transcript')) {
+        if (tagName === 'podcast:transcript' || tagName === 'itunes:transcript') {
           transcriptEl = $(el);
         }
       });
@@ -140,6 +148,11 @@ async function resolveApplePodcastsUrl(url: string): Promise<Partial<PodcastEpis
     if (!showIdMatch) return null;
 
     const showId = showIdMatch[1];
+    // When an episode ID is present we pass it as the `id` param with
+    // `entity=podcastEpisode`. The iTunes API returns the parent show as
+    // results[0] and the matching episode in subsequent results, so we use
+    // `.find(r => r.kind === 'podcast-episode')` below to locate the episode.
+    // Without an episode ID we fall back to the show ID and fetch one episode.
     const lookupUrl = episodeIdMatch
       ? `https://itunes.apple.com/lookup?id=${episodeIdMatch[1]}&entity=podcastEpisode`
       : `https://itunes.apple.com/lookup?id=${showId}&entity=podcastEpisode&limit=1`;
