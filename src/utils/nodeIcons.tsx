@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Video, FileText, File, Globe, Folder } from 'lucide-react';
+import { Video, FileText, File, Globe, Folder, Github } from 'lucide-react';
 import { Node } from '@/types/database';
 import { getIconByName } from '@/components/common/LucideIconPicker';
 
@@ -10,12 +10,53 @@ interface FaviconIconProps {
   size?: number;
 }
 
+export type LinkIconKind = 'youtube' | 'pdf' | 'github' | 'favicon' | 'globe';
+
 const NO_FAVICON_DOMAINS = new Set(['example.com', 'www.example.com', 'localhost', '127.0.0.1', '0.0.0.0']);
 
 export function shouldFetchFavicon(domain: string): boolean {
   const normalized = (domain || '').toLowerCase().trim();
   if (!normalized) return false;
   return !NO_FAVICON_DOMAINS.has(normalized);
+}
+
+export function getFaviconUrl(domain: string, size: number = 16): string {
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`;
+}
+
+export function extractDomain(input?: string): string {
+  if (!input) return '';
+  try {
+    const d = input.includes('://') ? new URL(input).hostname : input;
+    return d.replace(/^www\./, '');
+  } catch {
+    return input.replace(/^www\./, '');
+  }
+}
+
+export function getLinkIconKind(url?: string, metadataType?: string | null): LinkIconKind {
+  if (!url) return 'globe';
+
+  const normalized = url.toLowerCase();
+
+  if (normalized.includes('youtube.com') || normalized.includes('youtu.be')) {
+    return 'youtube';
+  }
+
+  if (normalized.includes('github.com')) {
+    return 'github';
+  }
+
+  if (normalized.endsWith('.pdf') || metadataType === 'paper') {
+    return 'pdf';
+  }
+
+  try {
+    const domain = new URL(url).hostname;
+    return shouldFetchFavicon(domain) ? 'favicon' : 'globe';
+  } catch {
+    return 'globe';
+  }
 }
 
 const FaviconIcon = ({ domain, size = 16 }: FaviconIconProps) => {
@@ -28,7 +69,7 @@ const FaviconIcon = ({ domain, size = 16 }: FaviconIconProps) => {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`}
+      src={getFaviconUrl(domain, size)}
       width={size}
       height={size}
       alt=""
@@ -57,25 +98,30 @@ export function getNodeIcon(
 ): React.ReactElement {
   // If node has a link, use URL-derived icon (primary)
   if (node.link) {
-    const url = node.link.toLowerCase();
+    const kind = getLinkIconKind(node.link, node.metadata?.type);
 
-    // YouTube videos
-    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+    if (kind === 'youtube') {
       return <Video size={size} color="#FF0000" />;
     }
 
-    // PDFs and papers
-    if (url.endsWith('.pdf') || node.metadata?.type === 'paper') {
+    if (kind === 'github') {
+      return <Github size={size} color="#94a3b8" />;
+    }
+
+    if (kind === 'pdf') {
       return <FileText size={size} color="#94a3b8" />;
     }
 
-    // Website favicon with graceful fallback
-    try {
-      const domain = new URL(node.link).hostname;
-      return <FaviconIcon domain={domain} size={size} />;
-    } catch {
-      return <Globe size={size} color="#94a3b8" />;
+    if (kind === 'favicon') {
+      try {
+        const domain = new URL(node.link).hostname;
+        return <FaviconIcon domain={domain} size={size} />;
+      } catch {
+        return <Globe size={size} color="#94a3b8" />;
+      }
     }
+
+    return <Globe size={size} color="#94a3b8" />;
   }
 
   // No link — try dimension-derived icon

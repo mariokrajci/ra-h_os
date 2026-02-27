@@ -1,23 +1,17 @@
 "use client";
 
+import { Github } from 'lucide-react';
+import { extractDomain, getFaviconUrl, getLinkIconKind } from '@/utils/nodeIcons';
+
 interface SourceChipProps {
   url?: string;
   domain?: string;
 }
 
-function extractDomain(input?: string) {
-  if (!input) return '';
-  try {
-    const d = input.includes('://') ? new URL(input).hostname : input;
-    return d.replace(/^www\./, '');
-  } catch {
-    return input.replace(/^www\./, '');
-  }
-}
-
 export default function SourceChip({ url, domain }: SourceChipProps) {
   const d = extractDomain(domain || url);
-  const favicon = d ? `https://icons.duckduckgo.com/ip3/${d}.ico` : '';
+  const favicon = d ? getFaviconUrl(d, 12) : '';
+  const kind = getLinkIconKind(url || domain);
   return (
     <span
       title={url || d}
@@ -34,7 +28,9 @@ export default function SourceChip({ url, domain }: SourceChipProps) {
         lineHeight: 1
       }}
     >
-      {d ? (
+      {kind === 'github' ? (
+        <Github size={12} color="#bdbdbd" />
+      ) : d ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={favicon}
