@@ -5,6 +5,7 @@ import { createReadStream } from 'fs';
 import OpenAI from 'openai';
 
 export type WhisperLocalModel = 'whisper-small' | 'whisper-medium';
+export type ASRStep = 'downloading' | 'loading_model' | 'transcribing';
 
 export interface ASRResult {
   transcript: string;
@@ -29,7 +30,8 @@ async function downloadAudioToTemp(audioUrl: string): Promise<string> {
 
 export async function transcribeWithLocalWhisper(
   audioUrl: string,
-  model: WhisperLocalModel = 'whisper-small'
+  model: WhisperLocalModel = 'whisper-small',
+  onProgress?: (step: ASRStep) => void,
 ): Promise<ASRResult> {
   // Polyfill AudioContext for Node.js — transformers.js uses the Web Audio API
   // to decode audio from file paths, which doesn't exist in Node.js environments.
@@ -39,18 +41,22 @@ export async function transcribeWithLocalWhisper(
     (globalThis as any).AudioContext = NodeAudioContext;
   }
 
+  onProgress?.('downloading');
+  const tempPath = await downloadAudioToTemp(audioUrl);
+
   // Dynamic import so the large @huggingface/transformers package
   // is only loaded when local ASR is actually requested.
+  onProgress?.('loading_model');
   const { pipeline } = await import('@huggingface/transformers');
 
   const modelId = model === 'whisper-medium'
     ? 'Xenova/whisper-medium'
     : 'Xenova/whisper-small';
 
-  const tempPath = await downloadAudioToTemp(audioUrl);
+  const transcriber = await pipeline('automatic-speech-recognition', modelId);
 
+  onProgress?.('transcribing');
   try {
-    const transcriber = await pipeline('automatic-speech-recognition', modelId);
     const raw = await transcriber(tempPath, { return_timestamps: false });
     const text = Array.isArray(raw) ? (raw[0]?.text ?? '') : raw.text;
     return {

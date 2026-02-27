@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { nodeService } from '@/services/database';
 import { eventBroadcaster } from '@/services/events';
 import { transcribeWithLocalWhisper, transcribeWithOpenAIApi } from '@/services/typescript/extractors/podcast-asr';
-import type { WhisperLocalModel } from '@/services/typescript/extractors/podcast-asr';
+import type { WhisperLocalModel, ASRStep } from '@/services/typescript/extractors/podcast-asr';
 
 export const runtime = 'nodejs';
 
@@ -48,9 +48,21 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   // Run ASR in background — respond immediately
   setImmediate(async () => {
     try {
-      const result = method === 'api'
-        ? await transcribeWithOpenAIApi(meta.audio_url, meta.duration_minutes)
-        : await transcribeWithLocalWhisper(meta.audio_url, model);
+      // Broadcast granular step updates so the UI can show progress.
+      const broadcastStep = async (step: ASRStep | 'uploading') => {
+        await nodeService.updateNode(nodeId, {
+          metadata: { ...meta, transcript_status: 'asr_processing', asr_step: step },
+        });
+        eventBroadcaster.broadcast({ type: 'NODE_UPDATED', data: { nodeId } });
+      };
+
+      let result;
+      if (method === 'api') {
+        await broadcastStep('uploading');
+        result = await transcribeWithOpenAIApi(meta.audio_url, meta.duration_minutes);
+      } else {
+        result = await transcribeWithLocalWhisper(meta.audio_url, model, broadcastStep);
+      }
 
       await nodeService.updateNode(nodeId, {
         chunk: result.transcript,

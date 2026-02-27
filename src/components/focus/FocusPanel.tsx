@@ -2511,6 +2511,24 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       />
                     </div>
                   )}
+                  {nodesData[activeTab]?.metadata?.source === 'podcast_episode' && nodesData[activeTab]?.metadata?.transcript_status === 'asr_processing' && (
+                    <div style={{ marginTop: '12px' }} className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm space-y-2">
+                      <div className="flex items-center gap-2 text-blue-800 font-medium">
+                        <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                        <span>
+                          {nodesData[activeTab].metadata.asr_step === 'downloading' && 'Downloading audio…'}
+                          {nodesData[activeTab].metadata.asr_step === 'loading_model' && 'Loading Whisper model (first run downloads ~150–300 MB)…'}
+                          {nodesData[activeTab].metadata.asr_step === 'transcribing' && 'Transcribing… this may take several minutes'}
+                          {nodesData[activeTab].metadata.asr_step === 'uploading' && 'Uploading to OpenAI Whisper API…'}
+                          {!nodesData[activeTab].metadata.asr_step && 'Processing transcription…'}
+                        </span>
+                      </div>
+                      <p className="text-blue-600 text-xs">The transcript will appear automatically when ready.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
