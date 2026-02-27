@@ -13,6 +13,7 @@ import { useDimensionIcons } from '@/context/DimensionIconsContext';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { SourceReader } from './source';
 import { getQuotaWarningMessage, isInsufficientQuotaError } from '@/services/embedding/errors';
+import { PodcastTranscriptPrompt } from '@/components/PodcastTranscriptPrompt';
 
 interface PopularDimension {
   dimension: string;
@@ -2498,6 +2499,16 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; }}
                     >
                       Click to add a description...
+                    </div>
+                  )}
+                  {nodesData[activeTab]?.metadata?.source === 'podcast_episode' && nodesData[activeTab]?.metadata?.transcript_status === 'asr_pending_user' && (
+                    <div style={{ marginTop: '12px' }}>
+                      <PodcastTranscriptPrompt
+                        nodeId={activeTab}
+                        audioUrl={nodesData[activeTab].metadata.audio_url}
+                        durationMinutes={nodesData[activeTab].metadata.duration_minutes}
+                        onTranscriptStarted={() => { /* node will refresh via SSE */ }}
+                      />
                     </div>
                   )}
                 </div>
