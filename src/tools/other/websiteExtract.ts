@@ -1,11 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
-import { extractWebsite } from '@/services/typescript/extractors/website';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
-import { getOpenAIChatModel } from '@/config/openaiModels';
-import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
+import { finalizeWebsiteNode } from '@/services/ingestion/finalizeSourceNode';
 
 function normalizeWebsiteTitle(url: string, extractedTitle?: string): string {
   let parsed: URL | null = null;
@@ -27,7 +23,6 @@ function normalizeWebsiteTitle(url: string, extractedTitle?: string): string {
     return parsed ? `Website: ${parsed.hostname}` : 'Website';
   }
 
-  // Remove common page-title wrappers
   let normalized = title
     .replace(/^GitHub\s*-\s*/i, '')
     .replace(/\s*[-|]\s*GitHub$/i, '')
@@ -42,80 +37,16 @@ function normalizeWebsiteTitle(url: string, extractedTitle?: string): string {
   return normalized.slice(0, 160);
 }
 
-// AI-powered content analysis
-async function analyzeContentWithAI(title: string, description: string, contentType: string) {
-  try {
-    const prompt = `Analyze this ${contentType} content and provide classification.
-
-Title: "${title}"
-Description: "${description}"
-
-CRITICAL — nodeDescription rules (max 280 chars):
-1. Say WHAT this literally is: "Blog post by…", "Article from…", "Essay arguing…", "Tutorial on…", "Thread by…"
-2. Name the author/site if known from the metadata.
-3. State the actual claim or thesis — don't paraphrase into vague abstractions.
-4. End with why it's interesting or important — one concrete phrase.
-5. ABSOLUTELY FORBIDDEN: "discusses", "explores", "examines", "talks about", "delves into", "emphasizing the need for". State things directly.
-
-Examples:
-- Title: "Software is eating the world — again" / Author: Andrej Karpathy
-  GOOD: "Karpathy's blog post arguing AI agents make software fluid — they can rip functionality from repos instead of taking dependencies. Signals the end of monolithic libraries."
-  BAD: "By Karpathy — discusses the importance of software becoming more fluid and malleable with agents."
-
-- Title: "The case for slowing down AI" / Site: The Atlantic
-  GOOD: "Atlantic article making the case that AI labs should voluntarily slow capability research until safety catches up. Notable because it cites internal lab disagreements."
-  BAD: "This article explores ideas about slowing down AI development and its implications."
-
-Respond with ONLY valid JSON (no markdown, no code blocks):
-{
-  "enhancedDescription": "A comprehensive summary (3-6 paragraphs, 800-1500 chars). Cover key points, arguments, takeaways.",
-  "nodeDescription": "<your 280-char description following the rules above>",
-  "tags": ["relevant", "semantic", "tags"],
-  "reasoning": "Brief explanation of classification choices"
-}`;
-
-    const response = await generateText({
-      model: openai(getOpenAIChatModel()),
-      prompt,
-      maxOutputTokens: 800
-    });
-    const usage = normalizeUsageFromAiSdk(response);
-    if (usage) {
-      logAiUsage({
-        feature: 'website_content_analysis',
-        provider: 'openai',
-        modelId: getOpenAIChatModel(),
-        usage,
-      });
-    }
-
-    let content = response.text || '{}';
-
-    // Clean up the response - remove markdown code blocks if present
-    content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-
-    const result = JSON.parse(content);
-
-    return {
-      enhancedDescription: result.enhancedDescription || description,
-      nodeDescription: typeof result.nodeDescription === 'string' ? result.nodeDescription.slice(0, 280) : undefined,
-      tags: Array.isArray(result.tags) ? result.tags : [],
-      reasoning: result.reasoning || 'AI analysis completed'
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'unknown error';
-    console.warn('Website analysis fallback (using default description):', message);
-    return {
-      enhancedDescription: description,
-      nodeDescription: undefined,
-      tags: [],
-      reasoning: 'Fallback description used'
-    };
+function buildWebsiteDescription(url: string, title: string): string {
+  const hostname = new URL(url).hostname;
+  if (title.startsWith('Website: ')) {
+    return `Website source from ${hostname}`;
   }
+  return `Website source: ${title.slice(0, 220)}`;
 }
 
 export const websiteExtractTool = tool({
-  description: 'Extract website content and metadata into a node with summary, tags, and raw chunk',
+  description: 'Create a website node immediately, then extract source content and notes in the background',
   inputSchema: z.object({
     url: z.string().describe('The website URL to add to knowledge base'),
     title: z.string().optional().describe('Custom title (auto-generated if not provided)'),
@@ -123,7 +54,6 @@ export const websiteExtractTool = tool({
   }),
   execute: async ({ url, title, dimensions }) => {
     try {
-      // Validate URL format
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return {
           success: false,
@@ -132,86 +62,32 @@ export const websiteExtractTool = tool({
         };
       }
 
-      let result: { success: boolean; notes?: string; chunk?: string; metadata?: any; error?: string };
-      
-      try {
-        const extractionResult = await extractWebsite(url);
-        result = {
-          success: true,
-          notes: extractionResult.content,
-          chunk: extractionResult.chunk,
-          metadata: {
-            title: extractionResult.metadata.title,
-            author: extractionResult.metadata.author,
-            date: extractionResult.metadata.date,
-            description: extractionResult.metadata.description,
-            og_image: extractionResult.metadata.og_image,
-            site_name: extractionResult.metadata.site_name,
-            extraction_method: 'typescript'
-          }
-        };
-      } catch (error: any) {
-        result = { 
-          success: false, 
-          error: error.message || 'TypeScript extraction failed' 
-        };
-      }
-
-      if (!result.success || (!result.notes && !result.chunk)) {
-        return {
-          success: false,
-          error: result.error || 'Failed to extract website content',
-          data: null
-        };
-      }
-
-      console.log('🎯 Website extraction successful, analyzing with AI...');
-
-      // Step 2: AI Analysis for enhanced metadata
-      const normalizedTitle = normalizeWebsiteTitle(url, result.metadata?.title);
-      const aiAnalysis = await analyzeContentWithAI(
-        normalizedTitle,
-        result.notes?.substring(0, 2000) || 'Website content', 
-        'website'
-      );
-
-      // Step 3: Create node with extracted content and AI analysis
-      const nodeTitle = title || normalizedTitle;
-      const enhancedDescription = aiAnalysis?.enhancedDescription || `Website content from ${new URL(url).hostname}`;
-      
-      const suppliedDimensions = Array.isArray(dimensions) ? dimensions : [];
-      let trimmedDimensions = suppliedDimensions
+      const nodeTitle = title || normalizeWebsiteTitle(url);
+      const trimmedDimensions = (Array.isArray(dimensions) ? dimensions : [])
         .map(dim => (typeof dim === 'string' ? dim.trim() : ''))
-        .filter(Boolean);
-
-      trimmedDimensions = trimmedDimensions.slice(0, 5);
+        .filter(Boolean)
+        .slice(0, 5);
 
       const createResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/nodes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: nodeTitle,
-          description: aiAnalysis?.nodeDescription,
-          notes: enhancedDescription,
+          description: buildWebsiteDescription(url, nodeTitle),
           link: url,
           dimensions: trimmedDimensions,
-          chunk: result.chunk || result.notes,
           metadata: {
             source: 'website',
             hostname: new URL(url).hostname,
-            author: result.metadata?.author,
-            published_date: result.metadata?.published_date || result.metadata?.date,
-            content_length: (result.chunk || result.notes)?.length,
-            extraction_method: result.metadata?.extraction_method || 'python_beautifulsoup',
-            ai_analysis: aiAnalysis?.reasoning,
-            enhanced_description: enhancedDescription,
-            refined_at: new Date().toISOString()
+            source_status: 'processing',
+            notes_status: 'pending',
+            staged_ingestion: true,
+            staged_ingestion_started_at: new Date().toISOString(),
           }
         })
       });
 
       const createResult = await createResponse.json();
-
       if (!createResponse.ok) {
         return {
           success: false,
@@ -220,30 +96,39 @@ export const websiteExtractTool = tool({
         };
       }
 
-      console.log('🎯 WebsiteExtract completed successfully');
+      const nodeId: number | undefined = createResult.data?.id;
+      if (!nodeId) {
+        return {
+          success: false,
+          error: 'Failed to create node',
+          data: null
+        };
+      }
 
-      // Use actual assigned dimensions from API response (includes auto-assigned locked + keywords)
-      const actualDimensions: string[] = createResult.data?.dimensions || trimmedDimensions || [];
-      const formattedNode = createResult.data?.id
-        ? formatNodeForChat({ id: createResult.data.id, title: nodeTitle, dimensions: actualDimensions })
-        : nodeTitle;
+      setImmediate(() => {
+        finalizeWebsiteNode({ nodeId, title: nodeTitle, url }).catch(err =>
+          console.error(`[website] background finalization failed for node ${nodeId}:`, err)
+        );
+      });
+
+      const actualDimensions: string[] = createResult.data?.dimensions || trimmedDimensions;
+      const formattedNode = formatNodeForChat({ id: nodeId, title: nodeTitle, dimensions: actualDimensions });
       const dimsDisplay = actualDimensions.length > 0 ? actualDimensions.join(', ') : 'none';
 
       return {
         success: true,
-        message: `Added ${formattedNode} with dimensions: ${dimsDisplay}`,
+        message: `Added ${formattedNode} with dimensions: ${dimsDisplay}. Source extraction running in background.`,
         data: {
-          nodeId: createResult.data?.id,
+          nodeId,
           title: nodeTitle,
-          contentLength: (result.chunk || result.notes || '').length,
-          url: url,
-          dimensions: actualDimensions
+          url,
+          dimensions: actualDimensions,
         }
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to extract website content',
+        error: error instanceof Error ? error.message : 'Failed to create website node',
         data: null
       };
     }

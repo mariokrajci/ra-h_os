@@ -148,13 +148,14 @@ export async function POST(request: NextRequest) {
     // Combine provided, locked, and keyword dimensions, remove duplicates
     const finalDimensions = [...new Set([...trimmedProvidedDimensions, ...locked, ...keywords])]
       .slice(0, 8); // max 8 total
+    const isPodcastEpisode = body.metadata?.source === 'podcast_episode';
     const rawChunk = typeof body.chunk === 'string' ? body.chunk : null;
     let chunkToStore = rawChunk;
     let chunkStatus: Node['chunk_status'];
 
     if (chunkToStore && chunkToStore.trim().length > 0) {
       chunkStatus = 'not_chunked';
-    } else if (!chunkToStore && hasSufficientContent(rawNotes)) {
+    } else if (!isPodcastEpisode && !chunkToStore && hasSufficientContent(rawNotes)) {
       chunkToStore = rawNotes;
       chunkStatus = 'not_chunked';
     }

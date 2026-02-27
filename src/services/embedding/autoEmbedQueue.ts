@@ -92,6 +92,14 @@ export class AutoEmbedQueue {
       return;
     }
 
+    const metadata = node.metadata as Record<string, unknown> | null | undefined;
+    if (!task.force && metadata?.source_status && metadata?.notes_status) {
+      if (metadata.source_status !== 'available' || metadata.notes_status !== 'available') {
+        console.log('[AutoEmbedQueue] Source-backed node not fully ingested, deferring embedding', task.nodeId);
+        return;
+      }
+    }
+
     if (!task.force && node.chunk_status === 'chunked') {
       return;
     }

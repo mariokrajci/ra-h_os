@@ -1,141 +1,63 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
-import { extractYouTube } from '@/services/typescript/extractors/youtube';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
-import { getOpenAIChatModel } from '@/config/openaiModels';
-import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
+import { finalizeYouTubeNode } from '@/services/ingestion/finalizeSourceNode';
 
-// AI-powered content analysis
-async function analyzeContentWithAI(title: string, description: string, contentType: string) {
-  try {
-    const prompt = `Analyze this ${contentType} content and provide classification.
-
-Title: "${title}"
-Description: "${description}"
-
-CRITICAL — nodeDescription rules (max 280 chars):
-1. Say WHAT this literally is: "Podcast episode where…", "Talk by…", "Interview with…", "Video essay on…"
-2. Name people by their role: the channel/host is the creator, anyone in the title is likely the guest or subject.
-3. State the actual claim or thesis from the title — don't paraphrase into vague abstractions.
-4. End with why it's interesting or important — one concrete phrase.
-5. ABSOLUTELY FORBIDDEN: "discusses", "explores", "examines", "talks about", "delves into", "emphasizing the need for". State things directly.
-
-Examples:
-- Title: "Dario Amodei — We are near the end of the exponential" / Channel: Dwarkesh Patel
-  GOOD: "Dwarkesh Patel interview with Anthropic CEO Dario Amodei — argues we're nearing the end of exponential AI scaling. Key signal for what the next phase of AI development looks like."
-  BAD: "By Dario Amodei — discusses reaching the limits of exponential growth in AI, emphasizing the need for a critical perspective."
-
-- Title: "The spell of language models" / Channel: Andrej Karpathy
-  GOOD: "Karpathy talk on how LLMs work under the hood — tokenization, attention, and why they feel like magic but aren't. Essential mental model for anyone building with LLMs."
-  BAD: "By Andrej Karpathy — explores the nature of language models and their capabilities."
-
-Respond with ONLY valid JSON (no markdown, no code blocks):
-{
-  "enhancedDescription": "A comprehensive summary (3-6 paragraphs, 800-1500 chars). Cover key points, arguments, takeaways.",
-  "nodeDescription": "<your 280-char description following the rules above>",
-  "tags": ["relevant", "semantic", "tags"],
-  "reasoning": "Brief explanation of classification choices"
-}`;
-
-    const response = await generateText({
-      model: openai(getOpenAIChatModel()),
-      prompt,
-      maxOutputTokens: 800
-    });
-    const analysisUsage = normalizeUsageFromAiSdk(response);
-    if (analysisUsage) {
-      logAiUsage({
-        feature: 'youtube_content_analysis',
-        provider: 'openai',
-        modelId: getOpenAIChatModel(),
-        usage: analysisUsage,
-      });
-    }
-
-    let content = response.text || '{}';
-
-    // Clean up the response - remove markdown code blocks if present
-    content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-
-    const result = JSON.parse(content);
-
-    return {
-      enhancedDescription: result.enhancedDescription || description,
-      nodeDescription: typeof result.nodeDescription === 'string' ? result.nodeDescription.slice(0, 280) : undefined,
-      tags: Array.isArray(result.tags) ? result.tags : [],
-      reasoning: result.reasoning || 'AI analysis completed'
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'unknown error';
-    console.warn('YouTube analysis fallback (using default description):', message);
-    return {
-      enhancedDescription: description,
-      nodeDescription: undefined,
-      tags: [],
-      reasoning: 'Fallback description used'
-    };
+function extractVideoId(url: string): string | null {
+  if (url.includes('youtu.be')) {
+    return url.split('/').pop()?.split('?')[0] || null;
   }
+  if (url.includes('youtube.com/watch')) {
+    const urlParams = new URLSearchParams(url.split('?')[1]);
+    return urlParams.get('v');
+  }
+  if (url.includes('youtube.com/live')) {
+    return url.split('/live/')[1]?.split('?')[0] || null;
+  }
+  return null;
 }
 
-async function summariseTranscript(title: string, transcript: string): Promise<string | null> {
-  if (!transcript || transcript.trim().length === 0) {
-    return null;
-  }
-
-  // Limit transcript length to keep token costs manageable
-  const MAX_CHARS = 16000;
-  let excerpt = transcript.trim();
-  if (excerpt.length > MAX_CHARS) {
-    const head = excerpt.slice(0, MAX_CHARS / 2);
-    const tail = excerpt.slice(-MAX_CHARS / 2);
-    excerpt = `${head}\n[...]\n${tail}`;
-  }
-
-  const prompt = `You are summarising a long-form recording for a knowledge graph entry. Title: "${title}".
-
-Using the transcript excerpt below, write a concise 3-4 sentence summary covering the main themes, notable claims, and outcomes. If specific terms, frameworks, or memorable lines appear, mention them. Keep the tone factual (no marketing language). If the excerpt appears truncated, note that the summary is based on the portion provided.
-
-Transcript excerpt:
-"""
-${excerpt}
-"""
-`;
-
+async function fetchYouTubeBasicMetadata(url: string): Promise<{ title: string; channelName?: string; channelUrl?: string; thumbnailUrl?: string; videoId?: string }> {
+  const videoId = extractVideoId(url) || undefined;
   try {
-    const response = await generateText({
-      model: openai(getOpenAIChatModel()),
-      prompt,
-      maxOutputTokens: 400
-    });
-    const summaryUsage = normalizeUsageFromAiSdk(response);
-    if (summaryUsage) {
-      logAiUsage({
-        feature: 'youtube_transcript_summary',
-        provider: 'openai',
-        modelId: getOpenAIChatModel(),
-        usage: summaryUsage,
-      });
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const response = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        title: data.title || `YouTube Video ${videoId || ''}`.trim(),
+        channelName: data.author_name || undefined,
+        channelUrl: data.author_url || undefined,
+        thumbnailUrl: data.thumbnail_url || undefined,
+        videoId,
+      };
     }
-    return response.text?.trim() || null;
-  } catch (error) {
-    console.warn('Transcript summarisation failed, falling back to AI analysis description:', error);
-    return null;
+  } catch {
+    // ignore and fall back
   }
+
+  return {
+    title: `YouTube Video ${videoId || ''}`.trim(),
+    videoId,
+  };
+}
+
+function buildYouTubeDescription(title: string, channelName?: string): string {
+  if (channelName) {
+    return `YouTube video by ${channelName}: ${title.slice(0, 220)}`;
+  }
+  return `YouTube video: ${title.slice(0, 220)}`;
 }
 
 export const youtubeExtractTool = tool({
-  description: 'Extract a YouTube transcript and metadata, create a node, and return summary details',
+  description: 'Create a YouTube node immediately, then fetch transcript and notes in the background',
   inputSchema: z.object({
     url: z.string().describe('The YouTube video URL to add to knowledge base'),
     title: z.string().optional().describe('Custom title (auto-generated if not provided)'),
     dimensions: z.array(z.string()).min(1).max(5).optional().describe('Dimension tags to apply to the created node (locked dimensions first)')
   }),
   execute: async ({ url, title, dimensions }) => {
-    console.log('🎯 YouTubeExtract tool called with URL:', url);
     try {
-      // Validate YouTube URL
       if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
         return {
           success: false,
@@ -144,125 +66,77 @@ export const youtubeExtractTool = tool({
         };
       }
 
-      let result: { success: boolean; notes?: string; chunk?: string; metadata?: any; error?: string };
-      
-      console.log('📝 Using TypeScript yt-dlp extractor');
-      try {
-        const extractionResult = await extractYouTube(url);
-        result = {
-          success: extractionResult.success,
-          notes: extractionResult.content,
-          chunk: extractionResult.chunk,
-          metadata: {
-            video_title: extractionResult.metadata.video_title,
-            channel_name: extractionResult.metadata.channel_name,
-            channel_url: extractionResult.metadata.channel_url,
-            thumbnail_url: extractionResult.metadata.thumbnail_url,
-            video_id: extractionResult.metadata.video_id,
-            transcript_length: extractionResult.metadata.transcript_length,
-            total_segments: extractionResult.metadata.total_segments,
-            language: extractionResult.metadata.language,
-            extraction_method: extractionResult.metadata.extraction_method
-          },
-          error: extractionResult.error
-        };
-      } catch (error: any) {
-        result = { 
-          success: false, 
-          error: error.message || 'TypeScript extraction failed' 
-        };
-      }
-
-      if (!result.success || (!result.notes && !result.chunk)) {
-        return {
-          success: false,
-          error: result.error || 'Failed to extract YouTube content',
-          data: null
-        };
-      }
-
-      console.log('🎯 YouTube extraction successful, analyzing with AI...');
-
-      // Step 2: AI Analysis for enhanced metadata
-      const aiAnalysis = await analyzeContentWithAI(
-        result.metadata?.video_title || 'YouTube Video', 
-        `Video by ${result.metadata?.channel_name || 'Unknown Channel'}`, 
-        'youtube'
-      );
-
-      // Step 3: Create node with extracted content and AI analysis
-      const nodeTitle = title || result.metadata?.video_title || `YouTube Video ${url.split('/').pop()?.split('?')[0]}`;
-      const transcriptSummary = await summariseTranscript(nodeTitle, result.chunk || result.notes || '');
-      const nodeNotes = transcriptSummary || aiAnalysis?.enhancedDescription || `YouTube video by ${result.metadata?.channel_name || 'Unknown Channel'}`;
-
-      const suppliedDimensions = Array.isArray(dimensions) ? dimensions : [];
-      let trimmedDimensions = suppliedDimensions
+      const basic = await fetchYouTubeBasicMetadata(url);
+      const nodeTitle = title || basic.title || 'YouTube Video';
+      const trimmedDimensions = (Array.isArray(dimensions) ? dimensions : [])
         .map(dim => (typeof dim === 'string' ? dim.trim() : ''))
-        .filter(Boolean);
-
-      trimmedDimensions = trimmedDimensions.slice(0, 5);
+        .filter(Boolean)
+        .slice(0, 5);
 
       const createResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/nodes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: nodeTitle,
-          description: aiAnalysis?.nodeDescription,
-          notes: nodeNotes,
+          description: buildYouTubeDescription(nodeTitle, basic.channelName),
           link: url,
           dimensions: trimmedDimensions,
-          chunk: result.chunk || result.notes,
           metadata: {
             source: 'youtube',
-            video_id: result.metadata?.video_id,
-            channel_name: result.metadata?.channel_name,
-            channel_url: result.metadata?.channel_url,
-            thumbnail_url: result.metadata?.thumbnail_url,
-            transcript_length: result.metadata?.transcript_length,
-            total_segments: result.metadata?.total_segments,
-            language: result.metadata?.language,
-            extraction_method: result.metadata?.extraction_method,
-            ai_analysis: aiAnalysis?.reasoning,
-            summary_origin: transcriptSummary ? 'transcript_summary' : 'metadata_description',
-            refined_at: new Date().toISOString()
+            source_status: 'processing',
+            notes_status: 'pending',
+            video_id: basic.videoId,
+            channel_name: basic.channelName,
+            channel_url: basic.channelUrl,
+            thumbnail_url: basic.thumbnailUrl,
+            staged_ingestion: true,
+            staged_ingestion_started_at: new Date().toISOString(),
           }
         })
       });
 
       const createResult = await createResponse.json();
-
       if (!createResponse.ok) {
         return {
           success: false,
-          error: createResult.error || 'Failed to create item',
+          error: createResult.error || 'Failed to create node',
           data: null
         };
       }
 
-      console.log('🎯 YouTubeExtract completed successfully');
+      const nodeId: number | undefined = createResult.data?.id;
+      if (!nodeId) {
+        return {
+          success: false,
+          error: 'Failed to create node',
+          data: null
+        };
+      }
 
-      // Use actual assigned dimensions from API response (includes auto-assigned locked + keywords)
-      const actualDimensions: string[] = createResult.data?.dimensions || trimmedDimensions || [];
-      const formattedNode = createResult.data?.id
-        ? formatNodeForChat({ id: createResult.data.id, title: nodeTitle, dimensions: actualDimensions })
-        : nodeTitle;
+      setImmediate(() => {
+        finalizeYouTubeNode({ nodeId, title: nodeTitle, url }).catch(err =>
+          console.error(`[youtube] background finalization failed for node ${nodeId}:`, err)
+        );
+      });
+
+      const actualDimensions: string[] = createResult.data?.dimensions || trimmedDimensions;
+      const formattedNode = formatNodeForChat({ id: nodeId, title: nodeTitle, dimensions: actualDimensions });
       const dimsDisplay = actualDimensions.length > 0 ? actualDimensions.join(', ') : 'none';
 
       return {
         success: true,
-        message: `Added ${formattedNode} with dimensions: ${dimsDisplay}`,
+        message: `Added ${formattedNode} with dimensions: ${dimsDisplay}. Transcript extraction running in background.`,
         data: {
-          nodeId: createResult.data?.id,
+          nodeId,
           title: nodeTitle,
-          contentLength: (result.chunk || result.notes || '').length,
-          url: url,
-          dimensions: actualDimensions
+          url,
+          dimensions: actualDimensions,
         }
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to extract YouTube content',
+        error: error instanceof Error ? error.message : 'Failed to create YouTube node',
         data: null
       };
     }

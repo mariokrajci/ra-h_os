@@ -13,6 +13,7 @@ import { useDimensionIcons } from '@/context/DimensionIconsContext';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { SourceReader } from './source';
 import { getQuotaWarningMessage, isInsufficientQuotaError } from '@/services/embedding/errors';
+import { getNodeNotesStatus, getNodeSourceStatus } from './nodeIngestionStatus';
 
 interface PopularDimension {
   dimension: string;
@@ -70,8 +71,33 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   
   const activeNodeId = activeTab;
   const currentNode = activeNodeId !== null ? nodesData[activeNodeId] : undefined;
+  const notesIngestionStatus = getNodeNotesStatus(currentNode?.metadata);
+  const sourceIngestionStatus = getNodeSourceStatus(currentNode?.metadata);
 
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
+
+  const renderPendingState = (status: { kind: 'processing' | 'error' | 'idle'; message: string }) => (
+    <div
+      style={{
+        color: status.kind === 'error' ? '#a66' : '#777',
+        fontSize: '12px',
+        padding: '12px',
+        minHeight: '200px',
+        border: `1px dashed ${status.kind === 'error' ? '#382222' : '#1f2a1f'}`,
+        borderRadius: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'transparent',
+        flex: 1,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {status.kind === 'processing' ? <Loader size={14} className="animate-spin" /> : null}
+        <span>{status.message}</span>
+      </div>
+    </div>
+  );
 
   // Auto-hide re-embed prompt after a few seconds
   useEffect(() => {
@@ -2761,6 +2787,8 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                         onNodeClick={onNodeClick || onTabSelect}
                       />
                     </div>
+                  ) : notesIngestionStatus ? (
+                    renderPendingState(notesIngestionStatus)
                   ) : (
                     <div
                       onClick={startNotesEdit}
@@ -2998,6 +3026,8 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                               {nodesData[activeTab].chunk}
                             </div>
                           )
+                        ) : sourceIngestionStatus ? (
+                          renderPendingState(sourceIngestionStatus)
                         ) : (
                           <div
                             onClick={startSourceEdit}

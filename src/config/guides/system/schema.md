@@ -14,7 +14,7 @@ immutable: true
 | id | INTEGER | Primary key, auto-increment |
 | title | TEXT | Required |
 | description | TEXT | AI-generated grounding context (~1 sentence) |
-| notes | TEXT | User's notes/thoughts (not source content) |
+| notes | TEXT | Editable synthesis notes (often AI-seeded from source, then user-edited) |
 | chunk | TEXT | Full verbatim source content |
 | chunk_status | TEXT | 'pending', 'chunked', 'failed' |
 | link | TEXT | External URL (only for nodes representing external content) |

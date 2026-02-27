@@ -46,7 +46,7 @@
 ## Features
 
 ### Knowledge Graph
-- **Nodes** — create, read, update, delete knowledge items with title, content, description, notes, link, event date
+- **Nodes** — create, read, update, delete knowledge items with title, source content, description, notes, link, event date
 - **Edges** — directed relationships between nodes with auto-inferred type (`created_by`, `part_of`, `source_of`, `related_to`) and confidence score
 - **Dimensions** — flexible tag/category system; priority dimensions are auto-assigned to new nodes by LLM
 - **Graph visualization** — interactive map view powered by `@xyflow/react`
@@ -168,6 +168,7 @@ Claude Code will now have access to your knowledge base via 14 MCP tools — it 
 |----------|-------|---------|
 | Node creation | `gpt-4o-mini` | Auto-generate 280-char description |
 | Node creation | `gpt-4o-mini` | Suggest + assign dimension tags |
+| Source-backed note synthesis | `gpt-4o-mini` | Generate editable notes from extracted source |
 | Edge creation | `gpt-4o-mini` | Infer relationship type + confidence (with heuristic fast-path) |
 | YouTube extraction | `gpt-4o-mini` | Analyze transcript → description + tags |
 | PDF/website extraction | `gpt-4o-mini` | Analyze content → description + tags |

@@ -70,6 +70,7 @@ export async function PUT(
 
     const updates: Record<string, unknown> = { ...body };
     let shouldQueueEmbed = false;
+    const isPodcastEpisode = existingNode.metadata?.source === 'podcast_episode';
 
     const incomingChunk = typeof body.chunk === 'string' ? body.chunk : undefined;
     const incomingNotes = typeof body.notes === 'string' ? body.notes : undefined;
@@ -87,7 +88,7 @@ export async function PUT(
       } else {
         delete updates.chunk_status;
       }
-    } else if (!existingChunk.trim() && hasSufficientContent(incomingNotes)) {
+    } else if (!isPodcastEpisode && !existingChunk.trim() && hasSufficientContent(incomingNotes)) {
       updates.chunk = incomingNotes;
       updates.chunk_status = 'not_chunked';
       shouldQueueEmbed = true;

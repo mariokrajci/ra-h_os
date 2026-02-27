@@ -1,19 +1,17 @@
 /**
  * Node metadata embedding service for RA-H knowledge management system
- * Embeds node metadata (title, content, dimensions, AI analysis) into nodes.embedding field
+ * Embeds node metadata (title, content, dimensions) into nodes.embedding field
  */
 
 import OpenAI from 'openai';
-import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
 import { 
   createDatabaseConnection, 
   serializeFloat32Vector,
   formatEmbeddingText,
-  batchProcess 
+  batchProcess
 } from './sqlite-vec';
-import { getOpenAIChatModel, getOpenAIEmbeddingModel } from '@/config/openaiModels';
-import { logAiUsage, normalizeUsageFromAiSdk, normalizeUsageFromOpenAI } from '@/services/analytics/usageLogger';
+import { getOpenAIEmbeddingModel } from '@/config/openaiModels';
+import { logAiUsage, normalizeUsageFromOpenAI } from '@/services/analytics/usageLogger';
 
 interface NodeRecord {
   id: number;
@@ -34,7 +32,6 @@ interface EmbedNodeOptions {
 
 export class NodeEmbedder {
   private openaiClient: OpenAI;
-  private openaiProvider: ReturnType<typeof createOpenAI>;
   private db: ReturnType<typeof createDatabaseConnection>;
   private processedCount: number = 0;
   private failedCount: number = 0;
@@ -46,48 +43,7 @@ export class NodeEmbedder {
     }
     
     this.openaiClient = new OpenAI({ apiKey });
-    this.openaiProvider = createOpenAI({ apiKey });
     this.db = createDatabaseConnection();
-  }
-
-  /**
-   * Analyze node content with AI to extract insights
-   */
-  private async analyzeNodeWithAI(node: NodeRecord): Promise<string> {
-    const dimensions = node.dimensions_json ? JSON.parse(node.dimensions_json) : [];
-    const dimensionsText = Array.isArray(dimensions) && dimensions.length ? dimensions.join(', ') : 'none';
-    
-    const prompt = `Analyze this content and provide 2-3 key insights or themes in a concise paragraph (max 100 words):
-
-Title: ${node.title}
-Content: ${node.notes || 'No content'}
-Dimensions: ${dimensionsText}
-
-Focus on the main concepts, key relationships, and practical implications.`;
-
-    try {
-      const response = await generateText({
-        model: this.openaiProvider(getOpenAIChatModel()),
-        prompt,
-        maxOutputTokens: 150,
-        temperature: 0.3,
-      });
-      const usage = normalizeUsageFromAiSdk(response);
-      if (usage) {
-        logAiUsage({
-          feature: 'node_embedding_analysis',
-          provider: 'openai',
-          modelId: getOpenAIChatModel(),
-          usage,
-          metadata: { nodeId: node.id },
-        });
-      }
-
-      return response.text;
-    } catch (error) {
-      console.error(`AI analysis failed for node ${node.id}:`, error);
-      return '';
-    }
   }
 
   /**
@@ -125,20 +81,12 @@ Focus on the main concepts, key relationships, and practical implications.`;
     const dimensions = node.dimensions_json ? JSON.parse(node.dimensions_json) : [];
     
     // Create base embedding text
-    let embeddingText = formatEmbeddingText(
+    const embeddingText = formatEmbeddingText(
       node.title,
       node.notes || '',
       dimensions,
       node.description
     );
-
-    // Add AI analysis if content exists
-    if (node.notes && node.notes.trim().length > 0) {
-      const analysis = await this.analyzeNodeWithAI(node);
-      if (analysis) {
-        embeddingText += `\n\nAI Analysis: ${analysis}`;
-      }
-    }
 
     try {
       // Generate embedding

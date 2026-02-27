@@ -6,10 +6,13 @@
  *   3. Publisher episode page (HTML scrape)
  *   4. Podcast Index API (optional — requires PODCAST_INDEX_API_KEY + PODCAST_INDEX_API_SECRET)
  *
- * On success:  updates node.chunk + chunk_status + metadata.transcript_*
+ * On success:  updates node.chunk + notes + chunk_status + metadata.transcript_*
  * On failure:  sets metadata.transcript_status = 'unavailable'
  */
 import * as cheerio from 'cheerio';
+import { nodeService } from '@/services/database';
+import { autoEmbedQueue } from '@/services/embedding/autoEmbedQueue';
+import { generateSourceNotes } from '@/services/ingestion/generateSourceNotes';
 import { parseRssFeed, buildPodcastIndexHeaders } from './podcast';
 
 type TranscriptResult = {
@@ -272,13 +275,21 @@ async function updateNodeWithTranscript(
   transcript: TranscriptResult,
   existingMetadata: any
 ): Promise<void> {
-  const { nodeService } = await import('@/services/database');
+  const generatedNotes = await generateSourceNotes({
+    title: existingMetadata.episode_title || 'Podcast Episode',
+    sourceType: 'podcast',
+    sourceText: transcript.text,
+    metadata: existingMetadata,
+  });
   // updateNode replaces metadata entirely, so spread existing fields to preserve them
   await nodeService.updateNode(nodeId, {
     chunk: transcript.text,
+    notes: generatedNotes || undefined,
     chunk_status: 'not_chunked',
     metadata: {
       ...existingMetadata,
+      source_status: 'available',
+      notes_status: generatedNotes ? 'available' : 'failed',
       transcript_status: 'available',
       transcript_source: transcript.source,
       transcript_url: transcript.url,
@@ -286,6 +297,9 @@ async function updateNodeWithTranscript(
     },
   });
   // NOTE: nodeService.updateNode already broadcasts NODE_UPDATED internally
+  if (generatedNotes) {
+    autoEmbedQueue.enqueue(nodeId, { reason: 'podcast_transcript_ready' });
+  }
 }
 
 async function updateNodeTranscriptStatus(
@@ -293,11 +307,12 @@ async function updateNodeTranscriptStatus(
   status: 'unavailable',
   existingMetadata: any
 ): Promise<void> {
-  const { nodeService } = await import('@/services/database');
   // updateNode replaces metadata entirely, so spread existing fields to preserve them
   await nodeService.updateNode(nodeId, {
     metadata: {
       ...existingMetadata,
+      source_status: 'failed',
+      notes_status: 'failed',
       transcript_status: status,
     },
   });
@@ -305,7 +320,6 @@ async function updateNodeTranscriptStatus(
 }
 
 export async function discoverTranscript(nodeId: number): Promise<void> {
-  const { nodeService } = await import('@/services/database');
   const node = await nodeService.getNodeById(nodeId);
   if (!node?.metadata) return;
 

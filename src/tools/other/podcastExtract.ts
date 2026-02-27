@@ -107,8 +107,6 @@ export const podcastExtractTool = tool({
           description: ai.nodeDescription || `${meta.podcast_name} — ${episodeTitle}`,
           link: url,
           dimensions: nodeDimensions,
-          chunk: extraction.chunk || undefined,
-          chunk_status: extraction.chunk?.length ? 'not_chunked' : null,
           metadata: meta,
         }),
       });

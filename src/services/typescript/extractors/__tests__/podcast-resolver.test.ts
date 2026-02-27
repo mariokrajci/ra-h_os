@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { detectPodcastSource, parseRssFeed, extractAudioUrl } from '@/services/typescript/extractors/podcast';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  detectPodcastSource,
+  parseRssFeed,
+  extractAudioUrl,
+  extractPodcast,
+} from '@/services/typescript/extractors/podcast';
 
 describe('detectPodcastSource', () => {
   it('identifies spotify URLs', () => {
@@ -58,5 +63,35 @@ describe('extractAudioUrl', () => {
 
   it('returns null when no enclosure', () => {
     expect(extractAudioUrl('<item><title>No audio</title></item>')).toBeNull();
+  });
+});
+
+describe('extractPodcast', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('creates pending source and notes states without treating metadata description as source', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => `
+        <html>
+          <head>
+            <meta property="og:title" content="Episode 42">
+            <meta property="og:description" content="Metadata-only episode description">
+            <meta property="og:site_name" content="Example Podcast">
+          </head>
+        </html>
+      `,
+    }));
+
+    const result = await extractPodcast('https://example.com/podcast/42');
+
+    expect(result.success).toBe(true);
+    expect(result.chunk).toBe('');
+    expect(result.metadata.source_status).toBe('pending');
+    expect(result.metadata.notes_status).toBe('pending');
+    expect(result.metadata.transcript_status).toBe('queued');
+    expect(result.metadata.description).toBe('Metadata-only episode description');
   });
 });

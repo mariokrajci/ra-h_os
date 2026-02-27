@@ -113,7 +113,7 @@ The Focus Panel has four tabs:
 | Tab | What you see |
 |-----|-------------|
 | **Description** | AI-generated 280-char summary. Click the edit icon to change it. Click **Regenerate** to re-run the AI. |
-| **Notes** | Your own freeform notes. Supports markdown. Click edit to start typing. |
+| **Notes** | AI-seeded editable notes. Supports markdown. You can rewrite and extend them freely. |
 | **Edges** | All connections to/from this node (see Workflow 4). |
 | **Source** | Raw extracted content — YouTube transcript chunks, PDF pages, web text. Toggle between Raw and Reader view. |
 
@@ -203,10 +203,11 @@ The AI-generated summary (up to 280 characters). It's created automatically when
 - **Regenerate:** Click the regenerate button to have the AI rewrite it. Estimated cost shown before you confirm.
 
 ### Notes tab
-Your own space. Supports full Markdown.
+AI-seeded editable synthesis. Supports full Markdown.
 
 - Click **Edit** to enter edit mode
 - Type freely — headers, lists, code blocks all work
+- For extracted sources, Notes may start with an AI-generated synthesis based on the Source content
 - Reference another node: type `@` followed by the node ID (the green number badge on any node). It becomes a clickable link.
 - **Tip:** Drag a node's green ID badge from any panel and drop it into the Notes editor to insert a reference automatically.
 - Click **Save** when done. Navigating away without saving will discard changes.

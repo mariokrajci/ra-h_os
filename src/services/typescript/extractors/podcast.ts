@@ -44,6 +44,8 @@ export interface ExtractionResult {
   chunk: string;
   metadata: PodcastEpisodeResult & {
     source: 'podcast_episode';
+    source_status: 'pending' | 'available' | 'failed';
+    notes_status: 'pending' | 'available' | 'failed';
     transcript_status: 'queued' | 'processing' | 'available' | 'unavailable';
     transcript_source?: string;
     transcript_confidence?: 'high' | 'medium' | 'low';
@@ -472,10 +474,12 @@ export async function extractPodcast(url: string): Promise<ExtractionResult> {
     cover_image_url: resolved.cover_image_url,
     description: resolved.description,
     resolution_source: resolved.resolution_source || 'website_fallback',
-    transcript_status: resolved.transcript_url ? 'available' : 'queued',
-    transcript_source: resolved.transcript_url ? 'rss_tag' : undefined,
+    source_status: 'pending',
+    notes_status: 'pending',
+    transcript_status: 'queued',
+    transcript_source: undefined,
     transcript_url: resolved.transcript_url,
-    transcript_confidence: resolved.transcript_url ? 'high' : undefined,
+    transcript_confidence: undefined,
   };
 
   const contentLines = [
@@ -492,7 +496,7 @@ export async function extractPodcast(url: string): Promise<ExtractionResult> {
   return {
     success: true,
     content,
-    chunk: metadata.description || content,
+    chunk: '',
     metadata,
   };
 }
