@@ -12,6 +12,7 @@ interface SourceReaderProps {
   content: string;
   onTextSelect?: (text: string) => void;
   highlightedText?: string | null;
+  highlightMatchIndex?: number;
 }
 
 /**
@@ -24,6 +25,7 @@ export default function SourceReader({
   content,
   onTextSelect,
   highlightedText,
+  highlightMatchIndex,
 }: SourceReaderProps) {
   const [showSearch, setShowSearch] = useState(false);
   const [searchHighlight, setSearchHighlight] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export default function SourceReader({
 
   // Render appropriate formatter based on content type
   const renderContent = () => {
-    const highlightIndex = showSearch ? searchMatchIndex : undefined;
+    const highlightIndex = showSearch ? searchMatchIndex : (highlightMatchIndex ?? undefined);
     switch (contentType) {
       case 'transcript':
         return <TranscriptFormatter content={content} onTextSelect={onTextSelect} highlightedText={activeHighlight} highlightMatchIndex={highlightIndex} />;

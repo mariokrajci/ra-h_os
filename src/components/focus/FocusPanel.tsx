@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, type DragEvent } from 'react';
 import { Eye, Trash2, Link, Loader, Database, Check, RefreshCw, Pencil, X, Save, Plus } from 'lucide-react';
 import { parseAndRenderContent } from '@/components/helpers/NodeLabelRenderer';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
+import AnnotationToolbar, { AnnotationColor } from '@/components/annotations/AnnotationToolbar';
 import FormattingToolbar from '@/components/focus/FormattingToolbar';
 import { parseNodeMarkers } from '@/tools/infrastructure/nodeFormatter';
-import { Node, NodeConnection, Chunk } from '@/types/database';
+import { Node, NodeConnection, Chunk, Annotation } from '@/types/database';
 import DimensionTags from './dimensions/DimensionTags';
 import { getNodeIcon } from '@/utils/nodeIcons';
 import { useDimensionIcons } from '@/context/DimensionIconsContext';
@@ -180,6 +181,20 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   const [loadingChunks, setLoadingChunks] = useState<Set<number>>(new Set());
   const [chunksExpanded, setChunksExpanded] = useState<Record<number, boolean>>({});
 
+  // Annotations state
+  const [annotationsData, setAnnotationsData] = useState<Record<number, Annotation[]>>({});
+  const [pendingAnnotation, setPendingAnnotation] = useState<{
+    text: string;
+    charOffset: number;
+    position: { x: number; y: number };
+  } | null>(null);
+
+  // Transient jump-to-source highlight (clears after 3s)
+  const [localHighlight, setLocalHighlight] = useState<{
+    text: string;
+    matchIndex: number;
+  } | null>(null);
+
   // Helper: preview edge type based on heuristics (mirrors backend logic)
   const previewEdgeType = (explanation: string): { type: string; label: string } | null => {
     const norm = (explanation || '').trim().toLowerCase();
@@ -272,6 +287,27 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
       fetchEdgesData(activeTab);
     }
   }, [refreshTrigger, activeTab]);
+
+  // Fetch annotations for the active node (cache by nodeId)
+  useEffect(() => {
+    if (activeNodeId === null) return;
+    if (annotationsData[activeNodeId]) return;
+
+    const fetchAnnotations = async () => {
+      try {
+        const res = await fetch(`/api/annotations?nodeId=${activeNodeId}`);
+        const json = await res.json();
+        if (json.success) {
+          setAnnotationsData(prev => ({ ...prev, [activeNodeId!]: json.data }));
+        }
+      } catch (e) {
+        console.error('Failed to fetch annotations:', e);
+      }
+    };
+
+    fetchAnnotations();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNodeId]);
 
   // Clear editing state when switching nodes
   useEffect(() => {
@@ -658,6 +694,76 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     } finally {
       setNotesSaving(false);
     }
+  };
+
+  const createAnnotation = async (color: AnnotationColor, comment?: string) => {
+    if (!activeNodeId || !pendingAnnotation) return;
+    try {
+      const res = await fetch('/api/annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          node_id: activeNodeId,
+          text: pendingAnnotation.text,
+          color,
+          comment,
+          char_offset: pendingAnnotation.charOffset,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+
+      const newAnnotation: Annotation = json.annotation;
+
+      setAnnotationsData(prev => ({
+        ...prev,
+        [activeNodeId]: [...(prev[activeNodeId] ?? []), newAnnotation],
+      }));
+
+      const token = `\n\n[[annotation:${newAnnotation.id}]]`;
+      setNodesData(prev => ({
+        ...prev,
+        [activeNodeId]: {
+          ...prev[activeNodeId],
+          notes: (prev[activeNodeId]?.notes ?? '') + token,
+        },
+      }));
+    } catch (e) {
+      console.error('Failed to create annotation:', e);
+      alert('Failed to save annotation.');
+    }
+  };
+
+  const deleteAnnotation = async (annotationId: number) => {
+    if (!activeNodeId) return;
+    try {
+      const res = await fetch(`/api/annotations/${annotationId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+
+      setAnnotationsData(prev => ({
+        ...prev,
+        [activeNodeId]: (prev[activeNodeId] ?? []).filter(a => a.id !== annotationId),
+      }));
+
+      setNodesData(prev => {
+        const current = prev[activeNodeId];
+        if (!current?.notes) return prev;
+        const cleaned = current.notes
+          .replace(new RegExp(`\\n{0,2}\\[\\[annotation:${annotationId}\\]\\]`, 'g'), '')
+          .trimEnd();
+        return { ...prev, [activeNodeId]: { ...current, notes: cleaned } };
+      });
+    } catch (e) {
+      console.error('Failed to delete annotation:', e);
+      alert('Failed to delete annotation.');
+    }
+  };
+
+  const handleJumpToSource = (text: string, matchIndex: number) => {
+    setActiveContentTab('source');
+    setLocalHighlight({ text, matchIndex });
+    setTimeout(() => setLocalHighlight(null), 3000);
   };
 
   // Cancel notes editing
@@ -2156,7 +2262,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 borderBottom: '1px solid #1a1a1a'
               }}>
                 <button
-                  onClick={() => { setActiveContentTab('desc'); setNotesEditMode(false); setSourceEditMode(false); }}
+                  onClick={() => { setActiveContentTab('desc'); setNotesEditMode(false); setSourceEditMode(false); setPendingAnnotation(null); }}
                   style={{
                     padding: '8px 16px',
                     fontSize: '11px',
@@ -2173,7 +2279,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   Desc
                 </button>
                 <button
-                  onClick={() => { setActiveContentTab('notes'); setDescEditMode(false); setSourceEditMode(false); }}
+                  onClick={() => { setActiveContentTab('notes'); setDescEditMode(false); setSourceEditMode(false); setPendingAnnotation(null); }}
                   style={{
                     padding: '8px 16px',
                     fontSize: '11px',
@@ -2190,7 +2296,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   Notes
                 </button>
                 <button
-                  onClick={() => { setActiveContentTab('edges'); setDescEditMode(false); setNotesEditMode(false); setSourceEditMode(false); }}
+                  onClick={() => { setActiveContentTab('edges'); setDescEditMode(false); setNotesEditMode(false); setSourceEditMode(false); setPendingAnnotation(null); }}
                   style={{
                     padding: '8px 16px',
                     fontSize: '11px',
@@ -2207,7 +2313,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   Edges{activeTab && edgesData[activeTab]?.length ? ` (${edgesData[activeTab].length})` : ''}
                 </button>
                 <button
-                  onClick={() => { setActiveContentTab('source'); setDescEditMode(false); setNotesEditMode(false); setEdgeSearchOpen(false); }}
+                  onClick={() => { setActiveContentTab('source'); setDescEditMode(false); setNotesEditMode(false); setEdgeSearchOpen(false); setPendingAnnotation(null); }}
                   style={{
                     padding: '8px 16px',
                     fontSize: '11px',
@@ -2785,6 +2891,11 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       <MarkdownWithNodeTokens
                         content={nodesData[activeTab].notes || ''}
                         onNodeClick={onNodeClick || onTabSelect}
+                        annotations={activeNodeId !== null && annotationsData[activeNodeId]
+                          ? Object.fromEntries(annotationsData[activeNodeId].map(a => [a.id, a]))
+                          : {}}
+                        onJumpToSource={handleJumpToSource}
+                        onDeleteAnnotation={deleteAnnotation}
                       />
                     </div>
                   ) : notesIngestionStatus ? (
@@ -2832,7 +2943,43 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
 
               {/* Source Tab Content */}
               {activeContentTab === 'source' && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div
+                  data-source-container
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+                  onMouseUp={() => {
+                    const selection = window.getSelection();
+                    const text = selection?.toString().trim();
+                    if (!text || text.length < 3) {
+                      setPendingAnnotation(null);
+                      return;
+                    }
+                    try {
+                      const range = selection!.getRangeAt(0);
+                      const rect = range.getBoundingClientRect();
+                      let charOffset = 0;
+                      const preRange = document.createRange();
+                      const startEl = range.startContainer instanceof Text
+                        ? range.startContainer.parentElement
+                        : range.startContainer as Element;
+                      const container = startEl?.closest('[data-source-container]');
+                      if (container) {
+                        preRange.setStart(container, 0);
+                        preRange.setEnd(range.startContainer, range.startOffset);
+                        charOffset = preRange.toString().length;
+                      } else {
+                        const sourceText = (nodesData[activeTab]?.chunk ?? '').toLowerCase();
+                        charOffset = Math.max(0, sourceText.indexOf(text.toLowerCase()));
+                      }
+                      setPendingAnnotation({
+                        text,
+                        charOffset,
+                        position: { x: rect.left + rect.width / 2, y: rect.top },
+                      });
+                    } catch {
+                      setPendingAnnotation(null);
+                    }
+                  }}
+                >
                   {sourceEditMode ? (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                       <div style={{
@@ -3003,10 +3150,11 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       <div style={{ flex: 1, overflow: 'auto' }}>
                         {nodesData[activeTab]?.chunk ? (
                           sourceReaderMode === 'reader' ? (
-                            <SourceReader 
-                              content={nodesData[activeTab].chunk} 
+                            <SourceReader
+                              content={nodesData[activeTab].chunk}
                               onTextSelect={onTextSelect ? (text) => onTextSelect(activeTab, nodesData[activeTab]?.title || 'Untitled', text) : undefined}
-                              highlightedText={highlightedPassage?.nodeId === activeTab ? highlightedPassage.selectedText : null}
+                              highlightedText={localHighlight?.text ?? (highlightedPassage?.nodeId === activeTab ? highlightedPassage.selectedText : null)}
+                              highlightMatchIndex={localHighlight?.matchIndex ?? 0}
                             />
                           ) : (
                             <div
@@ -3066,6 +3214,20 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
         )}
       </div>
     </div>
+    {pendingAnnotation && activeContentTab === 'source' && (
+      <AnnotationToolbar
+        position={pendingAnnotation.position}
+        onAnnotate={(color, comment) => {
+          createAnnotation(color, comment);
+          setPendingAnnotation(null);
+          window.getSelection()?.removeAllRanges();
+        }}
+        onDismiss={() => {
+          setPendingAnnotation(null);
+          window.getSelection()?.removeAllRanges();
+        }}
+      />
+    )}
     <ConfirmDialog
       open={pendingDeleteNodeId !== null}
       title="Delete this node?"
