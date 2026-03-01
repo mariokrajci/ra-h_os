@@ -6,6 +6,8 @@ import remarkGfm from 'remark-gfm';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { Check, Copy } from 'lucide-react';
+import AnnotationBlock from '@/components/annotations/AnnotationBlock';
+import { Annotation } from '@/types/database';
 
 interface NodeLabelInlineProps {
   id: string;
@@ -67,9 +69,15 @@ function NodeLabelInline({ id, title, onNodeClick }: NodeLabelInlineProps) {
 // Pattern to match [NODE:id:"title"]
 const nodePattern = /\[NODE:\s*(\d+)\s*:\s*["""'](.+?)["""']\s*\]/g;
 
+// Pattern to match [[annotation:ID]]
+const annotationPattern = /\[\[annotation:(\d+)\]\]/g;
+
 interface MarkdownWithNodeTokensProps {
   content: string;
   onNodeClick?: (nodeId: number) => void;
+  annotations?: Record<number, Annotation>;
+  onJumpToSource?: (text: string, matchIndex: number) => void;
+  onDeleteAnnotation?: (id: number) => void;
 }
 
 function maybeWrapAsciiTreeAsCode(content: string): string {
@@ -157,22 +165,36 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   );
 }
 
-export default function MarkdownWithNodeTokens({ content, onNodeClick }: MarkdownWithNodeTokensProps) {
+export default function MarkdownWithNodeTokens({
+  content,
+  onNodeClick,
+  annotations = {},
+  onJumpToSource,
+  onDeleteAnnotation,
+}: MarkdownWithNodeTokensProps) {
   if (!content) return null;
 
-  // Store placeholders and their node data
+  // --- Node token placeholders ---
   const placeholders: { id: string; title: string }[] = [];
-
-  // Replace node tokens with placeholders before markdown parsing
   nodePattern.lastIndex = 0;
   const normalizedContent = maybeWrapAsciiTreeAsCode(content);
-  const contentWithPlaceholders = normalizedContent.replace(nodePattern, (_match, id, title) => {
+  let contentWithPlaceholders = normalizedContent.replace(nodePattern, (_match, id, title) => {
     const index = placeholders.length;
     placeholders.push({ id, title });
     return `%%NODE_PLACEHOLDER_${index}%%`;
   });
 
-  // Helper function to process text and replace placeholders with components
+  // --- Annotation token placeholders ---
+  const annotationIds: number[] = [];
+  annotationPattern.lastIndex = 0;
+  contentWithPlaceholders = contentWithPlaceholders.replace(annotationPattern, (_match, idStr) => {
+    const id = parseInt(idStr, 10);
+    const index = annotationIds.length;
+    annotationIds.push(id);
+    return `%%ANNOTATION_PLACEHOLDER_${index}%%`;
+  });
+
+  // Helper: replace %%NODE_PLACEHOLDER_N%% in a text string with NodeLabelInline components
   const processText = (text: string, keyPrefix: string): React.ReactNode => {
     const placeholderPattern = /%%NODE_PLACEHOLDER_(\d+)%%/g;
     const parts: React.ReactNode[] = [];
@@ -211,7 +233,7 @@ export default function MarkdownWithNodeTokens({ content, onNodeClick }: Markdow
     return parts.length > 0 ? <>{parts}</> : text;
   };
 
-  // Recursively process children to replace placeholders
+  // Recursively process children to replace node placeholders
   const processChildren = (children: React.ReactNode, keyPrefix: string): React.ReactNode => {
     return React.Children.map(children, (child, index) => {
       if (typeof child === 'string') {
@@ -229,6 +251,119 @@ export default function MarkdownWithNodeTokens({ content, onNodeClick }: Markdow
     });
   };
 
+  // Shared ReactMarkdown components object (extracted to avoid duplication across sections)
+  const markdownComponents = {
+    h1: ({ children }: any) => (
+      <h1 style={{ fontSize: '1.5em', fontWeight: 'bold', marginTop: '16px', marginBottom: '8px', color: '#e5e5e5' }}>
+        {processChildren(children, 'h1')}
+      </h1>
+    ),
+    h2: ({ children }: any) => (
+      <h2 style={{ fontSize: '1.3em', fontWeight: 'bold', marginTop: '14px', marginBottom: '6px', color: '#e5e5e5' }}>
+        {processChildren(children, 'h2')}
+      </h2>
+    ),
+    h3: ({ children }: any) => (
+      <h3 style={{ fontSize: '1.1em', fontWeight: 'bold', marginTop: '12px', marginBottom: '4px', color: '#e5e5e5' }}>
+        {processChildren(children, 'h3')}
+      </h3>
+    ),
+    p: ({ children }: any) => (
+      <p style={{ marginTop: '8px', marginBottom: '8px', lineHeight: '1.7' }}>
+        {processChildren(children, 'p')}
+      </p>
+    ),
+    strong: ({ children }: any) => (
+      <strong style={{ fontWeight: 'bold', color: '#f5f5f5' }}>
+        {processChildren(children, 'strong')}
+      </strong>
+    ),
+    em: ({ children }: any) => (
+      <em style={{ fontStyle: 'italic' }}>
+        {processChildren(children, 'em')}
+      </em>
+    ),
+    ul: ({ children }: any) => (
+      <ul style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }}>
+        {processChildren(children, 'ul')}
+      </ul>
+    ),
+    ol: ({ children }: any) => (
+      <ol style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'decimal' }}>
+        {processChildren(children, 'ol')}
+      </ol>
+    ),
+    li: ({ children }: any) => (
+      <li style={{ marginBottom: '4px' }}>
+        {processChildren(children, 'li')}
+      </li>
+    ),
+    table: ({ children }: any) => (
+      <div style={{ overflowX: 'auto', marginTop: '8px', marginBottom: '10px' }}>
+        <table
+          className="markdown-table"
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            borderSpacing: 0,
+            border: '1px solid #3d444d',
+            fontSize: 'inherit',
+          }}
+        >
+          {children}
+        </table>
+      </div>
+    ),
+    thead: ({ children }: any) => <thead>{children}</thead>,
+    tbody: ({ children }: any) => <tbody>{children}</tbody>,
+    tr: ({ children }: any) => <tr style={{ borderBottom: '1px solid #3d444d' }}>{children}</tr>,
+    th: ({ children }: any) => (
+      <th style={{ padding: '6px 13px', borderRight: '1px solid #3d444d', textAlign: 'left', fontWeight: 700, color: '#e6edf3', verticalAlign: 'top' }}>
+        {processChildren(children, 'th')}
+      </th>
+    ),
+    td: ({ children }: any) => (
+      <td style={{ padding: '6px 13px', borderRight: '1px solid #3d444d', verticalAlign: 'top', color: '#d0d7de', lineHeight: 1.45 }}>
+        {processChildren(children, 'td')}
+      </td>
+    ),
+    a: ({ href, children }: any) => (
+      <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: '#22c55e', textDecoration: 'underline' }}>
+        {processChildren(children, 'a')}
+      </a>
+    ),
+    code: ({ children, className, ...props }: any) => {
+      const codeText = String(children).replace(/\n$/, '');
+      const explicitInline = typeof props?.inline === 'boolean' ? props.inline : undefined;
+      const isInline = explicitInline ?? (!className && !codeText.includes('\n'));
+      const language = className?.replace('language-', '').toLowerCase() || 'text';
+      if (isInline) {
+        return (
+          <code style={{
+            background: 'rgba(110, 118, 129, 0.4)',
+            padding: '0.2em 0.4em',
+            borderRadius: '6px',
+            fontSize: '85%',
+            fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace'
+          }}>
+            {processChildren(children, 'code')}
+          </code>
+        );
+      }
+      return <CodeBlock code={codeText} language={language} />;
+    },
+    pre: ({ children }: any) => <>{children}</>,
+    blockquote: ({ children }: any) => (
+      <blockquote style={{ borderLeft: '3px solid #333', paddingLeft: '12px', marginLeft: '0', marginTop: '8px', marginBottom: '8px', color: '#999' }}>
+        {processChildren(children, 'blockquote')}
+      </blockquote>
+    ),
+  };
+
+  // Split content on annotation placeholders to interleave AnnotationBlock components
+  const sections = contentWithPlaceholders.split(/%%ANNOTATION_PLACEHOLDER_\d+%%/);
+  const annotationMatchesArr = [...contentWithPlaceholders.matchAll(/%%ANNOTATION_PLACEHOLDER_(\d+)%%/g)];
+
   return (
     <>
       <style jsx>{`
@@ -236,161 +371,29 @@ export default function MarkdownWithNodeTokens({ content, onNodeClick }: Markdow
           background: #0f1621;
         }
       `}</style>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-        // Style headings
-        h1: ({ children }) => (
-          <h1 style={{ fontSize: '1.5em', fontWeight: 'bold', marginTop: '16px', marginBottom: '8px', color: '#e5e5e5' }}>
-            {processChildren(children, 'h1')}
-          </h1>
-        ),
-        h2: ({ children }) => (
-          <h2 style={{ fontSize: '1.3em', fontWeight: 'bold', marginTop: '14px', marginBottom: '6px', color: '#e5e5e5' }}>
-            {processChildren(children, 'h2')}
-          </h2>
-        ),
-        h3: ({ children }) => (
-          <h3 style={{ fontSize: '1.1em', fontWeight: 'bold', marginTop: '12px', marginBottom: '4px', color: '#e5e5e5' }}>
-            {processChildren(children, 'h3')}
-          </h3>
-        ),
-        // Style paragraphs
-        p: ({ children }) => (
-          <p style={{ marginTop: '8px', marginBottom: '8px', lineHeight: '1.7' }}>
-            {processChildren(children, 'p')}
-          </p>
-        ),
-        // Style bold/italic
-        strong: ({ children }) => (
-          <strong style={{ fontWeight: 'bold', color: '#f5f5f5' }}>
-            {processChildren(children, 'strong')}
-          </strong>
-        ),
-        em: ({ children }) => (
-          <em style={{ fontStyle: 'italic' }}>
-            {processChildren(children, 'em')}
-          </em>
-        ),
-        // Style lists
-        ul: ({ children }) => (
-          <ul style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }}>
-            {processChildren(children, 'ul')}
-          </ul>
-        ),
-        ol: ({ children }) => (
-          <ol style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'decimal' }}>
-            {processChildren(children, 'ol')}
-          </ol>
-        ),
-        li: ({ children }) => (
-          <li style={{ marginBottom: '4px' }}>
-            {processChildren(children, 'li')}
-          </li>
-        ),
-        table: ({ children }) => (
-          <div style={{ overflowX: 'auto', marginTop: '8px', marginBottom: '10px' }}>
-            <table
-              className="markdown-table"
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                borderSpacing: 0,
-                border: '1px solid #3d444d',
-                fontSize: 'inherit',
-              }}
-            >
-              {children}
-            </table>
-          </div>
-        ),
-        thead: ({ children }) => (
-          <thead>{children}</thead>
-        ),
-        tbody: ({ children }) => (
-          <tbody>{children}</tbody>
-        ),
-        tr: ({ children }) => (
-          <tr style={{ borderBottom: '1px solid #3d444d' }}>{children}</tr>
-        ),
-        th: ({ children }) => (
-          <th
-            style={{
-              padding: '6px 13px',
-              borderRight: '1px solid #3d444d',
-              textAlign: 'left',
-              fontWeight: 700,
-              color: '#e6edf3',
-              verticalAlign: 'top',
-            }}
-          >
-            {processChildren(children, 'th')}
-          </th>
-        ),
-        td: ({ children }) => (
-          <td
-            style={{
-              padding: '6px 13px',
-              borderRight: '1px solid #3d444d',
-              verticalAlign: 'top',
-              color: '#d0d7de',
-              lineHeight: 1.45,
-            }}
-          >
-            {processChildren(children, 'td')}
-          </td>
-        ),
-        // Style links
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: '#22c55e', textDecoration: 'underline' }}
-          >
-            {processChildren(children, 'a')}
-          </a>
-        ),
-        // Style code
-        code: ({ children, className, ...props }: any) => {
-          const codeText = String(children).replace(/\n$/, '');
-          const explicitInline = typeof props?.inline === 'boolean' ? props.inline : undefined;
-          // Fenced blocks without language don't provide className; detect them by multiline content.
-          const isInline = explicitInline ?? (!className && !codeText.includes('\n'));
-          const language = className?.replace('language-', '').toLowerCase() || 'text';
-          if (isInline) {
+      {sections.map((section, sectionIdx) => (
+        <React.Fragment key={sectionIdx}>
+          {section.trim() && (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {section}
+            </ReactMarkdown>
+          )}
+          {annotationMatchesArr[sectionIdx] && (() => {
+            const placeholderIndex = parseInt(annotationMatchesArr[sectionIdx][1], 10);
+            const annotationId = annotationIds[placeholderIndex];
+            const annotation = annotations[annotationId];
+            if (!annotation) return null;
             return (
-              <code style={{
-                background: 'rgba(110, 118, 129, 0.4)',
-                padding: '0.2em 0.4em',
-                borderRadius: '6px',
-                fontSize: '85%',
-                fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace'
-              }}>
-                {processChildren(children, 'code')}
-              </code>
+              <AnnotationBlock
+                key={`annotation-${annotationId}`}
+                annotation={annotation}
+                onJumpToSource={onJumpToSource ?? (() => {})}
+                onDelete={onDeleteAnnotation ?? (() => {})}
+              />
             );
-          }
-          return <CodeBlock code={codeText} language={language} />;
-        },
-        pre: ({ children }) => <>{children}</>,
-        // Style blockquotes
-        blockquote: ({ children }) => (
-          <blockquote style={{
-            borderLeft: '3px solid #333',
-            paddingLeft: '12px',
-            marginLeft: '0',
-            marginTop: '8px',
-            marginBottom: '8px',
-            color: '#999'
-          }}>
-            {processChildren(children, 'blockquote')}
-          </blockquote>
-        )
-        }}
-      >
-        {contentWithPlaceholders}
-      </ReactMarkdown>
+          })()}
+        </React.Fragment>
+      ))}
     </>
   );
 }
