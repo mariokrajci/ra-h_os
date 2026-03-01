@@ -2954,7 +2954,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 <div
                   data-source-container
                   style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-                  onMouseUp={() => {
+                  onMouseUpCapture={() => {
                     const selection = window.getSelection();
                     const text = selection?.toString().trim();
                     if (!text || text.length < 3) {
