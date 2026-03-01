@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
 
 interface MarkdownFormatterProps {
@@ -28,22 +28,6 @@ export default function MarkdownFormatter({
       selection?.removeAllRanges();
     }
   }, [onTextSelect]);
-
-  // Compute all match start positions for the highlight term
-  const matchPositions = useMemo(() => {
-    if (!highlightedText) return [];
-    const positions: number[] = [];
-    const searchLower = highlightedText.toLowerCase();
-    const contentLower = content.toLowerCase();
-    let pos = 0;
-    while (pos < contentLower.length) {
-      const idx = contentLower.indexOf(searchLower, pos);
-      if (idx === -1) break;
-      positions.push(idx);
-      pos = idx + 1;
-    }
-    return positions;
-  }, [content, highlightedText]);
 
   // Track match counter across paragraph renders
   const globalMatchCounter = useRef(0);
@@ -86,16 +70,14 @@ export default function MarkdownFormatter({
   }, [highlightedText, highlightMatchIndex]);
 
   // Scroll to current match after render
-  const prevHighlight = useRef<string | null>(null);
-  if (highlightedText !== prevHighlight.current) {
-    prevHighlight.current = highlightedText ?? null;
-    if (highlightedText && containerRef.current) {
-      setTimeout(() => {
-        const el = containerRef.current?.querySelector('mark[data-search-match="current"]');
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 50);
-    }
-  }
+  useEffect(() => {
+    if (!highlightedText) return;
+    const id = setTimeout(() => {
+      const el = containerRef.current?.querySelector('mark[data-search-match="current"]');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+    return () => clearTimeout(id);
+  }, [highlightedText, highlightMatchIndex]);
 
   // If no highlight needed, render via MarkdownWithNodeTokens as before
   if (!highlightedText) {
