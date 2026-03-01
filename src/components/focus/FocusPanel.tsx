@@ -3227,8 +3227,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
         position={pendingAnnotation.position}
         onAnnotate={(color, comment) => {
           createAnnotation(color, comment);
-          setPendingAnnotation(null);
-          window.getSelection()?.removeAllRanges();
+          // Toolbar calls onDismiss after onAnnotate — let onDismiss handle cleanup
         }}
         onDismiss={() => {
           setPendingAnnotation(null);

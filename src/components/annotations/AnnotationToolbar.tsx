@@ -50,7 +50,8 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
 
   // Clamp x so toolbar doesn't overflow left/right viewport edges
   const TOOLBAR_HALF_WIDTH = 110;
-  const clampedX = Math.min(Math.max(position.x, TOOLBAR_HALF_WIDTH), window.innerWidth - TOOLBAR_HALF_WIDTH);
+  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const clampedX = Math.min(Math.max(position.x, TOOLBAR_HALF_WIDTH), viewportWidth - TOOLBAR_HALF_WIDTH);
   const clampedY = Math.max(position.y, 60);
 
   const style: React.CSSProperties = {
