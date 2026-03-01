@@ -285,6 +285,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     if (refreshTrigger !== undefined && refreshTrigger > 0 && activeTab) {
       fetchNodeData(activeTab);
       fetchEdgesData(activeTab);
+      setAnnotationsData({});
     }
   }, [refreshTrigger, activeTab]);
 
@@ -666,6 +667,13 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
       if (result.node) {
         setNodesData(prev => ({ ...prev, [activeTab]: result.node }));
       }
+      // Invalidate annotations cache so it re-fetches on next render
+      // (user may have hand-edited annotation tokens in the notes editor)
+      setAnnotationsData(prev => {
+        const next = { ...prev };
+        delete next[activeTab];
+        return next;
+      });
       // Ensure edges for any node tokens
       try {
         const tokens = parseNodeMarkers(notesEditValue);
