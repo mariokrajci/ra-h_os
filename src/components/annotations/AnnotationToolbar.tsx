@@ -23,18 +23,20 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
   const [comment, setComment] = useState('');
   const [pendingColor, setPendingColor] = useState<AnnotationColor>('yellow');
   const inputRef = useRef<HTMLInputElement>(null);
+  const onDismissRef = useRef(onDismiss);
+
+  useEffect(() => { onDismissRef.current = onDismiss; }, [onDismiss]);
 
   useEffect(() => {
     if (showComment) inputRef.current?.focus();
   }, [showComment]);
 
+  // Stable listener — registers once, reads latest onDismiss via ref
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onDismiss();
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onDismissRef.current(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [onDismiss]);
+  }, []);
 
   const handleColorClick = (color: AnnotationColor) => {
     onAnnotate(color);
@@ -46,10 +48,15 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
     onDismiss();
   };
 
+  // Clamp x so toolbar doesn't overflow left/right viewport edges
+  const TOOLBAR_HALF_WIDTH = 110;
+  const clampedX = Math.min(Math.max(position.x, TOOLBAR_HALF_WIDTH), window.innerWidth - TOOLBAR_HALF_WIDTH);
+  const clampedY = Math.max(position.y, 60);
+
   const style: React.CSSProperties = {
     position: 'fixed',
-    top: position.y,
-    left: position.x,
+    top: clampedY,
+    left: clampedX,
     zIndex: 9999,
     background: '#1a1a1a',
     border: '1px solid #333',
@@ -69,7 +76,9 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
           {(Object.entries(COLOR_MAP) as [AnnotationColor, string][]).map(([color, hex]) => (
             <button
               key={color}
+              type="button"
               title={color}
+              aria-label={`Annotate with ${color}`}
               onClick={() => handleColorClick(color)}
               style={{
                 width: 18,
@@ -87,7 +96,9 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
           ))}
           <div style={{ width: 1, height: 16, background: '#333', margin: '0 2px' }} />
           <button
+            type="button"
             title="Add comment"
+            aria-label="Add comment"
             onClick={() => setShowComment(true)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', padding: '2px' }}
           >
@@ -100,6 +111,8 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
             {(Object.keys(COLOR_MAP) as AnnotationColor[]).map((color) => (
               <button
                 key={color}
+                type="button"
+                aria-label={`Select ${color}`}
                 onClick={() => setPendingColor(color)}
                 style={{
                   width: 14,
@@ -134,12 +147,15 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
             }}
           />
           <button
+            type="button"
             onClick={handleCommentSubmit}
             style={{ background: '#22c55e', color: '#000', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
           >
             Save
           </button>
           <button
+            type="button"
+            aria-label="Dismiss"
             onClick={onDismiss}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', display: 'flex', alignItems: 'center' }}
           >

@@ -3,14 +3,16 @@
 import { Trash2, ArrowRight } from 'lucide-react';
 import { Annotation } from '@/types/database';
 
-const COLOR_BORDER: Record<string, string> = {
+type AnnotationColor = Annotation['color'];
+
+const COLOR_BORDER: Record<AnnotationColor, string> = {
   yellow: '#f59e0b',
   red:    '#ef4444',
   blue:   '#3b82f6',
   green:  '#22c55e',
 };
 
-const COLOR_BG: Record<string, string> = {
+const COLOR_BG: Record<AnnotationColor, string> = {
   yellow: 'rgba(245,158,11,0.06)',
   red:    'rgba(239,68,68,0.06)',
   blue:   'rgba(59,130,246,0.06)',
@@ -24,8 +26,8 @@ interface AnnotationBlockProps {
 }
 
 export default function AnnotationBlock({ annotation, onJumpToSource, onDelete }: AnnotationBlockProps) {
-  const border = COLOR_BORDER[annotation.color] ?? COLOR_BORDER.yellow;
-  const bg     = COLOR_BG[annotation.color]     ?? COLOR_BG.yellow;
+  const border = COLOR_BORDER[annotation.color];
+  const bg     = COLOR_BG[annotation.color];
 
   return (
     <div
@@ -41,7 +43,7 @@ export default function AnnotationBlock({ annotation, onJumpToSource, onDelete }
         "{annotation.text}"
       </p>
 
-      {annotation.comment && (
+      {annotation.comment != null && annotation.comment.length > 0 && (
         <p style={{ margin: '6px 0 0', color: '#aaa', fontSize: '12px', lineHeight: 1.5 }}>
           {annotation.comment}
         </p>
@@ -49,6 +51,7 @@ export default function AnnotationBlock({ annotation, onJumpToSource, onDelete }
 
       <div style={{ display: 'flex', gap: '8px', marginTop: '6px', alignItems: 'center' }}>
         <button
+          type="button"
           onClick={() => onJumpToSource(annotation.text, annotation.occurrence_index)}
           style={{
             background: 'none',
@@ -68,6 +71,8 @@ export default function AnnotationBlock({ annotation, onJumpToSource, onDelete }
           Jump to source
         </button>
         <button
+          type="button"
+          aria-label="Delete annotation"
           onClick={() => onDelete(annotation.id)}
           style={{
             background: 'none',
