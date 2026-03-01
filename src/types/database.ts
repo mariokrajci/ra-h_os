@@ -125,3 +125,21 @@ export interface Dimension {
   is_priority: boolean;
   updated_at: string;
 }
+
+export interface Annotation {
+  id: number;
+  node_id: number;
+  text: string;
+  color: 'yellow' | 'red' | 'blue' | 'green';
+  comment?: string | null;
+  occurrence_index: number;
+  created_at: string;
+}
+
+export interface AnnotationData {
+  node_id: number;
+  text: string;
+  color: 'yellow' | 'red' | 'blue' | 'green';
+  comment?: string;
+  occurrence_index: number;
+}

@@ -434,6 +434,20 @@ class SQLiteClient {
         CREATE INDEX IF NOT EXISTS idx_wiki_topics_parent ON wiki_topics(parent_id, order_index);
       `);
 
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS annotations (
+          id               INTEGER PRIMARY KEY AUTOINCREMENT,
+          node_id          INTEGER NOT NULL,
+          text             TEXT NOT NULL,
+          color            TEXT NOT NULL DEFAULT 'yellow',
+          comment          TEXT,
+          occurrence_index INTEGER NOT NULL DEFAULT 0,
+          created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_annotations_node ON annotations(node_id, created_at);
+      `);
+
       // 5) Views: logs_v (drop any legacy memory_v alias)
       this.db.exec(`DROP VIEW IF EXISTS logs_v; DROP VIEW IF EXISTS memory_v;`);
       try {
