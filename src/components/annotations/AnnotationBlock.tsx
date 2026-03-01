@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { Trash2, ArrowRight } from 'lucide-react';
 import { Annotation } from '@/types/database';
 
@@ -31,6 +32,7 @@ export default function AnnotationBlock({ annotation, onJumpToSource, onDelete }
 
   return (
     <div
+      data-annotation-block="full"
       style={{
         borderLeft: `3px solid ${border}`,
         background: bg,
@@ -40,7 +42,7 @@ export default function AnnotationBlock({ annotation, onJumpToSource, onDelete }
       }}
     >
       <p style={{ margin: 0, color: '#ccc', fontSize: '13px', lineHeight: 1.6, fontStyle: 'italic' }}>
-        "{annotation.text}"
+        &quot;{annotation.text}&quot;
       </p>
 
       {annotation.comment != null && annotation.comment.length > 0 && (

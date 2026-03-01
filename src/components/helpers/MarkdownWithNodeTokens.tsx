@@ -7,6 +7,7 @@ import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { Check, Copy } from 'lucide-react';
 import AnnotationBlock from '@/components/annotations/AnnotationBlock';
+import HighlightBlock from '@/components/annotations/HighlightBlock';
 import { Annotation } from '@/types/database';
 
 interface NodeLabelInlineProps {
@@ -366,7 +367,7 @@ export default function MarkdownWithNodeTokens({
 
   return (
     <>
-      <style jsx>{`
+      <style>{`
         .markdown-table tbody tr:nth-child(even) {
           background: #0f1621;
         }
@@ -383,8 +384,10 @@ export default function MarkdownWithNodeTokens({
             const annotationId = annotationIds[placeholderIndex];
             const annotation = annotations[annotationId];
             if (!annotation) return null;
+            const hasComment = Boolean(annotation.comment && annotation.comment.trim().length > 0);
+            const BlockComponent = hasComment ? AnnotationBlock : HighlightBlock;
             return (
-              <AnnotationBlock
+              <BlockComponent
                 key={`annotation-${annotationId}`}
                 annotation={annotation}
                 onJumpToSource={onJumpToSource ?? (() => {})}

@@ -28,10 +28,17 @@ interface MappedSourceTextProps {
 }
 
 const ANNOTATION_BG: Record<Annotation['color'], string> = {
-  yellow: 'rgba(245, 158, 11, 0.16)',
-  red: 'rgba(239, 68, 68, 0.14)',
-  blue: 'rgba(59, 130, 246, 0.14)',
-  green: 'rgba(34, 197, 94, 0.14)',
+  yellow: 'rgba(245, 158, 11, 0.28)',
+  red: 'rgba(239, 68, 68, 0.24)',
+  blue: 'rgba(59, 130, 246, 0.24)',
+  green: 'rgba(34, 197, 94, 0.24)',
+};
+
+const ANNOTATION_EDGE: Record<Annotation['color'], string> = {
+  yellow: 'rgba(180, 83, 9, 0.38)',
+  red: 'rgba(153, 27, 27, 0.38)',
+  blue: 'rgba(29, 78, 216, 0.38)',
+  green: 'rgba(21, 128, 61, 0.38)',
 };
 
 export default function MappedSourceText({
@@ -143,6 +150,7 @@ function getSegmentStyle(annotationColors: Annotation['color'][], isActiveJumpTa
       color: 'inherit',
       padding: '1px 0',
       borderRadius: '2px',
+      boxShadow: `inset 0 -1px 0 ${ANNOTATION_EDGE[annotationColors[0]]}`,
     };
   }
 
