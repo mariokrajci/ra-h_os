@@ -20,10 +20,15 @@ export class AnnotationService {
     return result.rows[0] ?? null;
   }
 
-  createAnnotationWithNotes(data: AnnotationData & { currentNotes: string }): Annotation {
+  createAnnotationWithNotes(data: AnnotationData): Annotation {
     const sqlite = getSQLiteClient();
-    // sqlite.transaction() takes a zero-arg callback and calls it immediately inside a DB transaction
     return sqlite.transaction((): Annotation => {
+      const notesRow = sqlite.query<{ notes: string | null }>(
+        'SELECT notes FROM nodes WHERE id = ?',
+        [data.node_id]
+      );
+      const currentNotes = notesRow.rows[0]?.notes ?? '';
+
       const insertResult = sqlite.prepare(
         `INSERT INTO annotations (node_id, text, color, comment, occurrence_index) VALUES (?, ?, ?, ?, ?)`
       ).run(data.node_id, data.text, data.color, data.comment ?? null, data.occurrence_index);
@@ -33,7 +38,7 @@ export class AnnotationService {
 
       sqlite.prepare(
         `UPDATE nodes SET notes = ?, updated_at = datetime('now') WHERE id = ?`
-      ).run(data.currentNotes + token, data.node_id);
+      ).run(currentNotes + token, data.node_id);
 
       const row = sqlite.query<Annotation>(`SELECT * FROM annotations WHERE id = ?`, [id]);
       return row.rows[0];

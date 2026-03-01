@@ -7,10 +7,19 @@ import TranscriptFormatter from './formatters/TranscriptFormatter';
 import BookFormatter from './formatters/BookFormatter';
 import MarkdownFormatter from './formatters/MarkdownFormatter';
 import SourceSearchBar from './SourceSearchBar';
+import type { Annotation } from '@/types/database';
+import {
+  extractMappedSelection,
+  findOccurrenceRange,
+  resolveAnnotationHighlightRanges,
+  type SourceSelection,
+} from './sourceMapping';
 
 interface SourceReaderProps {
   content: string;
   onTextSelect?: (text: string) => void;
+  onSourceSelect?: (selection: SourceSelection) => void;
+  annotations?: Annotation[];
   highlightedText?: string | null;
   highlightMatchIndex?: number;
 }
@@ -24,6 +33,8 @@ interface SourceReaderProps {
 export default function SourceReader({
   content,
   onTextSelect,
+  onSourceSelect,
+  annotations = [],
   highlightedText,
   highlightMatchIndex,
 }: SourceReaderProps) {
@@ -39,6 +50,15 @@ export default function SourceReader({
 
   // Combined highlight: search takes precedence over external highlight
   const activeHighlight = searchHighlight || highlightedText;
+  const activeHighlightIndex = showSearch ? searchMatchIndex : (highlightMatchIndex ?? 0);
+  const activeRange = useMemo(
+    () => activeHighlight ? findOccurrenceRange(content, activeHighlight, activeHighlightIndex) : null,
+    [activeHighlight, activeHighlightIndex, content]
+  );
+  const annotationRanges = useMemo(
+    () => resolveAnnotationHighlightRanges(content, annotations),
+    [annotations, content]
+  );
 
   // Keyboard shortcut for Cmd+F
   useEffect(() => {
@@ -81,19 +101,34 @@ export default function SourceReader({
     setScrollTrigger(prev => prev + 1);
   }, []);
 
+  const handleMouseUp = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !contentRef.current) return;
+
+    const mappedSelection = extractMappedSelection(selection.getRangeAt(0), contentRef.current, content);
+    if (!mappedSelection) return;
+
+    if (mappedSelection.text.length > 10) {
+      onTextSelect?.(mappedSelection.text);
+    }
+    if (mappedSelection.text.length >= 3) {
+      onSourceSelect?.(mappedSelection);
+    }
+    selection.removeAllRanges();
+  }, [content, onSourceSelect, onTextSelect]);
+
   // Render appropriate formatter based on content type
   const renderContent = () => {
-    const highlightIndex = showSearch ? searchMatchIndex : (highlightMatchIndex ?? undefined);
     switch (contentType) {
       case 'transcript':
-        return <TranscriptFormatter content={content} onTextSelect={onTextSelect} highlightedText={activeHighlight} highlightMatchIndex={highlightIndex} />;
+        return <TranscriptFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} />;
       case 'book':
       case 'article':
-        return <BookFormatter content={content} onTextSelect={onTextSelect} highlightedText={activeHighlight} highlightMatchIndex={highlightIndex} />;
+        return <BookFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} />;
       case 'markdown':
-        return <MarkdownFormatter content={content} onTextSelect={onTextSelect} highlightedText={activeHighlight} highlightMatchIndex={highlightIndex} />;
+        return <MarkdownFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} />;
       default:
-        return <RawFormatter content={content} onTextSelect={onTextSelect} highlightedText={activeHighlight} highlightMatchIndex={highlightIndex} />;
+        return <RawFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} />;
     }
   };
 
@@ -160,6 +195,7 @@ export default function SourceReader({
       {/* Formatted content */}
       <div
         ref={contentRef}
+        onMouseUp={handleMouseUp}
         style={{
           flex: 1,
           overflow: 'auto',

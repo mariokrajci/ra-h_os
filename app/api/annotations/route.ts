@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { node_id, text, color, comment, char_offset } = body;
+    const { node_id, text, color, comment, start_offset } = body;
 
     if (!node_id || !text || !color) {
       return NextResponse.json({ success: false, error: 'node_id, text and color are required' }, { status: 400 });
@@ -30,13 +30,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid color' }, { status: 400 });
     }
 
-    // Fetch node to get current source and notes
+    // Fetch node to get current source
     const node = await nodeService.getNodeById(node_id);
     const sourceText = node?.chunk ?? '';
-    const currentNotes = node?.notes ?? '';
 
-    // Compute occurrence_index: count occurrences of text in source before char_offset
-    const offset = typeof char_offset === 'number' ? char_offset : 0;
+    // Compute occurrence_index from the canonical source offset
+    const offset = typeof start_offset === 'number' ? start_offset : 0;
     const sourceBefore = sourceText.slice(0, offset).toLowerCase();
     const searchLower = text.toLowerCase();
     let occurrence_index = 0;
@@ -55,7 +54,6 @@ export async function POST(request: NextRequest) {
       color,
       comment,
       occurrence_index,
-      currentNotes,
     });
 
     return NextResponse.json({ success: true, annotation });

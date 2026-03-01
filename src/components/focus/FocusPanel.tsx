@@ -715,7 +715,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
           text: pendingAnnotation.text,
           color,
           comment,
-          char_offset: pendingAnnotation.charOffset,
+          start_offset: pendingAnnotation.charOffset,
         }),
       });
       const json = await res.json();
@@ -2954,39 +2954,6 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 <div
                   data-source-container
                   style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-                  onMouseUpCapture={() => {
-                    const selection = window.getSelection();
-                    const text = selection?.toString().trim();
-                    if (!text || text.length < 3) {
-                      setPendingAnnotation(null);
-                      return;
-                    }
-                    try {
-                      const range = selection!.getRangeAt(0);
-                      const rect = range.getBoundingClientRect();
-                      let charOffset = 0;
-                      const preRange = document.createRange();
-                      const startEl = range.startContainer instanceof Text
-                        ? range.startContainer.parentElement
-                        : range.startContainer as Element;
-                      const container = startEl?.closest('[data-source-container]');
-                      if (container) {
-                        preRange.setStart(container, 0);
-                        preRange.setEnd(range.startContainer, range.startOffset);
-                        charOffset = preRange.toString().length;
-                      } else {
-                        const sourceText = (nodesData[activeTab]?.chunk ?? '').toLowerCase();
-                        charOffset = Math.max(0, sourceText.indexOf(text.toLowerCase()));
-                      }
-                      setPendingAnnotation({
-                        text,
-                        charOffset,
-                        position: { x: rect.left + rect.width / 2, y: rect.top },
-                      });
-                    } catch {
-                      setPendingAnnotation(null);
-                    }
-                  }}
                 >
                   {sourceEditMode ? (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -3161,6 +3128,17 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                             <SourceReader
                               content={nodesData[activeTab].chunk}
                               onTextSelect={onTextSelect ? (text) => onTextSelect(activeTab, nodesData[activeTab]?.title || 'Untitled', text) : undefined}
+                              onSourceSelect={(selection) => {
+                                setPendingAnnotation({
+                                  text: selection.text,
+                                  charOffset: selection.start,
+                                  position: {
+                                    x: selection.rect.left + selection.rect.width / 2,
+                                    y: selection.rect.top,
+                                  },
+                                });
+                              }}
+                              annotations={activeNodeId !== null ? (annotationsData[activeNodeId] ?? []) : []}
                               highlightedText={localHighlight?.text ?? (highlightedPassage?.nodeId === activeTab ? highlightedPassage.selectedText : null)}
                               highlightMatchIndex={localHighlight?.matchIndex ?? 0}
                             />
