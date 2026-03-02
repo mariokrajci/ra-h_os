@@ -21,6 +21,9 @@ interface PaperMetadata {
   filename?: string;
   file_size?: number;
   extraction_method?: string;
+  renderable_pages?: number;
+  page_data?: PdfPageData[];
+  annotation_count?: number;
 }
 
 interface ExtractionResult {
@@ -39,9 +42,65 @@ interface BufferExtractionResult {
 
 type PdfJsTextItem = {
   str?: string;
+  dir?: string;
+  width?: number;
+  height?: number;
+  transform?: number[];
+  fontName?: string;
 };
 
 type PdfMetadataInfo = Record<string, unknown>;
+
+export interface NormalizedPdfJsTextItem {
+  text: string;
+  dir?: string;
+  width?: number;
+  height?: number;
+  transform: number[];
+  x: number;
+  y: number;
+  fontName?: string;
+}
+
+export interface NormalizedPdfJsAnnotation {
+  subtype?: string;
+  url?: string;
+  title?: string;
+  rect?: number[];
+}
+
+export interface PdfPageData {
+  pageNumber: number;
+  text: string;
+  items: NormalizedPdfJsTextItem[];
+  annotations: NormalizedPdfJsAnnotation[];
+}
+
+export function normalizePdfJsTextItem(item: PdfJsTextItem): NormalizedPdfJsTextItem {
+  const transform = Array.isArray(item.transform) ? item.transform : [];
+
+  return {
+    text: typeof item.str === 'string' ? item.str : '',
+    dir: item.dir,
+    width: typeof item.width === 'number' ? item.width : undefined,
+    height: typeof item.height === 'number' ? item.height : undefined,
+    transform,
+    x: typeof transform[4] === 'number' ? transform[4] : 0,
+    y: typeof transform[5] === 'number' ? transform[5] : 0,
+    fontName: item.fontName,
+  };
+}
+
+export function normalizePdfJsAnnotation(annotation: Record<string, unknown>): NormalizedPdfJsAnnotation {
+  return {
+    subtype: typeof annotation.subtype === 'string' ? annotation.subtype : undefined,
+    url: typeof annotation.url === 'string' ? annotation.url : undefined,
+    title: typeof annotation.title === 'string' ? annotation.title : undefined,
+    rect: Array.isArray(annotation.rect)
+      ? annotation.rect.filter((value): value is number => typeof value === 'number')
+      : undefined,
+  };
+}
 
 export class PaperExtractor {
   private headers = {
@@ -154,37 +213,12 @@ export class PaperExtractor {
    */
   private async extractFromPDF(buffer: Buffer): Promise<{ text: string; metadata: PaperMetadata }> {
     try {
-      const data = await pdf(buffer);
-      
-      const metadata: PaperMetadata = {
-        pages: data.numpages,
-        info: data.info,
-        text_length: data.text.length,
-      };
-      
-      // Try to extract title from metadata or first lines
-      if (data.info && data.info.Title) {
-        metadata.title = data.info.Title;
-      } else {
-        // Try to get title from first few lines
-        const firstLines = data.text.split('\n').slice(0, 5);
-        const possibleTitle = firstLines.find((line: string) => 
-          line.length > 10 && line.length < 200 && /[A-Z]/.test(line)
-        );
-        if (possibleTitle) {
-          metadata.title = possibleTitle.trim();
-        }
-      }
-      
-      return {
-        text: data.text,
-        metadata,
-      };
+      return await this.extractWithPdfJs(buffer);
     } catch (error: unknown) {
       const primaryMessage = this.formatErrorMessage(error);
-      console.warn('Primary pdf-parse extraction failed, attempting pdfjs-dist fallback:', primaryMessage);
+      console.warn('Primary pdfjs-dist extraction failed, attempting pdf-parse fallback:', primaryMessage);
       try {
-        return await this.extractWithPdfJs(buffer);
+        return await this.extractWithPdfParse(buffer);
       } catch (fallbackError: unknown) {
         const fallbackMessage = this.formatErrorMessage(fallbackError);
         throw new Error(`PDF parsing failed: ${primaryMessage}; fallback error: ${fallbackMessage}`);
@@ -192,24 +226,79 @@ export class PaperExtractor {
     }
   }
 
+  private async extractWithPdfParse(buffer: Buffer): Promise<{ text: string; metadata: PaperMetadata }> {
+    const data = await pdf(buffer);
+
+    const metadata: PaperMetadata = {
+      pages: data.numpages,
+      info: data.info,
+      text_length: data.text.length,
+      extraction_method: 'typescript_pdf-parse',
+      renderable_pages: data.numpages,
+      annotation_count: 0,
+    };
+
+    if (data.info && data.info.Title) {
+      metadata.title = data.info.Title;
+    } else {
+      const firstLines = data.text.split('\n').slice(0, 5);
+      const possibleTitle = firstLines.find((line: string) =>
+        line.length > 10 && line.length < 200 && /[A-Z]/.test(line)
+      );
+      if (possibleTitle) {
+        metadata.title = possibleTitle.trim();
+      }
+    }
+
+    if (typeof data.info?.Author === 'string') {
+      metadata.author = data.info.Author;
+    }
+
+    return {
+      text: data.text,
+      metadata,
+    };
+  }
+
   private async extractWithPdfJs(buffer: Buffer): Promise<{ text: string; metadata: PaperMetadata }> {
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    const loadingTask = pdfjsLib.getDocument({ data: buffer, useSystemFonts: true });
+    const pdfData = new Uint8Array(buffer);
+    const loadingTask = pdfjsLib.getDocument({ data: pdfData, useSystemFonts: true });
     const doc = await loadingTask.promise;
 
     let aggregatedText = '';
+    const pageData: PdfPageData[] = [];
+    let annotationCount = 0;
     for (let pageIndex = 1; pageIndex <= doc.numPages; pageIndex++) {
       const page = await doc.getPage(pageIndex);
       const textContent = await page.getTextContent();
-      const pageText = (textContent.items as PdfJsTextItem[])
-        .map((item) => (typeof item?.str === 'string' ? item.str : ''))
+      const normalizedItems = (textContent.items as PdfJsTextItem[]).map(normalizePdfJsTextItem);
+      const pageText = normalizedItems
+        .map((item) => item.text)
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim();
+      let annotations: NormalizedPdfJsAnnotation[] = [];
+      try {
+        const rawAnnotations = await page.getAnnotations();
+        annotations = rawAnnotations.map((annotation) =>
+          normalizePdfJsAnnotation(annotation as unknown as Record<string, unknown>)
+        );
+        annotationCount += annotations.length;
+      } catch (annotationError: unknown) {
+        console.warn(`pdfjs-dist annotations extraction failed for page ${pageIndex}:`, annotationError);
+      }
 
       if (pageText) {
         aggregatedText += pageText + '\n\n';
       }
+
+      pageData.push({
+        pageNumber: pageIndex,
+        text: pageText,
+        items: normalizedItems,
+        annotations,
+      });
     }
 
     let info: PdfMetadataInfo = {};
@@ -224,12 +313,19 @@ export class PaperExtractor {
       pages: doc.numPages,
       info,
       text_length: aggregatedText.length,
-      extraction_method: 'typescript_pdfjs_dist'
+      extraction_method: 'typescript_pdfjs_dist',
+      renderable_pages: pageData.filter((page) => page.text.length > 0).length,
+      page_data: pageData,
+      annotation_count: annotationCount,
     };
 
     const title = typeof info['Title'] === 'string' ? (info['Title'] as string) : undefined;
     if (!metadata.title && title) {
       metadata.title = title;
+    }
+    const author = typeof info['Author'] === 'string' ? (info['Author'] as string) : undefined;
+    if (!metadata.author && author) {
+      metadata.author = author;
     }
 
     return {
@@ -315,6 +411,7 @@ export class PaperExtractor {
       
       // Add filename to metadata
       metadata.filename = path.basename(url);
+      metadata.file_size = buffer.length;
       // Mark extraction method for downstream metadata
       if (!metadata.extraction_method) {
         metadata.extraction_method = 'typescript_pdf-parse';
@@ -370,6 +467,7 @@ export class PaperExtractor {
 
     // Add filename to metadata
     metadata.filename = filename || 'uploaded.pdf';
+    metadata.file_size = buffer.length;
     if (!metadata.extraction_method) {
       metadata.extraction_method = 'typescript_pdf-parse';
     }

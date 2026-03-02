@@ -3,7 +3,7 @@ import { autoEmbedQueue } from '@/services/embedding/autoEmbedQueue';
 import { extractWebsite } from '@/services/typescript/extractors/website';
 import { extractYouTube } from '@/services/typescript/extractors/youtube';
 import { extractPaper } from '@/services/typescript/extractors/paper';
-import { generateSourceNotes } from './generateSourceNotes';
+import { buildSourceNotesInput, generateSourceNotes } from './generateSourceNotes';
 
 type FinalizerSource = 'website' | 'youtube' | 'pdf';
 
@@ -143,6 +143,11 @@ export async function finalizeYouTubeNode(params: FinalizerParams) {
 export async function finalizePdfNode(params: FinalizerParams) {
   return finalizeExtractedNode('pdf', params, async () => {
     const result = await extractPaper(params.url);
+    const notesInput = buildSourceNotesInput({
+      sourceType: 'pdf',
+      sourceText: result.chunk,
+    });
+
     return {
       content: result.content,
       chunk: result.chunk,
@@ -156,6 +161,11 @@ export async function finalizePdfNode(params: FinalizerParams) {
         hostname: new URL(params.url).hostname,
         author: result.metadata.author || result.metadata.info?.Author,
         file_size: result.metadata.file_size,
+        renderable_pages: result.metadata.renderable_pages,
+        page_data: result.metadata.page_data,
+        annotation_count: result.metadata.annotation_count,
+        notes_generation_strategy: notesInput.strategy,
+        notes_generation_sections: notesInput.sectionTitles,
         content_length: result.chunk.length,
       },
     };

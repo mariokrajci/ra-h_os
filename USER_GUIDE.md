@@ -231,6 +231,8 @@ Raw content extracted from the source URL — YouTube transcript segments, PDF p
 - Click **Edit** to manually correct extraction errors
 - Each chunk shows its index — useful when tracing where a search result came from
 
+For large PDFs, the app may generate initial Notes from detected high-signal sections such as Abstract, Introduction, and Conclusion. If those sections are not detected reliably, it falls back to using the beginning and end of the extracted PDF text. This changes note generation only; it does not change how the PDF is rendered or how annotations behave in the Source tab.
+
 ---
 
 ## 6. Settings

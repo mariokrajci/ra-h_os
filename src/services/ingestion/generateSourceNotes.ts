@@ -2,6 +2,7 @@ import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { getOpenAIChatModel } from '@/config/openaiModels';
 import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
+import { extractPdfPrioritySections } from './pdfSections';
 
 interface GenerateSourceNotesParams {
   title: string;
@@ -12,6 +13,41 @@ interface GenerateSourceNotesParams {
 
 const MIN_SOURCE_CHARS = 200;
 const MAX_SOURCE_CHARS = 24000;
+const PDF_SECTION_TRIGGER_CHARS = 100000;
+
+export interface SourceNotesInputResult {
+  sourceExcerpt: string;
+  strategy: 'full' | 'truncated' | 'pdf_sections' | 'book_sections';
+  sectionTitles?: string[];
+}
+
+export function buildSourceNotesInput({
+  sourceType,
+  sourceText,
+}: GenerateSourceNotesParams): SourceNotesInputResult {
+  if (sourceType === 'pdf' && sourceText.length > PDF_SECTION_TRIGGER_CHARS) {
+    const extractedSections = extractPdfPrioritySections(sourceText);
+    if (extractedSections.strategy === 'sections' || extractedSections.strategy === 'book_sections') {
+      return {
+        sourceExcerpt: extractedSections.text,
+        strategy: extractedSections.strategy === 'book_sections' ? 'book_sections' : 'pdf_sections',
+        sectionTitles: extractedSections.sectionTitles,
+      };
+    }
+  }
+
+  if (sourceText.length > MAX_SOURCE_CHARS) {
+    return {
+      sourceExcerpt: `${sourceText.slice(0, MAX_SOURCE_CHARS / 2)}\n[...]\n${sourceText.slice(-MAX_SOURCE_CHARS / 2)}`,
+      strategy: 'truncated',
+    };
+  }
+
+  return {
+    sourceExcerpt: sourceText,
+    strategy: 'full',
+  };
+}
 
 function buildPrompt({ title, sourceType, sourceText, metadata }: GenerateSourceNotesParams): string {
   const metaSummary = metadata
@@ -22,9 +58,7 @@ function buildPrompt({ title, sourceType, sourceText, metadata }: GenerateSource
         .join('\n')
     : '';
 
-  const excerpt = sourceText.length > MAX_SOURCE_CHARS
-    ? `${sourceText.slice(0, MAX_SOURCE_CHARS / 2)}\n[...]\n${sourceText.slice(-MAX_SOURCE_CHARS / 2)}`
-    : sourceText;
+  const { sourceExcerpt } = buildSourceNotesInput({ sourceType, sourceText });
 
   return `Write editable working notes for a knowledge-base node.
 
@@ -42,7 +76,7 @@ Requirements:
 
 Source:
 """
-${excerpt}
+${sourceExcerpt}
 """`;
 }
 

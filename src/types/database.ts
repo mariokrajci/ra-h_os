@@ -1,3 +1,11 @@
+export interface NodeMetadata {
+  source_status?: 'processing' | 'available' | 'failed';
+  notes_status?: 'processing' | 'available' | 'failed';
+  notes_generation_strategy?: 'full' | 'truncated' | 'pdf_sections' | 'book_sections';
+  notes_generation_sections?: string[];
+  [key: string]: unknown;
+}
+
 // New Node-based type system replacing rigid Item categorization
 export interface Node {
   id: number;
@@ -9,7 +17,7 @@ export interface Node {
   dimensions: string[];       // Flexible dimensions replacing type + stage + segment + tags
   embedding?: Buffer;         // Node-level embedding (BLOB data)
   chunk?: string;
-  metadata?: any;            // Flexible metadata storage
+  metadata?: NodeMetadata | null; // Flexible metadata storage
   created_at: string;
   updated_at: string;
   edge_count?: number;       // Derived count of edges, included in some queries

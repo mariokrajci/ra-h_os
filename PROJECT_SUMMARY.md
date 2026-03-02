@@ -60,6 +60,7 @@
 ### Content Extraction
 - **YouTube** — transcript extraction → AI analysis → auto-description + tags
 - **PDF / Papers** — upload → text extraction → chunking → embedding
+- **Large PDF note synthesis** — for long PDFs, notes generation prefers detected sections like Abstract, Introduction, and Conclusion before falling back to start/end truncation
 - **Websites** — HTML → markdown → AI analysis
 - **Chunking** — long content split into ~1000-char overlapping chunks, each embedded
 
@@ -184,6 +185,12 @@ Claude Code will now have access to your knowledge base via 14 MCP tools — it 
 **Cost tracking:** Every AI call stores `input_tokens`, `output_tokens`, `model_used`, and `estimated_cost_usd` in `chats.metadata` (JSON). View it in Settings → Logs.
 
 **Graceful degradation:** If no API key is configured, node descriptions fall back to a truncated title, embeddings are skipped, and dimensions are assigned from defaults. The app remains fully functional for manual use.
+
+**PDF notes generation metadata:** Source-backed PDF nodes may store:
+- `metadata.notes_generation_strategy = 'pdf_sections' | 'truncated' | 'full'`
+- `metadata.notes_generation_sections = ['abstract', 'introduction', 'conclusion']`
+
+This strategy affects note synthesis input selection only. It does not change PDF rendering, source-reader formatting, or annotation behavior.
 
 ---
 
