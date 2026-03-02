@@ -15,13 +15,14 @@ interface QuickAddInputProps {
   onClose?: () => void;
 }
 
-type DetectedType = 'youtube' | 'website' | 'pdf-url' | 'note' | 'chat';
+type DetectedType = 'youtube' | 'website' | 'pdf-url' | 'epub-url' | 'note' | 'chat';
 
 function detectType(raw: string): DetectedType {
   const trimmed = raw.trim();
   if (!trimmed) return 'note';
   if (/youtu(\.be|be\.com)/i.test(trimmed)) return 'youtube';
   if (/\.pdf($|\?)/i.test(trimmed) || /arxiv\.org\//i.test(trimmed)) return 'pdf-url';
+  if (/\.epub($|\?)/i.test(trimmed)) return 'epub-url';
   if (/^https?:\/\//i.test(trimmed)) return 'website';
   const newlines = (trimmed.match(/\n/g)?.length ?? 0);
   if (newlines >= 3 && trimmed.length > 300) return 'chat';
@@ -33,6 +34,7 @@ const TYPE_LABELS: Record<DetectedType, string> = {
   youtube: 'YouTube',
   website: 'Link',
   'pdf-url': 'PDF',
+  'epub-url': 'EPUB',
   note: 'Note',
   chat: 'Transcript',
 };
@@ -41,6 +43,7 @@ const TYPE_COLORS: Record<DetectedType, string> = {
   youtube: '#ef4444',
   website: '#3b82f6',
   'pdf-url': '#f59e0b',
+  'epub-url': '#8b5cf6',
   note: '#22c55e',
   chat: '#a78bfa',
 };
@@ -68,7 +71,19 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await fetch('/api/extract/pdf/upload', {
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const isEpub = file.type === 'application/epub+zip' || file.name.toLowerCase().endsWith('.epub');
+      const uploadPath = isPdf
+        ? '/api/extract/pdf/upload'
+        : isEpub
+          ? '/api/extract/epub/upload'
+          : null;
+
+      if (!uploadPath) {
+        throw new Error('Only PDF and EPUB files are supported');
+      }
+
+      const response = await fetch(uploadPath, {
         method: 'POST',
         body: formData,
       });
@@ -137,8 +152,10 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     setUploadError(null);
     const file = e.dataTransfer?.files[0];
     if (!file) return;
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      setUploadError('Only PDF files are supported');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isEpub = file.type === 'application/epub+zip' || file.name.toLowerCase().endsWith('.epub');
+    if (!isPdf && !isEpub) {
+      setUploadError('Only PDF and EPUB files are supported');
       return;
     }
     if (file.size > 50 * 1024 * 1024) {
@@ -245,14 +262,14 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
                 <polyline points="14 2 14 8 20 8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span>Drop PDF</span>
+              <span>Drop PDF or EPUB</span>
             </div>
           )}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Paste a URL, write a note, or drop a PDF..."
+            placeholder="Paste a URL, write a note, or drop a PDF/EPUB..."
             disabled={isPosting}
             autoFocus
             className="qa-textarea"

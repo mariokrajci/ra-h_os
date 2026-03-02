@@ -17,6 +17,29 @@ export interface NodeMetadata {
   notes_status?: 'processing' | 'available' | 'failed';
   notes_generation_strategy?: 'full' | 'truncated' | 'pdf_sections' | 'book_sections';
   notes_generation_sections?: string[];
+  file_type?: 'pdf' | 'epub';
+  file_path?: string;
+  reading_progress?: {
+    mode: 'pdf' | 'epub' | 'text';
+    percent: number;
+    last_read_at: string;
+    page?: number;
+    total_pages?: number;
+    cfi?: string;
+    scroll_percent?: number;
+    current_section_id?: string;
+  };
+  fallback_sections?: Array<{
+    id: string;
+    title: string;
+    char_start: number;
+    char_end: number;
+  }>;
+  book_title?: string;
+  book_author?: string;
+  book_isbn?: string;
+  cover_url?: string;
+  cover_fetched_at?: string;
   [key: string]: unknown;
 }
 
@@ -155,6 +178,9 @@ export interface Annotation {
   color: 'yellow' | 'red' | 'blue' | 'green';
   comment?: string | null;
   occurrence_index: number;
+  source_mode?: 'pdf' | 'epub' | 'text';
+  anchor?: Record<string, unknown> | null;
+  fallback_context?: string | null;
   created_at: string;
 }
 
@@ -164,4 +190,7 @@ export interface AnnotationData {
   color: 'yellow' | 'red' | 'blue' | 'green';
   comment?: string;
   occurrence_index: number;
+  source_mode?: 'pdf' | 'epub' | 'text';
+  anchor?: Record<string, unknown>;
+  fallback_context?: string;
 }

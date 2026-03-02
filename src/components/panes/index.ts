@@ -4,5 +4,6 @@ export { default as MapPane } from './MapPane';
 export { default as ViewsPane } from './ViewsPane';
 export { default as TablePane } from './TablePane';
 export { default as WikiPane } from './WikiPane';
+export { default as LibraryPane } from './LibraryPane';
 export { default as PaneHeader } from './PaneHeader';
 export * from './types';

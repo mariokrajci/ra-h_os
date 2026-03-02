@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { node_id, text, color, comment, start_offset } = body;
+    const { node_id, text, color, comment, start_offset, source_mode, anchor, fallback_context } = body;
 
     if (!node_id || !text || !color) {
       return NextResponse.json({ success: false, error: 'node_id, text and color are required' }, { status: 400 });
@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
       color,
       comment,
       occurrence_index,
+      source_mode,
+      anchor,
+      fallback_context,
     });
 
     return NextResponse.json({ success: true, annotation });

@@ -4,11 +4,13 @@ import React from 'react';
 import MappedSourceText, { type MappedTextBlock, type MappedTextPart } from '../MappedSourceText';
 import type { AnnotationHighlightRange, TextRange } from '../sourceMapping';
 import { READER_BODY_BLOCK_STYLE, READER_CONTAINER_STYLE } from '../readerStyles';
+import { getTextFallbackPalette, type ReaderTheme } from '@/components/focus/reader/utils';
 
 interface TranscriptFormatterProps {
   content: string;
   annotationRanges?: AnnotationHighlightRange[];
   activeRange?: TextRange | null;
+  theme?: ReaderTheme;
 }
 
 const TIMESTAMP_REGEX = /^(\[?\d{1,2}:\d{2}(?::\d{2})?\]?|\(\d{1,2}:\d{2}(?::\d{2})?\)|\d{1,2}:\d{2}(?::\d{2})?\s*[-–—]|\[\d+(?:\.\d+)?s\])\s*/;
@@ -18,8 +20,10 @@ export default function TranscriptFormatter({
   content,
   annotationRanges = [],
   activeRange,
+  theme = 'dark',
 }: TranscriptFormatterProps) {
-  const blocks = buildTranscriptBlocks(content);
+  const palette = getTextFallbackPalette(theme);
+  const blocks = buildTranscriptBlocks(content, palette);
 
   return (
     <MappedSourceText
@@ -27,12 +31,18 @@ export default function TranscriptFormatter({
       annotationRanges={annotationRanges}
       activeRange={activeRange}
       emptyState="No transcript content detected"
-      containerStyle={READER_CONTAINER_STYLE}
+      containerStyle={{
+        ...READER_CONTAINER_STYLE,
+        color: palette.body,
+      }}
     />
   );
 }
 
-function buildTranscriptBlocks(content: string): MappedTextBlock[] {
+function buildTranscriptBlocks(
+  content: string,
+  palette: ReturnType<typeof getTextFallbackPalette>,
+): MappedTextBlock[] {
   const blocks: MappedTextBlock[] = [];
   let lineStart = 0;
 
@@ -42,7 +52,7 @@ function buildTranscriptBlocks(content: string): MappedTextBlock[] {
       blocks.push({
         key: `transcript-${lineStart}-${lineEnd}`,
         style: { marginBottom: '12px' },
-        parts: buildTranscriptParts(line, lineStart),
+        parts: buildTranscriptParts(line, lineStart, palette),
       });
     }
     lineStart = lineEnd + 1;
@@ -51,7 +61,11 @@ function buildTranscriptBlocks(content: string): MappedTextBlock[] {
   return blocks;
 }
 
-function buildTranscriptParts(line: string, startOffset: number): MappedTextPart[] {
+function buildTranscriptParts(
+  line: string,
+  startOffset: number,
+  palette: ReturnType<typeof getTextFallbackPalette>,
+): MappedTextPart[] {
   const parts: MappedTextPart[] = [];
   let cursor = 0;
 
@@ -62,12 +76,12 @@ function buildTranscriptParts(line: string, startOffset: number): MappedTextPart
       text,
       start: startOffset + cursor,
       end: startOffset + cursor + text.length,
-      style: {
-        fontSize: '11px',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
-        color: '#555',
-      },
-    });
+        style: {
+          fontSize: '11px',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
+          color: palette.muted,
+        },
+      });
     cursor += text.length;
   }
 
@@ -78,12 +92,12 @@ function buildTranscriptParts(line: string, startOffset: number): MappedTextPart
       text,
       start: startOffset + cursor,
       end: startOffset + cursor + text.length,
-      style: {
-        fontSize: '12px',
-        fontWeight: 600,
-        color: '#888',
-      },
-    });
+        style: {
+          fontSize: '12px',
+          fontWeight: 600,
+          color: palette.heading,
+        },
+      });
     cursor += text.length;
   }
 
@@ -94,6 +108,7 @@ function buildTranscriptParts(line: string, startOffset: number): MappedTextPart
       end: startOffset + line.length,
       style: {
         ...READER_BODY_BLOCK_STYLE,
+        color: palette.body,
       },
     });
   }
@@ -105,6 +120,7 @@ function buildTranscriptParts(line: string, startOffset: number): MappedTextPart
       end: startOffset + line.length,
       style: {
         ...READER_BODY_BLOCK_STYLE,
+        color: palette.body,
       },
     });
   }

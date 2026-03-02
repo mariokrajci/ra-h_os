@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, type DragEvent } from 'react';
-import { Eye, Trash2, Link, Loader, Database, Check, RefreshCw, Pencil, X, Save, Plus } from 'lucide-react';
+import { Eye, Trash2, Link, Loader, Database, Check, RefreshCw, Pencil, X, Save, Plus, BookOpen } from 'lucide-react';
 import { parseAndRenderContent } from '@/components/helpers/NodeLabelRenderer';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
 import AnnotationToolbar, { AnnotationColor } from '@/components/annotations/AnnotationToolbar';
@@ -13,6 +13,7 @@ import { getNodeIcon } from '@/utils/nodeIcons';
 import { useDimensionIcons } from '@/context/DimensionIconsContext';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { SourceReader } from './source';
+import { BookReader, type ReaderAnnotationInput } from './reader';
 import { FOCUS_PANEL_BODY_TEXT_STYLE, FOCUS_PANEL_BODY_TEXTAREA_STYLE } from './focusPanelStyles';
 import { getQuotaWarningMessage, isInsufficientQuotaError } from '@/services/embedding/errors';
 import { getNodeNotesStatus, getNodeSourceStatus } from './nodeIngestionStatus';
@@ -189,6 +190,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     charOffset: number;
     position: { x: number; y: number };
   } | null>(null);
+  const [readerNodeId, setReaderNodeId] = useState<number | null>(null);
 
   // Transient jump-to-source highlight (clears after 3s)
   const [localHighlight, setLocalHighlight] = useState<{
@@ -705,18 +707,20 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     }
   };
 
-  const createAnnotation = async (color: AnnotationColor, comment?: string) => {
-    if (!activeNodeId || !pendingAnnotation) return;
+  const createAnnotationForNode = async (nodeId: number, annotation: ReaderAnnotationInput) => {
     try {
       const res = await fetch('/api/annotations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          node_id: activeNodeId,
-          text: pendingAnnotation.text,
-          color,
-          comment,
-          start_offset: pendingAnnotation.charOffset,
+          node_id: nodeId,
+          text: annotation.text,
+          color: annotation.color,
+          comment: annotation.comment,
+          start_offset: annotation.start_offset,
+          source_mode: annotation.source_mode,
+          anchor: annotation.anchor,
+          fallback_context: annotation.fallback_context,
         }),
       });
       const json = await res.json();
@@ -726,20 +730,64 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
 
       setAnnotationsData(prev => ({
         ...prev,
-        [activeNodeId]: [...(prev[activeNodeId] ?? []), newAnnotation],
+        [nodeId]: [...(prev[nodeId] ?? []), newAnnotation],
       }));
 
-      const token = `\n\n[[annotation:${newAnnotation.id}]]`;
       setNodesData(prev => ({
         ...prev,
-        [activeNodeId]: {
-          ...prev[activeNodeId],
-          notes: (prev[activeNodeId]?.notes ?? '') + token,
+        [nodeId]: {
+          ...prev[nodeId],
+          notes: json.annotation?.id
+            ? `${prev[nodeId]?.notes ?? ''}\n\n[[annotation:${newAnnotation.id}]] ${annotation.text}${annotation.comment ? ` (${annotation.comment})` : ''}`
+            : prev[nodeId]?.notes,
         },
       }));
     } catch (e) {
       console.error('Failed to create annotation:', e);
       alert('Failed to save annotation.');
+    }
+  };
+
+  const createAnnotation = async (color: AnnotationColor, comment?: string) => {
+    if (!activeNodeId || !pendingAnnotation) return;
+    await createAnnotationForNode(activeNodeId, {
+      text: pendingAnnotation.text,
+      color,
+      comment,
+      start_offset: pendingAnnotation.charOffset,
+      source_mode: 'text',
+    });
+  };
+
+  const updateReaderProgress = async (
+    nodeId: number,
+    progress: NonNullable<Node['metadata']>['reading_progress'],
+  ) => {
+    try {
+      const response = await fetch(`/api/nodes/${nodeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metadata: { reading_progress: progress },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update reading progress: ${response.status}`);
+      }
+
+      setNodesData((prev) => ({
+        ...prev,
+        [nodeId]: {
+          ...prev[nodeId],
+          metadata: {
+            ...(prev[nodeId]?.metadata ?? {}),
+            reading_progress: progress,
+          },
+        },
+      }));
+    } catch (error) {
+      console.error('Failed to update reader progress:', error);
     }
   };
 
@@ -3067,33 +3115,55 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                           </button>
                         </div>
 
-                        {/* Edit button */}
-                        <button
-                          onClick={startSourceEdit}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '4px 8px',
-                            fontSize: '10px',
-                            color: '#666',
-                            background: 'transparent',
-                            border: '1px solid #222',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = '#888';
-                            e.currentTarget.style.borderColor = '#333';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = '#666';
-                            e.currentTarget.style.borderColor = '#222';
-                          }}
-                        >
-                          <Pencil size={10} />
-                          Edit
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {activeTab !== null && nodesData[activeTab] && (
+                            <button
+                              onClick={() => setReaderNodeId(activeTab)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                fontSize: '10px',
+                                color: '#d4d4d4',
+                                background: '#16351f',
+                                border: '1px solid #21512d',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <BookOpen size={10} />
+                              Open in Reader
+                            </button>
+                          )}
+
+                          <button
+                            onClick={startSourceEdit}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 8px',
+                              fontSize: '10px',
+                              color: '#666',
+                              background: 'transparent',
+                              border: '1px solid #222',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = '#888';
+                              e.currentTarget.style.borderColor = '#333';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = '#666';
+                              e.currentTarget.style.borderColor = '#222';
+                            }}
+                          >
+                            <Pencil size={10} />
+                            Edit
+                          </button>
+                        </div>
                       </div>
 
                       {/* Content display */}
@@ -3196,6 +3266,23 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
       onConfirm={handleConfirmNodeDelete}
       onCancel={handleCancelNodeDelete}
     />
+    {readerNodeId !== null && nodesData[readerNodeId] && (
+      <BookReader
+        nodeId={readerNodeId}
+        title={nodesData[readerNodeId].title}
+        content={nodesData[readerNodeId].chunk || ''}
+        link={nodesData[readerNodeId].link}
+        metadata={nodesData[readerNodeId].metadata}
+        annotations={annotationsData[readerNodeId] ?? []}
+        onClose={() => setReaderNodeId(null)}
+        onProgressUpdate={(progress) => {
+          if (progress) {
+            updateReaderProgress(readerNodeId, progress);
+          }
+        }}
+        onCreateAnnotation={(annotation) => createAnnotationForNode(readerNodeId, annotation)}
+      />
+    )}
     {/* Tab Context Menu */}
     {contextMenu && (
       <div

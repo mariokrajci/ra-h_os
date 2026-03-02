@@ -1,142 +1,243 @@
 # Podcast Extraction Design
 
 **Date:** 2026-02-27
-**Status:** Approved
+**Status:** Updated
 
 ---
 
 ## Problem
 
-Users want to add podcast episodes to their knowledge base and have the transcript available for search and semantic retrieval. Entry URLs come from any podcast app — Spotify, Apple Podcasts, Pocket Casts, or a direct RSS feed. Transcripts may or may not exist; when they don't, ASR is an acceptable fallback.
+Podcast ingestion currently creates a node from partial metadata, may later replace `chunk` with a transcript, and can leave the node in an inconsistent state:
+
+- `chunk` changes after creation but embeddings may not rerun
+- `notes` are empty for podcasts and inconsistently used across other source types
+- AI is sometimes called on fragments before the full source is available
+
+This makes the field semantics unclear and creates avoidable pipeline churn.
+
+---
+
+## Clarified Field Semantics
+
+The design standardizes the three main node content fields:
+
+- `description`
+  - short identity/grounding text
+  - answers: "what is this and why does it matter?"
+  - can be generated from metadata
+
+- `notes`
+  - AI-seeded editable synthesis
+  - must be generated from the full available source, not metadata fragments
+  - user can freely revise and extend it later
+
+- `chunk`
+  - raw extracted source content
+  - transcript, webpage body, README, PDF text, etc.
+  - remains the evidence layer and the input for chunk embeddings
+
+This is a deliberate product change from the earlier docs that described `notes` as purely user-authored.
 
 ---
 
 ## Approach
 
-Two-phase extraction: a fast synchronous phase that creates the node immediately, and an async background phase that discovers or generates the transcript.
+Use a source-first, notes-second, embeddings-last pipeline:
 
-This matches the existing pattern for embeddings (`chunk_status`) and keeps the Quick-Add flow feeling instant.
+1. Resolve URL and extract metadata
+2. Extract the best full source content available
+3. Generate `notes` from that full source
+4. Run embeddings once final content exists
+
+This removes the normal-path need for re-embedding.
 
 ---
 
 ## Architecture
 
-### New files
+### Existing files retained
 
-- `src/services/typescript/extractors/podcast.ts` — synchronous phase: URL normalization, app-link resolution, episode metadata extraction. Returns immediately.
-- `src/services/typescript/extractors/podcast-transcript.ts` — async phase: publisher page → RSS tag → Podcast Index → ASR prompt.
-- `src/tools/other/podcastExtract.ts` — tool wrapper for agents/MCP.
+- `src/services/typescript/extractors/podcast.ts`
+  - sync URL resolution and metadata extraction
+- `src/services/typescript/extractors/podcast-transcript.ts`
+  - transcript discovery
+- `src/tools/other/podcastExtract.ts`
+  - tool wrapper for Quick Add / agents
 
-### Modified files
+### New shared responsibility
 
-- `src/services/agents/quickAdd.ts` — add `'podcast'` to `detectInputType()` for recognized hostnames.
+Add a shared notes synthesis step, reusable across podcasts, websites, YouTube, and PDFs:
 
-No new API routes. No schema changes.
+- `src/services/ingestion/generateSourceNotes.ts`
+  - input: title, metadata, full `chunk`
+  - output: AI-seeded `notes`
 
----
-
-## URL Resolution (Sync Phase)
-
-Convert app-specific share links to canonical episode metadata.
-
-| Source | Method | Gets RSS? |
-|---|---|---|
-| Apple Podcasts (`podcasts.apple.com`) | iTunes Search API (free, no auth) | Yes |
-| Pocket Casts (`pca.st`, `play.pocketcasts.com`) | Cheerio scrape of web player (JSON-LD) | Sometimes |
-| Spotify (`open.spotify.com/episode`) | oEmbed endpoint (free, no auth) | No — metadata only |
-| RSS feed URL directly | Parse XML directly | Yes |
-| Unknown URL | Existing website extractor fallback | No |
-
-**Spotify limitation:** Spotify does not expose RSS feeds in any public API and streams are DRM-protected. For Spotify URLs, the node is created with oEmbed metadata, `transcript_status: 'asr_pending_user'`, and the user is informed clearly in the UI.
+This becomes the single source-grounded synthesis step.
 
 ---
 
-## Transcript Discovery (Async Phase)
+## Normalized Ingestion Flow
 
-Runs in background after node creation. Steps in priority order:
+### Podcast target flow
 
-1. **Publisher episode page** — scrape `episode_url`, extract long-form text content. Trust: medium (may be partial show notes, not full transcript).
-2. **RSS `podcast:transcript` tag** — if `rss_feed_url` was resolved, fetch feed XML, look for `<podcast:transcript url="…" type="…" />`. Trust: high.
-3. **Podcast Index API** — free, no auth. Given feed URL or episode, returns known transcript URLs. Trust: high.
-4. **ASR** — only if steps 1–3 found nothing. Does not auto-trigger. See ASR UX below.
+1. User pastes a Spotify / Apple / Pocket Casts / RSS / episode URL
+2. `podcast.ts` resolves metadata:
+   - `podcast_name`
+   - `episode_title`
+   - `rss_feed_url`
+   - `audio_url`
+   - `published_at`
+   - `description` candidate
+3. Node is created with:
+   - `title`
+   - short `description`
+   - `link`
+   - `metadata`
+   - no final `notes` yet
+   - `chunk` only if a reliable source is already available
+4. `podcast-transcript.ts` discovers transcript text
+5. When transcript is found:
+   - write transcript to `chunk`
+   - generate AI-seeded `notes` from transcript
+   - mark source as available
+   - enqueue embeddings once
+6. If transcript discovery fails:
+   - mark source unavailable
+   - node remains metadata-only until retried or manually enriched
 
----
+### Embedding order
 
-## ASR UX
+Embeddings must begin only after the node has its final ingestion-stage content:
 
-When the transcript pipeline exhausts all free sources, the node surfaces a user prompt (inline on the node card):
+- `chunk` populated with final source
+- `notes` generated from full source
 
-> *No transcript found for this episode.*
->
-> **[Transcribe free]** — local Whisper, slower, no cost
-> **[Use OpenAI API ~$X.XX]** — fast, best quality *(shown only if OpenAI API key is configured)*
+Then run:
 
-- Estimated price = `$0.006 × duration_minutes`, derived from `audio_url` metadata.
-- User dismissing the prompt sets `transcript_status: 'unavailable'` — no error, just no transcript.
-- If audio URL is inaccessible (Spotify CDN), the free path is disabled and the user is told why.
+1. node embedding
+2. chunk embeddings
 
-### Settings
-
-New preference in Settings under "AI / Extraction":
-
-**Local transcription model**
-- `whisper-small` — faster, ~150MB download *(default)*
-- `whisper-medium` — better accuracy, ~300MB download
-
-Model is downloaded on first use via `@huggingface/transformers`, cached locally. Only affects the "Transcribe free" path. The API path always uses `whisper-large-v2`.
-
----
-
-## Data Model
-
-All podcast-specific data lives in `node.metadata` (existing JSON field). No schema migration needed.
-
-```typescript
-metadata: {
-  // populated synchronously at node creation
-  source: 'podcast_episode',
-  podcast_name: string,
-  episode_title: string,
-  episode_url: string,
-  rss_feed_url?: string,
-  audio_url?: string,
-  published_at?: string,
-  duration_minutes?: number,
-  cover_image_url?: string,
-  resolution_source: 'itunes_api' | 'rss_direct' | 'pocket_casts_scrape' | 'spotify_oembed' | 'website_fallback',
-
-  // populated asynchronously
-  transcript_status: 'queued' | 'processing' | 'available' | 'asr_pending_user' | 'asr_processing' | 'unavailable',
-  transcript_source?: 'publisher_page' | 'rss_tag' | 'podcast_index' | 'whisper_local' | 'whisper_api',
-  transcript_url?: string,
-  transcript_confidence?: 'high' | 'medium' | 'low',
-  asr_model?: string,
-  asr_cost_usd?: number,
-}
-```
-
-`node.chunk` receives the final transcript text. The existing chunking/embedding pipeline picks it up automatically when `chunk_status` is set to `'not_chunked'`.
-
-`node.link` stores the original URL pasted by the user.
+No normal-path re-embedding is expected after this.
 
 ---
 
-## Error Handling
+## Embedding Model
 
-| Situation | Behavior |
-|---|---|
-| URL resolution fails entirely | Fall back to website extractor, always create node |
-| Individual transcript step fails | Fail silently, try next step |
-| All free transcript sources fail | Set `transcript_status: 'asr_pending_user'`, prompt user |
-| Local model download fails | Surface error, offer API path as alternative |
-| OpenAI API call fails | Show error on node, allow retry, roll back to `'asr_pending_user'` |
-| Spotify DRM / audio inaccessible | Set `transcript_status: 'unavailable'`, inform user clearly |
+The existing two-layer embedding architecture remains valid:
+
+1. **Node-level embedding**
+   - one embedding per node
+   - built from:
+     - `title`
+     - `description`
+     - `notes`
+     - `dimensions`
+
+2. **Chunk-level embeddings**
+   - many embeddings per node
+   - built from `chunk`
+
+The key change is timing:
+
+- do not start embeddings when only metadata fragments exist
+- wait until `notes` and `chunk` are in their final ingestion state
+
+---
+
+## AI Usage Model
+
+### Keep
+
+- one lightweight metadata AI call, if needed, for:
+  - concise `description`
+  - optional tags/dimensions
+
+- one source-grounded synthesis call for:
+  - `notes`
+
+### Remove
+
+- generic AI analysis during embedding
+- fragment-based note generation before full source exists
+
+This keeps the roles distinct:
+
+- metadata AI = identification
+- source AI = synthesis
+- embeddings = retrieval
+
+---
+
+## State Model
+
+The current `chunk_status` alone is not enough to describe the ingestion lifecycle.
+
+Introduce explicit conceptual states:
+
+- `source_status`
+  - `pending | available | failed`
+
+- `notes_status`
+  - `pending | available | failed`
+
+- `chunk_status`
+  - remains embedding-focused
+  - `not_chunked | chunking | chunked | error`
+
+If schema/UI changes are deferred, these can live in `metadata` first.
+
+---
+
+## Re-embedding Rules
+
+### Should not happen in the normal ingestion path
+
+If source extraction succeeds and notes generation succeeds, embeddings should run once only.
+
+### Should happen only for true follow-up changes
+
+- user edits `notes`
+- user edits `chunk`
+- transcript/source extraction failed earlier and later succeeds
+- notes are intentionally regenerated
+
+---
+
+## Migration Implications
+
+This design is not podcast-only. It defines a consistent model for all source-backed nodes:
+
+- website
+- YouTube
+- podcast
+- PDF
+- GitHub README / other extracted documents
+
+All should converge toward:
+
+1. extract source
+2. synthesize notes from source
+3. embed once
+
+---
+
+## Acceptance Criteria
+
+1. Podcast nodes never finish transcript discovery with `chunk_status = not_chunked` unless an embed job is actually queued.
+2. Podcast `notes` are synthesized from transcript text, not from episode metadata alone.
+3. Node embedding no longer depends on a second AI analysis step at embedding time.
+4. The documented field semantics are clear:
+   - `description` = short grounding
+   - `notes` = AI-seeded editable synthesis
+   - `chunk` = raw source
+5. The same conceptual model can be applied to website / YouTube / PDF flows next.
 
 ---
 
 ## Out of Scope
 
-- Feed subscription / automatic sync of new episodes
-- Speaker diarization (identifying who said what)
-- Chapter markers / timestamped sections
-- Manual audio file upload for ASR (future feature)
+- Feed subscriptions and recurring podcast sync
+- Speaker diarization
+- Chapter-aware transcript structuring
+- Audio transcription fallback reintroduction
+- Full UI copy update in this design pass

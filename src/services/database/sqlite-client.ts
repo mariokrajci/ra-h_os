@@ -442,11 +442,29 @@ class SQLiteClient {
           color            TEXT NOT NULL DEFAULT 'yellow',
           comment          TEXT,
           occurrence_index INTEGER NOT NULL DEFAULT 0,
+          source_mode      TEXT,
+          anchor_json      TEXT,
+          fallback_context TEXT,
           created_at       TEXT NOT NULL DEFAULT (datetime('now')),
           FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS idx_annotations_node ON annotations(node_id, created_at);
       `);
+
+      try {
+        const annotationColumns = this.db.prepare('PRAGMA table_info(annotations)').all() as Array<{ name: string }>;
+        const ensureAnnotationColumn = (name: string, ddl: string) => {
+          if (!annotationColumns.some(column => column.name === name)) {
+            this.db.exec(`ALTER TABLE annotations ADD COLUMN ${ddl}`);
+          }
+        };
+
+        ensureAnnotationColumn('source_mode', 'source_mode TEXT');
+        ensureAnnotationColumn('anchor_json', 'anchor_json TEXT');
+        ensureAnnotationColumn('fallback_context', 'fallback_context TEXT');
+      } catch (error) {
+        console.warn('Failed to ensure annotation columns:', error);
+      }
 
       // 5) Views: logs_v (drop any legacy memory_v alias)
       this.db.exec(`DROP VIEW IF EXISTS logs_v; DROP VIEW IF EXISTS memory_v;`);

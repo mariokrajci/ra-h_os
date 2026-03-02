@@ -35,7 +35,7 @@ import LeftToolbar from './LeftToolbar';
 import SplitHandle from './SplitHandle';
 
 // Pane components (ChatPane removed in rah-light, GuidesPane moved to settings)
-import { NodePane, DimensionsPane, MapPane, ViewsPane, TablePane, WikiPane } from '../panes';
+import { NodePane, DimensionsPane, MapPane, ViewsPane, TablePane, WikiPane, LibraryPane } from '../panes';
 import QuickAddInput from '../agents/QuickAddInput';
 import type { PaneType, SlotState, PaneAction } from '../panes/types';
 
@@ -972,6 +972,18 @@ export default function ThreePanelLayout() {
               handleNodeSelect(nodeId, false);
               setActivePane(slot);
             }}
+          />
+        );
+
+      case 'library':
+        return (
+          <LibraryPane
+            slot={slot}
+            isActive={isActive}
+            onPaneAction={slot === 'A' ? handleSlotAAction : handleSlotBAction}
+            onCollapse={onCollapse}
+            onSwapPanes={slotB ? handleSwapPanes : undefined}
+            refreshToken={nodesPanelRefresh}
           />
         );
 

@@ -5,18 +5,22 @@ import MappedSourceText, { type MappedTextBlock } from '../MappedSourceText';
 import type { AnnotationHighlightRange, TextRange } from '../sourceMapping';
 import { getParagraphBlocks } from '../sourceMapping';
 import { READER_BODY_BLOCK_STYLE, READER_CONTAINER_STYLE } from '../readerStyles';
+import { getTextFallbackPalette, type ReaderTheme } from '@/components/focus/reader/utils';
 
 interface BookFormatterProps {
   content: string;
   annotationRanges?: AnnotationHighlightRange[];
   activeRange?: TextRange | null;
+  theme?: ReaderTheme;
 }
 
 export default function BookFormatter({
   content,
   annotationRanges = [],
   activeRange,
+  theme = 'dark',
 }: BookFormatterProps) {
+  const palette = getTextFallbackPalette(theme);
   const blocks: MappedTextBlock[] = getParagraphBlocks(content).map((paragraph) => ({
     key: `book-${paragraph.start}-${paragraph.end}`,
     style: {
@@ -26,6 +30,7 @@ export default function BookFormatter({
       textAlign: 'justify',
       textJustify: 'inter-word',
       hyphens: 'auto',
+      color: palette.body,
     },
     parts: [{
       text: paragraph.text,
@@ -44,6 +49,7 @@ export default function BookFormatter({
         display: 'flex',
         flexDirection: 'column',
         gap: '1.5em',
+        color: palette.body,
       }}
     />
   );

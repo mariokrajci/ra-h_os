@@ -1,73 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchBookMetadata } from '@/services/ingestion/bookMetadata';
 import { saveFile } from '@/services/storage/fileStorage';
-import { PaperExtractor } from '@/services/typescript/extractors/paper';
+import { extractEpubFromBuffer } from '@/services/typescript/extractors/epub';
 
 export const runtime = 'nodejs';
 
-// Size limits in bytes
-const WARN_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_SIZE = 50 * 1024 * 1024;  // 50MB
+const MAX_SIZE = 50 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file');
 
-    // Validate file presence
     if (!file || !(file instanceof File)) {
       return NextResponse.json(
-        { success: false, error: 'PDF file is required' },
-        { status: 400 }
+        { success: false, error: 'EPUB file is required' },
+        { status: 400 },
       );
     }
 
-    // Validate MIME type
-    if (file.type !== 'application/pdf') {
+    const isEpub = file.type === 'application/epub+zip' || file.name.toLowerCase().endsWith('.epub');
+    if (!isEpub) {
       return NextResponse.json(
-        { success: false, error: `Invalid file type: ${file.type}. Only PDF files are accepted.` },
-        { status: 400 }
+        { success: false, error: `Invalid file type: ${file.type || file.name}. Only EPUB files are accepted.` },
+        { status: 400 },
       );
     }
 
-    // Check file size
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
         { success: false, error: `File too large (${Math.round(file.size / 1024 / 1024)}MB). Maximum size is 50MB.` },
-        { status: 413 }
+        { status: 413 },
       );
     }
 
-    const isLargeFile = file.size > WARN_SIZE;
-
-    // Get buffer from file
     const buffer = Buffer.from(await file.arrayBuffer());
+    const extraction = await extractEpubFromBuffer(buffer, file.name);
+    const title = extraction.metadata.title || file.name.replace(/\.epub$/i, '');
 
-    // Extract PDF content using PaperExtractor
-    const extractor = new PaperExtractor();
-    const extraction = await extractor.extractFromBuffer(buffer, file.name);
-
-    // Derive title from metadata or filename
-    const title = extraction.metadata.title || file.name.replace(/\.pdf$/i, '');
-
-    // Create node via internal API call
-    // IMPORTANT: Use request.url origin for packaged Tauri app compatibility
-    const nodeApiUrl = new URL('/api/nodes', request.url);
-
-    const createResponse = await fetch(nodeApiUrl.toString(), {
+    const createResponse = await fetch(new URL('/api/nodes', request.url).toString(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title,
-        type: 'pdf',
-        // Keep content readable in UI (not the full extracted text)
-        content: `Imported PDF: ${file.name} (${extraction.metadata.pages} pages, ${Math.round(extraction.metadata.text_length / 1000)}k characters)`,
-        // Full extracted text goes in chunk for universal chunking/embedding
+        type: 'book',
+        content: extraction.content,
         chunk: extraction.chunk,
         metadata: {
-          source: 'pdf_upload',
+          source: 'epub_upload',
           original_filename: file.name,
-          pages: extraction.metadata.pages,
+          chapter_count: extraction.metadata.chapter_count,
           text_length: extraction.metadata.text_length,
           extraction_method: extraction.metadata.extraction_method,
           imported_at: new Date().toISOString(),
@@ -81,16 +63,16 @@ export async function POST(request: NextRequest) {
     }
 
     const nodeResult = await createResponse.json();
-
     if (!nodeResult.success || !nodeResult.data?.id) {
       throw new Error(nodeResult.error || 'Failed to create node');
     }
 
     const nodeId = nodeResult.data.id;
-    const filePath = await saveFile(nodeId, 'pdf', buffer);
+    const filePath = await saveFile(nodeId, 'epub', buffer);
     const bookMetadata = await fetchBookMetadata({
       title,
-      author: extraction.metadata.author || extraction.metadata.info?.Author,
+      author: extraction.metadata.author,
+      isbn: extraction.metadata.isbn,
     });
 
     const patchResponse = await fetch(new URL(`/api/nodes/${nodeId}`, request.url).toString(), {
@@ -98,13 +80,13 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         metadata: {
-          source: 'pdf_upload',
+          source: 'epub_upload',
           original_filename: file.name,
-          pages: extraction.metadata.pages,
+          chapter_count: extraction.metadata.chapter_count,
           text_length: extraction.metadata.text_length,
           extraction_method: extraction.metadata.extraction_method,
           imported_at: new Date().toISOString(),
-          file_type: 'pdf',
+          file_type: 'epub',
           file_path: filePath,
           ...bookMetadata,
         },
@@ -113,24 +95,22 @@ export async function POST(request: NextRequest) {
 
     if (!patchResponse.ok) {
       const patchError = await patchResponse.json().catch(() => ({}));
-      throw new Error(patchError.error || `Failed to finalize uploaded PDF node: ${patchResponse.status}`);
+      throw new Error(patchError.error || `Failed to finalize uploaded EPUB node: ${patchResponse.status}`);
     }
 
     return NextResponse.json({
       success: true,
       nodeId,
       title,
-      pages: extraction.metadata.pages,
+      chapterCount: extraction.metadata.chapter_count,
       textLength: extraction.metadata.text_length,
-      warning: isLargeFile ? `Large file (${Math.round(file.size / 1024 / 1024)}MB) - processing may take longer` : undefined,
     });
-
   } catch (error) {
-    console.error('[PDF Upload API] Error:', error);
-    const message = error instanceof Error ? error.message : 'Failed to process PDF upload';
+    console.error('[EPUB Upload API] Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to process EPUB upload';
     return NextResponse.json(
       { success: false, error: message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

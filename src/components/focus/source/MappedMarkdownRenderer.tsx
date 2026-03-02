@@ -8,11 +8,13 @@ import { MappedTextFragment, type MappedTextPart } from './MappedSourceText';
 import type { AnnotationHighlightRange, TextRange } from './sourceMapping';
 import MappedHighlightedCodeBlock from './MappedHighlightedCodeBlock';
 import { READER_BODY_COLOR, READER_BODY_FONT_SIZE, READER_BODY_LINE_HEIGHT, READER_CONTAINER_STYLE, READER_FONT_FAMILY } from './readerStyles';
+import { getTextFallbackPalette, type ReaderTheme } from '@/components/focus/reader/utils';
 
 interface MappedMarkdownRendererProps {
   content: string;
   annotationRanges?: AnnotationHighlightRange[];
   activeRange?: TextRange | null;
+  theme?: ReaderTheme;
 }
 
 interface PositionLike {
@@ -38,8 +40,10 @@ export default function MappedMarkdownRenderer({
   content,
   annotationRanges = [],
   activeRange,
+  theme = 'dark',
 }: MappedMarkdownRendererProps) {
   const tree = parser.parse(content) as MarkdownNode;
+  const palette = getTextFallbackPalette(theme);
 
   return (
     <div
@@ -49,13 +53,13 @@ export default function MappedMarkdownRenderer({
         fontFamily: READER_FONT_FAMILY,
         fontSize: READER_BODY_FONT_SIZE,
         lineHeight: READER_BODY_LINE_HEIGHT,
-        color: READER_BODY_COLOR,
+        color: theme === 'dark' ? READER_BODY_COLOR : palette.body,
         display: 'flex',
         flexDirection: 'column',
         gap: '1.25em',
       }}
     >
-      {renderChildren(tree.children ?? [], content, annotationRanges, activeRange)}
+      {renderChildren(tree.children ?? [], content, annotationRanges, activeRange, palette)}
     </div>
   );
 }
@@ -64,11 +68,12 @@ function renderChildren(
   nodes: MarkdownNode[],
   content: string,
   annotationRanges: AnnotationHighlightRange[],
-  activeRange: TextRange | null | undefined
+  activeRange: TextRange | null | undefined,
+  palette: ReturnType<typeof getTextFallbackPalette>,
 ): React.ReactNode[] {
   return nodes.map((node, index) => (
     <React.Fragment key={`${node.type}-${index}`}>
-      {renderNode(node, content, annotationRanges, activeRange, index)}
+      {renderNode(node, content, annotationRanges, activeRange, palette, index)}
     </React.Fragment>
   ));
 }
@@ -78,6 +83,7 @@ function renderNode(
   content: string,
   annotationRanges: AnnotationHighlightRange[],
   activeRange: TextRange | null | undefined,
+  palette: ReturnType<typeof getTextFallbackPalette>,
   key: React.Key
 ): React.ReactNode {
   switch (node.type) {
@@ -93,20 +99,20 @@ function renderNode(
       };
       const Tag = headingTagMap[depth];
       const styles: Record<number, React.CSSProperties> = {
-        1: { fontSize: '1.5em', fontWeight: 'bold', margin: 0, color: '#e5e5e5' },
-        2: { fontSize: '1.3em', fontWeight: 'bold', margin: 0, color: '#e5e5e5' },
-        3: { fontSize: '1.1em', fontWeight: 'bold', margin: 0, color: '#e5e5e5' },
+        1: { fontSize: '1.5em', fontWeight: 'bold', margin: 0, color: palette.heading },
+        2: { fontSize: '1.3em', fontWeight: 'bold', margin: 0, color: palette.heading },
+        3: { fontSize: '1.1em', fontWeight: 'bold', margin: 0, color: palette.heading },
       };
       return React.createElement(
         Tag,
         { key, style: styles[depth] ?? styles[3] },
-        renderChildren(node.children ?? [], content, annotationRanges, activeRange)
+        renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)
       );
     }
     case 'paragraph':
       return (
         <p key={key} style={{ margin: 0, lineHeight: '1.7' }}>
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </p>
       );
     case 'text':
@@ -116,20 +122,20 @@ function renderNode(
       }, annotationRanges, activeRange);
     case 'strong':
       return (
-        <strong key={key} style={{ fontWeight: 'bold', color: '#f5f5f5' }}>
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+        <strong key={key} style={{ fontWeight: 'bold', color: palette.heading }}>
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </strong>
       );
     case 'emphasis':
       return (
         <em key={key} style={{ fontStyle: 'italic' }}>
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </em>
       );
     case 'delete':
       return (
         <del key={key}>
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </del>
       );
     case 'link':
@@ -139,9 +145,9 @@ function renderNode(
           href={node.url}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: '#22c55e', textDecoration: 'underline' }}
+          style={{ color: palette.accent, textDecoration: 'underline' }}
         >
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </a>
       );
     case 'inlineCode':
@@ -149,7 +155,7 @@ function renderNode(
         <code
           key={key}
           style={{
-            background: 'rgba(110, 118, 129, 0.4)',
+            background: palette.codeBackground,
             padding: '0.2em 0.4em',
             borderRadius: '6px',
             fontSize: '85%',
@@ -176,17 +182,17 @@ function renderNode(
     case 'list':
       return node.ordered ? (
         <ol key={key} style={{ margin: 0, paddingLeft: '20px' }}>
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </ol>
       ) : (
         <ul key={key} style={{ margin: 0, paddingLeft: '20px' }}>
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </ul>
       );
     case 'listItem':
       return (
         <li key={key} style={{ marginBottom: '4px' }}>
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </li>
       );
     case 'blockquote':
@@ -194,21 +200,21 @@ function renderNode(
         <blockquote
           key={key}
           style={{
-            borderLeft: '3px solid #333',
+            borderLeft: `3px solid ${palette.blockquoteBorder}`,
             paddingLeft: '12px',
             margin: 0,
-            color: '#999',
+            color: palette.blockquote,
           }}
         >
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </blockquote>
       );
     case 'table':
-      return renderTable(node, content, annotationRanges, activeRange, key);
+      return renderTable(node, content, annotationRanges, activeRange, palette, key);
     case 'tableRow':
       return (
         <tr key={key} style={{ borderBottom: '1px solid #3d444d' }}>
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange)}
+          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </tr>
       );
     case 'tableCell': {
@@ -220,27 +226,27 @@ function renderNode(
           key,
           style: {
             padding: '6px 13px',
-            borderRight: '1px solid #3d444d',
-            textAlign: 'left',
-            verticalAlign: 'top',
-            color: isHeader ? '#e6edf3' : '#d0d7de',
-            fontWeight: isHeader ? 700 : undefined,
+              borderRight: `1px solid ${palette.tableBorder}`,
+              textAlign: 'left',
+              verticalAlign: 'top',
+              color: isHeader ? palette.heading : palette.body,
+              fontWeight: isHeader ? 700 : undefined,
+            },
           },
-        },
-        renderChildren(node.children ?? [], content, annotationRanges, activeRange)
+        renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)
       );
     }
     case 'tableHead':
-      return <thead key={key}>{renderChildren(node.children ?? [], content, annotationRanges, activeRange)}</thead>;
+      return <thead key={key}>{renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}</thead>;
     case 'tableBody':
-      return <tbody key={key}>{renderChildren(node.children ?? [], content, annotationRanges, activeRange)}</tbody>;
+      return <tbody key={key}>{renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}</tbody>;
     case 'break':
       return <br key={key} />;
     case 'thematicBreak':
-      return <hr key={key} style={{ width: '100%', borderColor: '#30363d' }} />;
+      return <hr key={key} style={{ width: '100%', borderColor: palette.rule }} />;
     default:
       return node.children
-        ? <React.Fragment key={key}>{renderChildren(node.children, content, annotationRanges, activeRange)}</React.Fragment>
+        ? <React.Fragment key={key}>{renderChildren(node.children, content, annotationRanges, activeRange, palette)}</React.Fragment>
         : null;
   }
 }
@@ -266,6 +272,7 @@ function renderTable(
   content: string,
   annotationRanges: AnnotationHighlightRange[],
   activeRange: TextRange | null | undefined,
+  palette: ReturnType<typeof getTextFallbackPalette>,
   key: React.Key
 ) {
   const rows = node.children ?? [];
@@ -278,18 +285,18 @@ function renderTable(
           width: '100%',
           borderCollapse: 'collapse',
           borderSpacing: 0,
-          border: '1px solid #3d444d',
+          border: `1px solid ${palette.tableBorder}`,
         }}
       >
         {headerRow ? (
           <thead>
-            {renderTableRow(headerRow, content, annotationRanges, activeRange, 'head', true)}
+            {renderTableRow(headerRow, content, annotationRanges, activeRange, palette, 'head', true)}
           </thead>
         ) : null}
         {bodyRows.length > 0 ? (
           <tbody>
             {bodyRows.map((row, index) =>
-              renderTableRow(row, content, annotationRanges, activeRange, `body-${index}`, false)
+              renderTableRow(row, content, annotationRanges, activeRange, palette, `body-${index}`, false)
             )}
           </tbody>
         ) : null}
@@ -303,13 +310,14 @@ function renderTableRow(
   content: string,
   annotationRanges: AnnotationHighlightRange[],
   activeRange: TextRange | null | undefined,
+  palette: ReturnType<typeof getTextFallbackPalette>,
   key: React.Key,
   isHeader: boolean
 ) {
   const Tag = isHeader ? 'th' : 'td';
 
   return (
-    <tr key={key} style={{ borderBottom: '1px solid #3d444d' }}>
+    <tr key={key} style={{ borderBottom: `1px solid ${palette.tableBorder}` }}>
       {(node.children ?? []).map((cell, index) =>
         React.createElement(
           Tag,
@@ -317,14 +325,14 @@ function renderTableRow(
             key: `${key}-${index}`,
             style: {
               padding: '6px 13px',
-              borderRight: '1px solid #3d444d',
+              borderRight: `1px solid ${palette.tableBorder}`,
               textAlign: 'left',
               verticalAlign: 'top',
-              color: isHeader ? '#e6edf3' : '#d0d7de',
+              color: isHeader ? palette.heading : palette.body,
               fontWeight: isHeader ? 700 : undefined,
             },
           },
-          renderChildren(cell.children ?? [], content, annotationRanges, activeRange)
+          renderChildren(cell.children ?? [], content, annotationRanges, activeRange, palette)
         )
       )}
     </tr>

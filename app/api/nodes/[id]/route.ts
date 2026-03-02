@@ -5,9 +5,81 @@ import { hasSufficientContent } from '@/services/embedding/constants';
 
 export const runtime = 'nodejs';
 
+type NodeRouteContext = { params: Promise<{ id: string }> };
+
+async function updateNodeHandler(
+  request: NextRequest,
+  { params }: NodeRouteContext
+) {
+  const { id } = await params;
+  const nodeId = parseInt(id, 10);
+  
+  if (isNaN(nodeId)) {
+    return NextResponse.json({
+      success: false,
+      error: 'Invalid node ID'
+    }, { status: 400 });
+  }
+
+  const body = await request.json();
+
+  const existingNode = await nodeService.getNodeById(nodeId);
+  if (!existingNode) {
+    return NextResponse.json({
+      success: false,
+      error: 'Node not found'
+    }, { status: 404 });
+  }
+
+  const updates: Record<string, unknown> = { ...body };
+  let shouldQueueEmbed = false;
+  const isPodcastEpisode = existingNode.metadata?.source === 'podcast_episode';
+
+  if (body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)) {
+    updates.metadata = {
+      ...(existingNode.metadata ?? {}),
+      ...body.metadata,
+    };
+  }
+
+  const incomingChunk = typeof body.chunk === 'string' ? body.chunk : undefined;
+  const incomingNotes = typeof body.notes === 'string' ? body.notes : undefined;
+  const existingChunk = existingNode.chunk ?? '';
+
+  if (incomingChunk !== undefined) {
+    const trimmedIncoming = incomingChunk.trim();
+    const trimmedExisting = existingChunk.trim();
+
+    if (!trimmedIncoming) {
+      updates.chunk_status = null;
+    } else if (trimmedIncoming !== trimmedExisting) {
+      updates.chunk_status = 'not_chunked';
+      shouldQueueEmbed = hasSufficientContent(trimmedIncoming);
+    } else {
+      delete updates.chunk_status;
+    }
+  } else if (!isPodcastEpisode && !existingChunk.trim() && hasSufficientContent(incomingNotes)) {
+    updates.chunk = incomingNotes;
+    updates.chunk_status = 'not_chunked';
+    shouldQueueEmbed = true;
+  }
+
+  const node = await nodeService.updateNode(nodeId, updates);
+
+  if (shouldQueueEmbed) {
+    autoEmbedQueue.enqueue(nodeId, { reason: 'node_updated' });
+  }
+
+  return NextResponse.json({
+    success: true,
+    node,
+    message: 'Node updated successfully'
+  });
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: NodeRouteContext
 ) {
   try {
     const { id } = await params;
@@ -45,68 +117,27 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: NodeRouteContext
 ) {
   try {
-    const { id } = await params;
-    const nodeId = parseInt(id, 10);
-    
-    if (isNaN(nodeId)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid node ID'
-      }, { status: 400 });
-    }
-
-    const body = await request.json();
-
-    const existingNode = await nodeService.getNodeById(nodeId);
-    if (!existingNode) {
-      return NextResponse.json({
-        success: false,
-        error: 'Node not found'
-      }, { status: 404 });
-    }
-
-    const updates: Record<string, unknown> = { ...body };
-    let shouldQueueEmbed = false;
-    const isPodcastEpisode = existingNode.metadata?.source === 'podcast_episode';
-
-    const incomingChunk = typeof body.chunk === 'string' ? body.chunk : undefined;
-    const incomingNotes = typeof body.notes === 'string' ? body.notes : undefined;
-    const existingChunk = existingNode.chunk ?? '';
-
-    if (incomingChunk !== undefined) {
-      const trimmedIncoming = incomingChunk.trim();
-      const trimmedExisting = existingChunk.trim();
-
-      if (!trimmedIncoming) {
-        updates.chunk_status = null;
-      } else if (trimmedIncoming !== trimmedExisting) {
-        updates.chunk_status = 'not_chunked';
-        shouldQueueEmbed = hasSufficientContent(trimmedIncoming);
-      } else {
-        delete updates.chunk_status;
-      }
-    } else if (!isPodcastEpisode && !existingChunk.trim() && hasSufficientContent(incomingNotes)) {
-      updates.chunk = incomingNotes;
-      updates.chunk_status = 'not_chunked';
-      shouldQueueEmbed = true;
-    }
-
-    const node = await nodeService.updateNode(nodeId, updates);
-
-    if (shouldQueueEmbed) {
-      autoEmbedQueue.enqueue(nodeId, { reason: 'node_updated' });
-    }
-
-    return NextResponse.json({
-      success: true,
-      node: node,
-      message: `Node updated successfully`
-    });
+    return await updateNodeHandler(request, context);
   } catch (error) {
     console.error('Error updating node:', error);
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update node'
+    }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: NodeRouteContext
+) {
+  try {
+    return await updateNodeHandler(request, context);
+  } catch (error) {
+    console.error('Error patching node:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update node'
