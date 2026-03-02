@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import MappedSourceText, { type MappedTextBlock, type MappedTextPart } from '../MappedSourceText';
 import type { AnnotationHighlightRange, TextRange } from '../sourceMapping';
 
@@ -10,7 +11,7 @@ interface TranscriptFormatterProps {
 }
 
 const TIMESTAMP_REGEX = /^(\[?\d{1,2}:\d{2}(?::\d{2})?\]?|\(\d{1,2}:\d{2}(?::\d{2})?\)|\d{1,2}:\d{2}(?::\d{2})?\s*[-–—]|\[\d+(?:\.\d+)?s\])\s*/;
-const SPEAKER_REGEX = /^([A-Z][a-zA-Z\s]{1,30}:?\s+)/;
+const SPEAKER_REGEX = /^((?:[A-Z][a-zA-Z.'-]*|[A-Z]{2,})(?:\s+(?:[A-Z][a-zA-Z.'-]*|[A-Z]{2,})){0,4}:\s+)/;
 
 export default function TranscriptFormatter({
   content,
