@@ -13,6 +13,7 @@ import { getNodeIcon } from '@/utils/nodeIcons';
 import { useDimensionIcons } from '@/context/DimensionIconsContext';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { SourceReader } from './source';
+import { FOCUS_PANEL_BODY_TEXT_STYLE, FOCUS_PANEL_BODY_TEXTAREA_STYLE } from './focusPanelStyles';
 import { getQuotaWarningMessage, isInsufficientQuotaError } from '@/services/embedding/errors';
 import { getNodeNotesStatus, getNodeSourceStatus } from './nodeIngestionStatus';
 
@@ -2500,20 +2501,9 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                           }}
                           disabled={descSaving}
                           style={{
-                            color: '#e5e5e5',
-                            fontSize: '15px',
-                            lineHeight: '1.7',
-                            background: 'transparent',
-                            border: '1px solid #2a2a2a',
-                            borderRadius: '4px',
-                            padding: '12px',
-                            fontFamily: 'inherit',
-                            width: '100%',
+                            ...FOCUS_PANEL_BODY_TEXTAREA_STYLE,
                             flex: 1,
                             minHeight: '120px',
-                            resize: 'none',
-                            outline: 'none',
-                            overflow: 'auto'
                           }}
                           placeholder="Write a brief description of this node (max 280 chars)..."
                           maxLength={280}
@@ -2605,9 +2595,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   ) : nodesData[activeTab]?.description ? (
                     <div
                       style={{
-                        color: '#e5e5e5',
-                        fontSize: '15px',
-                        lineHeight: '1.7',
+                        ...FOCUS_PANEL_BODY_TEXT_STYLE,
                         padding: '4px',
                         flex: 1,
                         overflow: 'auto'
@@ -2698,20 +2686,9 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                           }}
                           disabled={notesSaving}
                           style={{
-                            color: '#e5e5e5',
-                            fontSize: '15px',
-                            lineHeight: '1.7',
-                            background: 'transparent',
-                            border: '1px solid #2a2a2a',
-                            borderRadius: '4px',
-                            padding: '12px',
-                            fontFamily: 'inherit',
-                            width: '100%',
+                            ...FOCUS_PANEL_BODY_TEXTAREA_STYLE,
                             flex: 1,
                             minHeight: '200px',
-                            resize: 'none',
-                            outline: 'none',
-                            overflow: 'auto'
                           }}
                           placeholder="Start writing... Use @ to mention nodes, and Markdown for formatting."
                         />
@@ -2888,9 +2865,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   ) : nodesData[activeTab]?.notes ? (
                     <div
                       style={{
-                        color: '#e5e5e5',
-                        fontSize: '15px',
-                        lineHeight: '1.7',
+                        ...FOCUS_PANEL_BODY_TEXT_STYLE,
                         padding: '4px',
                         flex: 1,
                         overflow: 'auto'
