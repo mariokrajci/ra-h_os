@@ -14,10 +14,12 @@ import * as os from 'os';
 
 interface PaperMetadata {
   title?: string;
+  author?: string;
   pages: number;
   info?: any;
   text_length: number;
   filename?: string;
+  file_size?: number;
   extraction_method?: string;
 }
 
