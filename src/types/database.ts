@@ -1,4 +1,18 @@
 export interface NodeMetadata {
+  map_position?: {
+    x: number;
+    y: number;
+  };
+  type?: string;
+  rss_feed_url?: string;
+  episode_title?: string;
+  podcast_name?: string;
+  publisher_url?: string;
+  episode_url?: string;
+  transcript_status?: 'queued' | 'processing' | 'available' | 'unavailable';
+  transcript_source?: string;
+  transcript_url?: string;
+  transcript_confidence?: 'high' | 'medium' | 'low';
   source_status?: 'processing' | 'available' | 'failed';
   notes_status?: 'processing' | 'available' | 'failed';
   notes_generation_strategy?: 'full' | 'truncated' | 'pdf_sections' | 'book_sections';

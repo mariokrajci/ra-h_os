@@ -1,4 +1,4 @@
-import type { Node as DbNode, Edge as DbEdge } from '@/types/database';
+import type { Node as DbNode, Edge as DbEdge, NodeMetadata } from '@/types/database';
 import type { Node as RFNode, Edge as RFEdge } from '@xyflow/react';
 
 // Fixed palette for dimension border colors (muted, dark-theme-friendly)
@@ -235,10 +235,11 @@ export function toRFEdges(
     });
 }
 
-function safeParseJSON(str: string | null | undefined): Record<string, unknown> | null {
+function safeParseJSON(str: string | null | undefined): NodeMetadata | null {
   if (!str || str === 'null') return null;
   try {
-    return JSON.parse(str);
+    const parsed = JSON.parse(str);
+    return parsed && typeof parsed === 'object' ? parsed as NodeMetadata : null;
   } catch {
     return null;
   }

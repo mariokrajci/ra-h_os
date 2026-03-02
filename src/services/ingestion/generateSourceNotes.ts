@@ -5,7 +5,7 @@ import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageL
 import { extractPdfPrioritySections } from './pdfSections';
 
 interface GenerateSourceNotesParams {
-  title: string;
+  title?: string;
   sourceType: 'podcast' | 'website' | 'youtube' | 'pdf' | string;
   sourceText: string;
   metadata?: Record<string, unknown>;
@@ -62,7 +62,7 @@ function buildPrompt({ title, sourceType, sourceText, metadata }: GenerateSource
 
   return `Write editable working notes for a knowledge-base node.
 
-Title: ${title}
+Title: ${title || 'Untitled source'}
 Source type: ${sourceType}
 ${metaSummary ? `Metadata:\n${metaSummary}\n` : ''}
 Use the full source below to produce a concise but information-dense synthesis.
