@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { MappedTextFragment, type MappedTextPart } from './MappedSourceText';
 import type { AnnotationHighlightRange, TextRange } from './sourceMapping';
 import MappedHighlightedCodeBlock from './MappedHighlightedCodeBlock';
+import { READER_BODY_COLOR, READER_BODY_FONT_SIZE, READER_BODY_LINE_HEIGHT, READER_CONTAINER_STYLE, READER_FONT_FAMILY } from './readerStyles';
 
 interface MappedMarkdownRendererProps {
   content: string;
@@ -44,13 +45,11 @@ export default function MappedMarkdownRenderer({
     <div
       data-mapped-source-root
       style={{
-        maxWidth: '680px',
-        margin: '0 auto',
-        padding: '24px 16px',
-        fontFamily: "Georgia, 'Times New Roman', serif",
-        fontSize: '16px',
-        lineHeight: '1.75',
-        color: '#d4d4d4',
+        ...READER_CONTAINER_STYLE,
+        fontFamily: READER_FONT_FAMILY,
+        fontSize: READER_BODY_FONT_SIZE,
+        lineHeight: READER_BODY_LINE_HEIGHT,
+        color: READER_BODY_COLOR,
         display: 'flex',
         flexDirection: 'column',
         gap: '1.25em',

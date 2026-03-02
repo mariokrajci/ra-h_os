@@ -32,4 +32,18 @@ describe('TranscriptFormatter', () => {
     expect(html).toContain('font-weight:600');
     expect(html).toContain('>I think I can be obnoxious in my desire to be right.<');
   });
+
+  it('renders transcript body text without serif font declarations', () => {
+    const content = '00:00:23 Sam: I think I can be obnoxious in my desire to be right.';
+    const html = renderToStaticMarkup(
+      React.createElement(TranscriptFormatter, {
+        content,
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).not.toContain('Georgia');
+    expect(html).not.toContain('Times New Roman');
+  });
 });

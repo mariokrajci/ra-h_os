@@ -3,6 +3,7 @@
 import React from 'react';
 import MappedSourceText, { type MappedTextBlock, type MappedTextPart } from '../MappedSourceText';
 import type { AnnotationHighlightRange, TextRange } from '../sourceMapping';
+import { READER_BODY_BLOCK_STYLE, READER_CONTAINER_STYLE } from '../readerStyles';
 
 interface TranscriptFormatterProps {
   content: string;
@@ -26,11 +27,7 @@ export default function TranscriptFormatter({
       annotationRanges={annotationRanges}
       activeRange={activeRange}
       emptyState="No transcript content detected"
-      containerStyle={{
-        maxWidth: '680px',
-        margin: '0 auto',
-        padding: '24px 16px',
-      }}
+      containerStyle={READER_CONTAINER_STYLE}
     />
   );
 }
@@ -96,12 +93,7 @@ function buildTranscriptParts(line: string, startOffset: number): MappedTextPart
       start: startOffset + cursor,
       end: startOffset + line.length,
       style: {
-        fontFamily: "Georgia, 'Times New Roman', serif",
-        fontSize: '16px',
-        lineHeight: '1.75',
-        color: '#d4d4d4',
-        whiteSpace: 'pre-wrap',
-        wordWrap: 'break-word',
+        ...READER_BODY_BLOCK_STYLE,
       },
     });
   }
@@ -112,12 +104,7 @@ function buildTranscriptParts(line: string, startOffset: number): MappedTextPart
       start: startOffset,
       end: startOffset + line.length,
       style: {
-        fontFamily: "Georgia, 'Times New Roman', serif",
-        fontSize: '16px',
-        lineHeight: '1.75',
-        color: '#d4d4d4',
-        whiteSpace: 'pre-wrap',
-        wordWrap: 'break-word',
+        ...READER_BODY_BLOCK_STYLE,
       },
     });
   }
