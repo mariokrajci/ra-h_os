@@ -29,7 +29,8 @@ jobs:
             set -e
             cd /home/mario/srv/apps/ra-h_os
             git pull origin main
-            /home/mario/.nvm/versions/node/v20.20.0/bin/npm install
-            /home/mario/.nvm/versions/node/v20.20.0/bin/npm run build
+            export PATH=/home/mario/.nvm/versions/node/v20.20.0/bin:$PATH
+            /home/mario/.nvm/versions/node/v20.20.0/bin/node /home/mario/.nvm/versions/node/v20.20.0/lib/node_modules/npm/bin/npm-cli.js install
+            /home/mario/.nvm/versions/node/v20.20.0/bin/node /home/mario/.nvm/versions/node/v20.20.0/lib/node_modules/npm/bin/npm-cli.js run build
             sudo systemctl restart rah
           EOF2
