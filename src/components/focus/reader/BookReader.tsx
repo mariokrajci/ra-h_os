@@ -74,10 +74,13 @@ export default function BookReader({
   const [percent, setPercent] = useState(metadata?.reading_progress?.percent ?? 0);
   const [viewerModeOverride, setViewerModeOverride] = useState<ReaderMode | null>(null);
   const [viewerErrorMessage, setViewerErrorMessage] = useState<string | null>(null);
-  const [pendingTextAnnotation, setPendingTextAnnotation] = useState<{
+  const [pendingAnnotation, setPendingAnnotation] = useState<{
     text: string;
-    start: number;
     position: { x: number; y: number };
+    start_offset?: number;
+    source_mode: ReaderMode;
+    anchor?: Record<string, unknown>;
+    fallback_context?: string;
   } | null>(null);
 
   const detectedMode = useMemo(() => detectReaderMode(metadata, link, content), [content, link, metadata]);
@@ -150,6 +153,15 @@ export default function BookReader({
             initialPage={metadata?.reading_progress?.page || 1}
             onNavItemsChange={setNavItems}
             onProgress={handleProgress}
+            onSelection={(selection) => {
+              setPendingAnnotation({
+                text: selection.text,
+                position: selection.position,
+                source_mode: 'pdf',
+                anchor: selection.anchor,
+                fallback_context: selection.fallback_context,
+              });
+            }}
             onError={fallbackToText}
           />
         ) : null}
@@ -190,10 +202,11 @@ export default function BookReader({
                 const start = content.indexOf(text);
                 const range = selection.getRangeAt(0);
                 const rect = range.getBoundingClientRect();
-                setPendingTextAnnotation({
+                setPendingAnnotation({
                   text,
-                  start: Math.max(0, start),
+                  start_offset: Math.max(0, start),
                   position: { x: rect.left + rect.width / 2, y: rect.top },
+                  source_mode: 'text',
                 });
               }}
             >
@@ -213,22 +226,24 @@ export default function BookReader({
 
       <BookReaderProgressBar percent={percent} />
 
-      {pendingTextAnnotation ? (
+      {pendingAnnotation ? (
         <AnnotationToolbar
-          position={pendingTextAnnotation.position}
+          position={pendingAnnotation.position}
           onAnnotate={(color, comment) => {
             onCreateAnnotation({
-              text: pendingTextAnnotation.text,
+              text: pendingAnnotation.text,
               color,
               comment,
-              start_offset: pendingTextAnnotation.start,
-              source_mode: 'text',
+              start_offset: pendingAnnotation.start_offset,
+              source_mode: pendingAnnotation.source_mode,
+              anchor: pendingAnnotation.anchor,
+              fallback_context: pendingAnnotation.fallback_context,
             });
-            setPendingTextAnnotation(null);
+            setPendingAnnotation(null);
             window.getSelection()?.removeAllRanges();
           }}
           onDismiss={() => {
-            setPendingTextAnnotation(null);
+            setPendingAnnotation(null);
             window.getSelection()?.removeAllRanges();
           }}
         />

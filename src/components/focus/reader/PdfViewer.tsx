@@ -3,13 +3,19 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReaderNavItem } from './BookReaderNav';
 import { renderPdfTextLayer } from './pdfTextLayer';
-import { getMostRelevantPdfPage, getPdfRenderMetrics } from './utils';
+import { extractPdfSelection, getMostRelevantPdfPage, getPdfRenderMetrics } from './utils';
 
 interface PdfViewerProps {
   src: string;
   initialPage?: number;
   onProgress: (progress: { mode: 'pdf'; percent: number; page: number; total_pages: number; last_read_at: string }) => void;
   onNavItemsChange?: (items: ReaderNavItem[]) => void;
+  onSelection?: (selection: {
+    text: string;
+    position: { x: number; y: number };
+    anchor: Record<string, unknown>;
+    fallback_context: string;
+  }) => void;
   onError?: (error: unknown) => void;
 }
 
@@ -42,11 +48,17 @@ interface PdfPageSurfaceProps {
   pdfjs: PdfJsModule;
   pageNumber: number;
   zoom: number;
+  onSelection?: (selection: {
+    text: string;
+    position: { x: number; y: number };
+    anchor: Record<string, unknown>;
+    fallback_context: string;
+  }) => void;
   onError?: (error: unknown) => void;
   registerFrame?: (node: HTMLDivElement | null) => void;
 }
 
-function PdfPageSurface({ pdf, pdfjs, pageNumber, zoom, onError, registerFrame }: PdfPageSurfaceProps) {
+function PdfPageSurface({ pdf, pdfjs, pageNumber, zoom, onSelection, onError, registerFrame }: PdfPageSurfaceProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const pageFrameRef = useRef<HTMLDivElement>(null);
@@ -129,12 +141,21 @@ function PdfPageSurface({ pdf, pdfjs, pageNumber, zoom, onError, registerFrame }
   return (
     <div ref={pageFrameRef} style={{ position: 'relative', boxShadow: '0 16px 40px rgba(0,0,0,0.35)', flex: '0 0 auto', background: '#fff' }}>
       <canvas ref={canvasRef} style={{ display: 'block' }} />
-      <div ref={textLayerRef} />
+      <div
+        ref={textLayerRef}
+        onMouseUp={() => {
+          const selection = window.getSelection();
+          if (!selection || selection.rangeCount === 0 || !textLayerRef.current) return;
+          const extracted = extractPdfSelection(selection.getRangeAt(0), textLayerRef.current, pageNumber, zoom);
+          if (!extracted) return;
+          onSelection?.(extracted);
+        }}
+      />
     </div>
   );
 }
 
-export default function PdfViewer({ src, initialPage = 1, onProgress, onNavItemsChange, onError }: PdfViewerProps) {
+export default function PdfViewer({ src, initialPage = 1, onProgress, onNavItemsChange, onSelection, onError }: PdfViewerProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pageFramesRef = useRef<Record<number, HTMLDivElement | null>>({});
   const pdfRef = useRef<any>(null);
@@ -310,6 +331,7 @@ export default function PdfViewer({ src, initialPage = 1, onProgress, onNavItems
                   pdfjs={pdfjs}
                   pageNumber={pageNumber}
                   zoom={zoom}
+                  onSelection={onSelection}
                   onError={onError}
                   registerFrame={(node) => {
                     pageFramesRef.current[pageNumber] = node;
@@ -323,6 +345,7 @@ export default function PdfViewer({ src, initialPage = 1, onProgress, onNavItems
               pdfjs={pdfjs}
               pageNumber={page}
               zoom={zoom}
+              onSelection={onSelection}
               onError={onError}
               registerFrame={(node) => {
                 pageFramesRef.current[page] = node;

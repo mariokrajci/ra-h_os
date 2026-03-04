@@ -31,6 +31,18 @@ interface PdfVisiblePageCandidate {
   height: number;
 }
 
+interface PdfSelectionResult {
+  text: string;
+  position: { x: number; y: number };
+  anchor: {
+    kind: 'pdf_text';
+    page: number;
+    zoom: number;
+    rects: Array<{ left: number; top: number; width: number; height: number }>;
+  };
+  fallback_context: string;
+}
+
 export function detectReaderMode(
   metadata?: NodeMetadata | null,
   link?: string,
@@ -156,4 +168,47 @@ export function getMostRelevantPdfPage(
   }
 
   return bestPage;
+}
+
+export function extractPdfSelection(
+  range: Range,
+  root: HTMLElement,
+  page: number,
+  zoom: number,
+): PdfSelectionResult | null {
+  const commonAncestor = range.commonAncestorContainer;
+  if (!root.contains(commonAncestor.nodeType === Node.ELEMENT_NODE ? commonAncestor : commonAncestor.parentElement)) {
+    return null;
+  }
+
+  const text = range.toString().trim();
+  if (!text) return null;
+
+  const rect = range.getBoundingClientRect();
+  const rects = Array.from(range.getClientRects())
+    .filter((item) => item.width > 0 && item.height > 0)
+    .map((item) => ({
+      left: item.left,
+      top: item.top,
+      width: item.width,
+      height: item.height,
+    }));
+
+  const layerText = root.textContent ?? '';
+  const textIndex = layerText.indexOf(text);
+  const contextStart = Math.max(0, textIndex - 80);
+  const contextEnd = textIndex === -1 ? Math.min(layerText.length, 160) : Math.min(layerText.length, textIndex + text.length + 80);
+  const fallbackContext = layerText.slice(contextStart, contextEnd).trim() || text;
+
+  return {
+    text,
+    position: { x: rect.left + rect.width / 2, y: rect.top },
+    anchor: {
+      kind: 'pdf_text',
+      page,
+      zoom,
+      rects,
+    },
+    fallback_context: fallbackContext,
+  };
 }
