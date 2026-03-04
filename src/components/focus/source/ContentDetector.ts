@@ -7,10 +7,10 @@ export type ContentType = 'transcript' | 'book' | 'markdown' | 'article' | 'raw'
 
 // Timestamp patterns for transcript detection
 const TIMESTAMP_PATTERNS = [
-  /^\[?\d{1,2}:\d{2}(:\d{2})?\]?\s*/,   // [00:00] or [00:00:00]
-  /^\d{1,2}:\d{2}(:\d{2})?\s*[-–—]\s*/,  // 00:00 - or 00:00:00 -
-  /^\(\d{1,2}:\d{2}(:\d{2})?\)\s*/,      // (00:00) or (00:00:00)
-  /^\[\d+(\.\d+)?s\]\s*/,                // [0.1s] or [12.5s] - decimal seconds
+  /^\[\d{1,2}:\d{2}(?::\d{2})?\]\s+\S/,   // [00:00] text
+  /^\d{1,2}:\d{2}(?::\d{2})?\s*[-–—]\s+\S/,  // 00:00 - text
+  /^\(\d{1,2}:\d{2}(?::\d{2})?\)\s+\S/,      // (00:00) text
+  /^\[\d+(?:\.\d+)?s\]\s+\S/,                // [0.1s] text
 ];
 
 // Simple book detection - look for explicit chapter markers
@@ -43,12 +43,14 @@ export function detectContentType(content: string): ContentType {
   if (!content || content.length < 50) return 'raw';
 
   const lines = content.split('\n').slice(0, 50); // Check first 50 lines
+  const nonEmptyLines = lines.map((line) => line.trim()).filter(Boolean);
 
   // 1. Check for transcript patterns (timestamps)
-  const timestampLines = lines.filter(line =>
-    TIMESTAMP_PATTERNS.some(pattern => pattern.test(line.trim()))
+  const timestampLines = nonEmptyLines.filter((line) =>
+    TIMESTAMP_PATTERNS.some((pattern) => pattern.test(line.replace(/^([-*+]|\d+\.)\s+/, '')))
   );
-  if (timestampLines.length >= 3) return 'transcript';
+  const transcriptDensity = nonEmptyLines.length > 0 ? timestampLines.length / nonEmptyLines.length : 0;
+  if (timestampLines.length >= 3 && transcriptDensity >= 0.25) return 'transcript';
 
   // 2. Check for book indicators (explicit markers like "Chapter", "Table of Contents")
   const bookIndicatorCount = BOOK_INDICATORS.filter(pattern => pattern.test(content)).length;
