@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X } from 'lucide-react';
 
@@ -23,6 +24,7 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
   const [comment, setComment] = useState('');
   const [pendingColor, setPendingColor] = useState<AnnotationColor>('yellow');
   const inputRef = useRef<HTMLInputElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const onDismissRef = useRef(onDismiss);
 
   useEffect(() => { onDismissRef.current = onDismiss; }, [onDismiss]);
@@ -36,6 +38,23 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onDismissRef.current(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (toolbarRef.current?.contains(target)) return;
+      onDismissRef.current();
+    };
+
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler, { passive: true });
+
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
   }, []);
 
   const handleColorClick = (color: AnnotationColor) => {
@@ -71,7 +90,7 @@ export default function AnnotationToolbar({ position, onAnnotate, onDismiss }: A
   };
 
   return (
-    <div style={style}>
+    <div ref={toolbarRef} style={style}>
       {!showComment ? (
         <>
           {(Object.entries(COLOR_MAP) as [AnnotationColor, string][]).map(([color, hex]) => (
