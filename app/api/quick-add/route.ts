@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
       rawInput: input.trim(),
       mode: normalizedMode,
       description: normalizedDescription,
+      baseUrl: request.nextUrl.origin,
     });
 
     return NextResponse.json({ success: true, delegation });

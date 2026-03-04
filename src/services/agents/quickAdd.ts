@@ -15,6 +15,7 @@ export interface QuickAddInput {
   rawInput: string;
   mode?: QuickAddMode;
   description?: string;
+  baseUrl?: string;
 }
 
 function isLikelyChatTranscript(raw: string): boolean {
@@ -212,7 +213,12 @@ async function handleExtractionQuickAdd(type: ExtractionQuickAddType, url: strin
   });
 }
 
-async function handleNoteQuickAdd(rawInput: string, task: string, userDescription?: string): Promise<string> {
+async function handleNoteQuickAdd(
+  rawInput: string,
+  task: string,
+  userDescription: string | undefined,
+  apiBaseUrl: string
+): Promise<string> {
   const content = rawInput.trim();
   if (!content) {
     throw new Error('Input is required to create a note');
@@ -233,7 +239,7 @@ async function handleNoteQuickAdd(rawInput: string, task: string, userDescriptio
     nodePayload.description = userDescription.trim();
   }
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/nodes`, {
+  const response = await fetch(`${apiBaseUrl}/api/nodes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(nodePayload),
@@ -261,7 +267,7 @@ async function handleNoteQuickAdd(rawInput: string, task: string, userDescriptio
   });
 }
 
-async function handleChatTranscriptQuickAdd(rawInput: string, task: string): Promise<string> {
+async function handleChatTranscriptQuickAdd(rawInput: string, task: string, apiBaseUrl: string): Promise<string> {
   const transcript = rawInput.trim();
   if (!transcript) {
     throw new Error('Input is required to import a chat transcript');
@@ -321,7 +327,7 @@ async function handleChatTranscriptQuickAdd(rawInput: string, task: string): Pro
     summary_generated_at: new Date().toISOString(),
   };
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/nodes`, {
+  const response = await fetch(`${apiBaseUrl}/api/nodes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -363,10 +369,19 @@ export interface QuickAddResult {
   error?: string;
 }
 
-export async function enqueueQuickAdd({ rawInput, mode, description }: QuickAddInput): Promise<QuickAddResult> {
+function resolveApiBaseUrl(baseUrl?: string): string {
+  const candidate = (baseUrl || process.env.NEXT_PUBLIC_BASE_URL || '').trim();
+  if (candidate.length > 0) {
+    return candidate.replace(/\/$/, '');
+  }
+  return 'http://localhost:3000';
+}
+
+export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl }: QuickAddInput): Promise<QuickAddResult> {
   const inputType = detectInputType(rawInput, mode);
   const task = buildTaskPrompt(inputType, rawInput);
   const id = `qa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const apiBaseUrl = resolveApiBaseUrl(baseUrl);
 
   const result: QuickAddResult = {
     id,
@@ -380,9 +395,9 @@ export async function enqueueQuickAdd({ rawInput, mode, description }: QuickAddI
     try {
       let summary: string;
       if (inputType === 'note') {
-        summary = await handleNoteQuickAdd(rawInput, task, description);
+        summary = await handleNoteQuickAdd(rawInput, task, description, apiBaseUrl);
       } else if (inputType === 'chat') {
-        summary = await handleChatTranscriptQuickAdd(rawInput, task);
+        summary = await handleChatTranscriptQuickAdd(rawInput, task, apiBaseUrl);
       } else {
         summary = await handleExtractionQuickAdd(inputType as ExtractionQuickAddType, rawInput, task);
       }
