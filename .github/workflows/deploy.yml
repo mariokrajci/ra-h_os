@@ -1,0 +1,29 @@
+name: Deploy RA-H OS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/rah_key
+          chmod 600 ~/.ssh/rah_key
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        run: |
+          ssh -i ~/.ssh/rah_key "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'EOF'
+            set -e
+            cd /home/mario/srv/apps/ra-h_os
+            git pull origin main
+            /home/mario/.nvm/versions/node/v20.20.0/bin/npm install
+            /home/mario/.nvm/versions/node/v20.20.0/bin/npm run build
+            sudo systemctl restart rah
+          EOF
