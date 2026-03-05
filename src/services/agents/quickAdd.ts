@@ -5,25 +5,17 @@ import { paperExtractTool } from '@/tools/other/paperExtract';
 import { podcastExtractTool } from '@/tools/other/podcastExtract';
 import { formatNodeForChat } from '@/tools/infrastructure/nodeFormatter';
 import { summarizeTranscript } from './transcriptSummarizer';
+import { detectInputType, type QuickAddInputType, type QuickAddMode } from './quickAddDetection';
 import { eventBroadcaster } from '@/services/events';
 
-export type QuickAddMode = 'link' | 'note' | 'chat';
-
-export type QuickAddInputType = 'youtube' | 'podcast' | 'website' | 'pdf' | 'note' | 'chat';
+export type { QuickAddMode, QuickAddInputType } from './quickAddDetection';
+export { detectInputType } from './quickAddDetection';
 
 export interface QuickAddInput {
   rawInput: string;
   mode?: QuickAddMode;
   description?: string;
   baseUrl?: string;
-}
-
-function isLikelyChatTranscript(raw: string): boolean {
-  const newlineCount = (raw.match(/\n/g)?.length ?? 0);
-  if (newlineCount >= 3 && raw.length > 300) return true;
-  if (/\b\d{1,2}:\d{2}\b/.test(raw) && newlineCount >= 1) return true;
-  if (/You said:|ChatGPT said:|Claude said:|Assistant:|User:/i.test(raw)) return true;
-  return false;
 }
 
 function normalizeUrlLikeInput(raw: string): string {
@@ -35,26 +27,6 @@ function normalizeUrlLikeInput(raw: string): string {
     return `https://${input}`;
   }
   return input;
-}
-
-export function detectInputType(raw: string, mode?: QuickAddMode): QuickAddInputType {
-  if (mode === 'chat') return 'chat';
-  if (mode === 'note') return 'note';
-
-  const input = normalizeUrlLikeInput(raw);
-  if (/youtu(\.be|be\.com)/i.test(input)) return 'youtube';
-  if (
-    /open\.spotify\.com\/episode/i.test(input) ||
-    /podcasts\.apple\.com/i.test(input) ||
-    /pca\.st\//i.test(input) ||
-    /play\.pocketcasts\.com/i.test(input) ||
-    /feeds\.[a-z0-9-]+\.(com|fm|net|io)/i.test(input) ||
-    /\/(feed|rss)(\/|$|\?)/i.test(input)
-  ) return 'podcast';
-  if (/\.pdf($|\?)/i.test(input) || /arxiv\.org\//i.test(input)) return 'pdf';
-  if (/^https?:\/\//i.test(input)) return 'website';
-  if (!mode && isLikelyChatTranscript(input)) return 'chat';
-  return 'note';
 }
 
 function buildTaskPrompt(type: QuickAddInputType, input: string): string {

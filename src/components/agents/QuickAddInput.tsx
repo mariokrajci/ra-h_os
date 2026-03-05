@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface QuickAddSubmitPayload {
@@ -24,9 +24,6 @@ function detectType(raw: string): DetectedType {
   if (/\.pdf($|\?)/i.test(trimmed) || /arxiv\.org\//i.test(trimmed)) return 'pdf-url';
   if (/\.epub($|\?)/i.test(trimmed)) return 'epub-url';
   if (/^https?:\/\//i.test(trimmed)) return 'website';
-  const newlines = (trimmed.match(/\n/g)?.length ?? 0);
-  if (newlines >= 3 && trimmed.length > 300) return 'chat';
-  if (/You said:|ChatGPT said:|Claude said:/i.test(trimmed)) return 'chat';
   return 'note';
 }
 
@@ -55,6 +52,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [manualType, setManualType] = useState<DetectedType | null>(null);
 
   const isControlled = isOpen !== undefined;
   const isExpanded = isControlled ? isOpen : isExpandedInternal;
@@ -63,7 +61,32 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     : setIsExpandedInternal;
 
   const detectedType = useMemo(() => detectType(input), [input]);
+  const effectiveType = manualType ?? detectedType;
   const showTypePill = input.trim().length > 0 && !uploadedFile;
+
+  useEffect(() => {
+    setManualType(null);
+  }, [input, uploadedFile]);
+
+  const typeOptions = useMemo<DetectedType[]>(() => {
+    if (detectedType === 'note' || detectedType === 'chat') {
+      return ['note', 'chat'];
+    }
+    return [detectedType, 'note'];
+  }, [detectedType]);
+
+  const cycleType = () => {
+    if (typeOptions.length <= 1) return;
+    const currentIndex = typeOptions.indexOf(effectiveType);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % typeOptions.length;
+    setManualType(typeOptions[nextIndex] === detectedType ? null : typeOptions[nextIndex]);
+  };
+
+  const submitMode: QuickAddSubmitPayload['mode'] = effectiveType === 'chat'
+    ? 'chat'
+    : effectiveType === 'note'
+      ? 'note'
+      : 'link';
 
   const handleFileUpload = useCallback(async (file: File) => {
     setIsPosting(true);
@@ -110,7 +133,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     if (!input.trim() || isPosting) return;
     setIsPosting(true);
     try {
-      await onSubmit({ input: input.trim(), mode: 'link' });
+      await onSubmit({ input: input.trim(), mode: submitMode });
       setInput('');
       setIsExpanded(false);
     } catch (error) {
@@ -282,13 +305,18 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
       <div className="qa-footer">
         <div className="qa-footer-left">
           {showTypePill && (
-            <span className="qa-type-pill" style={{
-              color: TYPE_COLORS[detectedType],
-              borderColor: TYPE_COLORS[detectedType] + '30',
-              background: TYPE_COLORS[detectedType] + '0a',
+            <button
+              type="button"
+              className="qa-type-pill"
+              onClick={cycleType}
+              style={{
+              color: TYPE_COLORS[effectiveType],
+              borderColor: TYPE_COLORS[effectiveType] + '30',
+              background: TYPE_COLORS[effectiveType] + '0a',
             }}>
-              {TYPE_LABELS[detectedType]}
-            </span>
+              <span className="qa-type-pill-main">{TYPE_LABELS[effectiveType]}</span>
+              <span className="qa-type-pill-sub">click to change</span>
+            </button>
           )}
           <span className="qa-hint">
             {uploadedFile
@@ -440,11 +468,31 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.04em;
-          padding: 2px 8px;
+          padding: 4px 8px;
           border-radius: 4px;
           border: 1px solid;
           text-transform: uppercase;
           animation: pillIn 150ms ease-out;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .qa-type-pill:hover {
+          border-color: rgba(255, 255, 255, 0.22) !important;
+        }
+
+        .qa-type-pill-main {
+          color: inherit;
+        }
+
+        .qa-type-pill-sub {
+          color: #666;
+          font-size: 9px;
+          letter-spacing: 0.02em;
+          text-transform: none;
         }
 
         .qa-hint {
