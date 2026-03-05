@@ -717,6 +717,53 @@ class SQLiteClient {
         console.warn('Failed to ensure files table schema:', filesSchemaErr);
       }
 
+      // 11) Log entries table
+      try {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS log_entries (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            date             TEXT NOT NULL,
+            content          TEXT NOT NULL,
+            order_idx        INTEGER NOT NULL DEFAULT 0,
+            promoted_node_id INTEGER,
+            created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (promoted_node_id) REFERENCES nodes(id) ON DELETE SET NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_log_entries_date ON log_entries(date);
+          CREATE INDEX IF NOT EXISTS idx_log_entries_promoted ON log_entries(promoted_node_id);
+          CREATE VIRTUAL TABLE IF NOT EXISTS log_entries_fts USING fts5(
+            content,
+            content='log_entries',
+            content_rowid='id'
+          );
+        `);
+
+        // FTS sync triggers
+        this.db.exec(`
+          CREATE TRIGGER IF NOT EXISTS log_entries_fts_insert
+            AFTER INSERT ON log_entries BEGIN
+              INSERT INTO log_entries_fts(rowid, content) VALUES (new.id, new.content);
+            END;
+          CREATE TRIGGER IF NOT EXISTS log_entries_fts_update
+            AFTER UPDATE OF content ON log_entries BEGIN
+              INSERT INTO log_entries_fts(log_entries_fts, rowid, content) VALUES('delete', old.id, old.content);
+              INSERT INTO log_entries_fts(rowid, content) VALUES (new.id, new.content);
+            END;
+          CREATE TRIGGER IF NOT EXISTS log_entries_fts_delete
+            AFTER DELETE ON log_entries BEGIN
+              INSERT INTO log_entries_fts(log_entries_fts, rowid, content) VALUES('delete', old.id, old.content);
+            END;
+          CREATE TRIGGER IF NOT EXISTS log_entries_updated_at
+            AFTER UPDATE ON log_entries BEGIN
+              UPDATE log_entries SET updated_at = datetime('now') WHERE id = old.id;
+            END;
+        `);
+        console.log('Log entries schema ready');
+      } catch (logErr) {
+        console.warn('Log entries schema error:', logErr);
+      }
+
       // 10) Final schema pass migrations (content→notes, event_date, icon, drop dead columns)
       try {
         const nodeCols2 = this.db.prepare('PRAGMA table_info(nodes)').all() as Array<{ name: string }>;
