@@ -5,8 +5,10 @@ import { paperExtractTool } from '@/tools/other/paperExtract';
 import { podcastExtractTool } from '@/tools/other/podcastExtract';
 import { formatNodeForChat } from '@/tools/infrastructure/nodeFormatter';
 import { summarizeTranscript } from './transcriptSummarizer';
-import { detectInputType, type QuickAddInputType, type QuickAddMode } from './quickAddDetection';
+import { detectInputType, resolveQuickAddRouting, type QuickAddInputType, type QuickAddMode } from './quickAddDetection';
 import { eventBroadcaster } from '@/services/events';
+import { fetchBookMetadata } from '@/services/ingestion/bookMetadata';
+import type { BookCommandParseResult } from '@/services/ingestion/bookCommand';
 
 export type { QuickAddMode, QuickAddInputType } from './quickAddDetection';
 export { detectInputType } from './quickAddDetection';
@@ -189,20 +191,39 @@ async function handleNoteQuickAdd(
   rawInput: string,
   task: string,
   userDescription: string | undefined,
-  apiBaseUrl: string
+  apiBaseUrl: string,
+  command?: BookCommandParseResult,
 ): Promise<string> {
   const content = rawInput.trim();
   if (!content) {
     throw new Error('Input is required to create a note');
   }
 
-  const title = deriveNoteTitle(content);
+  const isBookCommand = command?.kind === 'book';
+  const title = isBookCommand ? command.title || deriveNoteTitle(content) : deriveNoteTitle(content);
+  const bookMetadata = isBookCommand
+    ? await fetchBookMetadata({
+      title: command.title || title,
+      author: command.author,
+      isbn: command.isbn,
+    })
+    : null;
+
   const nodePayload: Record<string, unknown> = {
     title,
     notes: content,
     metadata: {
       source: 'quick-add-note',
       refined_at: new Date().toISOString(),
+      ...(isBookCommand ? {
+        content_kind: 'book',
+        book_detection_status: 'confirmed',
+        book_metadata_status: command.needsConfirmation ? 'ambiguous' : 'pending',
+        book_match_confidence: command.confidence,
+        book_match_source: command.isbn ? 'isbn' : command.author ? 'title_author' : 'title',
+        cover_source: 'generated',
+        ...bookMetadata,
+      } : {}),
     },
   };
 
@@ -350,7 +371,8 @@ function resolveApiBaseUrl(baseUrl?: string): string {
 }
 
 export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl }: QuickAddInput): Promise<QuickAddResult> {
-  const inputType = detectInputType(rawInput, mode);
+  const routing = resolveQuickAddRouting(rawInput, mode);
+  const inputType = routing.inputType;
   const task = buildTaskPrompt(inputType, rawInput);
   const id = `qa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const apiBaseUrl = resolveApiBaseUrl(baseUrl);
@@ -367,7 +389,7 @@ export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl }: 
     try {
       let summary: string;
       if (inputType === 'note') {
-        summary = await handleNoteQuickAdd(rawInput, task, description, apiBaseUrl);
+        summary = await handleNoteQuickAdd(routing.normalizedInput, task, description, apiBaseUrl, routing.command);
       } else if (inputType === 'chat') {
         summary = await handleChatTranscriptQuickAdd(rawInput, task, apiBaseUrl);
       } else {

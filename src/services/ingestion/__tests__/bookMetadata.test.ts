@@ -16,6 +16,9 @@ describe('bookMetadata', () => {
         book_author: 'Don Norman',
         book_isbn: '9780465050659',
         cover_url: expect.stringContaining('data:image/svg+xml'),
+        cover_source: 'generated',
+        content_kind: 'book',
+        book_metadata_status: 'pending',
       }),
     );
   });

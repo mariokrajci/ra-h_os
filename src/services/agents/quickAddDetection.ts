@@ -1,6 +1,7 @@
 export type QuickAddMode = 'link' | 'note' | 'chat';
 
 export type QuickAddInputType = 'youtube' | 'podcast' | 'website' | 'pdf' | 'note' | 'chat';
+import { parseBookCommand, type BookCommandParseResult } from '@/services/ingestion/bookCommand';
 
 function normalizeUrlLikeInput(raw: string): string {
   const input = raw.trim();
@@ -30,4 +31,37 @@ export function detectInputType(raw: string, mode?: QuickAddMode): QuickAddInput
   if (/\.pdf($|\?)/i.test(input) || /arxiv\.org\//i.test(input)) return 'pdf';
   if (/^https?:\/\//i.test(input)) return 'website';
   return 'note';
+}
+
+export interface QuickAddRoutingDecision {
+  inputType: QuickAddInputType;
+  normalizedInput: string;
+  command: BookCommandParseResult;
+}
+
+export function resolveQuickAddRouting(raw: string, mode?: QuickAddMode): QuickAddRoutingDecision {
+  const trimmed = raw.trim();
+  const command = parseBookCommand(trimmed);
+
+  if (command.kind === 'book') {
+    return {
+      inputType: 'note',
+      normalizedInput: trimmed,
+      command,
+    };
+  }
+
+  if (command.kind === 'unknown') {
+    return {
+      inputType: 'note',
+      normalizedInput: raw,
+      command,
+    };
+  }
+
+  return {
+    inputType: detectInputType(raw, mode),
+    normalizedInput: raw,
+    command,
+  };
 }

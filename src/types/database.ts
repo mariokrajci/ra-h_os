@@ -1,4 +1,16 @@
 export interface NodeMetadata {
+  content_kind?: 'book';
+  book_detection_status?: 'none' | 'detected' | 'confirmed';
+  book_metadata_status?: 'pending' | 'matched' | 'ambiguous' | 'failed';
+  book_match_confidence?: number;
+  book_match_source?: 'isbn' | 'title_author' | 'title' | 'manual';
+  cover_source?: 'generated' | 'remote' | 'manual';
+  book_metadata_locked?: {
+    title?: boolean;
+    author?: boolean;
+    isbn?: boolean;
+    cover?: boolean;
+  };
   map_position?: {
     x: number;
     y: number;

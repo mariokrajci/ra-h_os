@@ -5,10 +5,15 @@ export interface BookMetadataInput {
 }
 
 export interface BookMetadataResult {
+  content_kind: 'book';
+  book_metadata_status: 'pending' | 'matched' | 'ambiguous' | 'failed';
+  book_match_source?: 'isbn' | 'title_author' | 'title';
+  book_match_confidence?: number;
   book_title?: string;
   book_author?: string;
   book_isbn?: string;
   cover_url: string;
+  cover_source: 'generated' | 'remote' | 'manual';
   cover_fetched_at: string;
 }
 
@@ -50,12 +55,19 @@ export async function fetchBookMetadata(input: BookMetadataInput): Promise<BookM
   const bookAuthor = normalizeField(input.author);
   const bookIsbn = normalizeField(input.isbn);
   const coverSeed = bookTitle || bookAuthor || bookIsbn || 'Untitled';
+  const matchSource = bookIsbn ? 'isbn' : bookAuthor ? 'title_author' : 'title';
+  const matchConfidence = bookIsbn ? 0.98 : bookAuthor ? 0.93 : bookTitle ? 0.85 : 0.4;
 
   return {
+    content_kind: 'book',
+    book_metadata_status: 'pending',
+    book_match_source: matchSource,
+    book_match_confidence: matchConfidence,
     book_title: bookTitle,
     book_author: bookAuthor,
     book_isbn: bookIsbn,
     cover_url: generateGradientDataUrl(coverSeed),
+    cover_source: 'generated',
     cover_fetched_at: new Date().toISOString(),
   };
 }
