@@ -6,7 +6,9 @@ const nextConfig = {
       allowedOrigins: ['localhost:3000'],
     },
   },
-  // devIndicators removed - use default behavior
+  devIndicators: {
+    position: 'bottom-right',
+  },
 
   typescript: {
     ignoreBuildErrors: false,
