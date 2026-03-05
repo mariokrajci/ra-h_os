@@ -39,7 +39,7 @@ export class LogService {
   updateEntry(id: number, content: string): void {
     const sqlite = getSQLiteClient();
     sqlite.prepare(
-      `UPDATE log_entries SET content = ?, updated_at = datetime('now') WHERE id = ?`
+      `UPDATE log_entries SET content = ? WHERE id = ?`
     ).run(content, id);
   }
 
@@ -67,6 +67,10 @@ export class LogService {
     return sqlite.transaction((): number => {
       const entry = this.getEntryById(id);
       if (!entry) throw new Error(`Log entry ${id} not found`);
+
+      if (entry.promoted_node_id != null) {
+        return entry.promoted_node_id;
+      }
 
       // Derive title from first line, strip leading bullet chars, truncate
       const firstLine = entry.content.split('\n')[0]

@@ -67,6 +67,13 @@ describe('LogService', () => {
     expect(entries[0].promoted_node_id).toBe(nodeId);
   });
 
+  it('returns existing node id if entry already promoted', () => {
+    const entry = service.createEntry({ date: '2026-03-05', content: '- Idea', order_idx: 0 });
+    const firstNodeId = service.promoteEntry(entry.id);
+    const secondNodeId = service.promoteEntry(entry.id);
+    expect(secondNodeId).toBe(firstNodeId);
+  });
+
   it('reorders an entry within the day', () => {
     service.createEntry({ date: '2026-03-05', content: 'A', order_idx: 0 });
     const entryB = service.createEntry({ date: '2026-03-05', content: 'B', order_idx: 1 });
