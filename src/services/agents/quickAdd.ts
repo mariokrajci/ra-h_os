@@ -10,6 +10,7 @@ import { eventBroadcaster } from '@/services/events';
 import { fetchBookMetadata } from '@/services/ingestion/bookMetadata';
 import type { BookCommandParseResult } from '@/services/ingestion/bookCommand';
 import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
+import { logBookTelemetry } from '@/services/analytics/bookTelemetry';
 
 export type { QuickAddMode, QuickAddInputType } from './quickAddDetection';
 export { detectInputType } from './quickAddDetection';
@@ -377,6 +378,19 @@ function resolveApiBaseUrl(baseUrl?: string): string {
 export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl }: QuickAddInput): Promise<QuickAddResult> {
   const routing = resolveQuickAddRouting(rawInput, mode);
   const inputType = routing.inputType;
+  if (rawInput.trim().startsWith('/')) {
+    logBookTelemetry('command_detected', {
+      commandKind: routing.command.kind,
+      command: routing.command.kind === 'none' ? undefined : (routing.command as { command?: string }).command,
+    });
+    if (routing.command.kind === 'book') {
+      logBookTelemetry('command_handled', { command: 'book' });
+    } else if (routing.command.kind === 'unknown') {
+      logBookTelemetry('command_fallback_note', {
+        command: routing.command.command,
+      });
+    }
+  }
   const task = buildTaskPrompt(inputType, rawInput);
   const id = `qa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const apiBaseUrl = resolveApiBaseUrl(baseUrl);

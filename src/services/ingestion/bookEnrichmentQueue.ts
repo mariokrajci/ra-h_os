@@ -1,4 +1,5 @@
 import { nodeService } from '@/services/database';
+import { logBookTelemetry } from '@/services/analytics/bookTelemetry';
 import { createOpenLibraryBookLookupProvider, lookupBookMetadata } from './bookLookup';
 
 interface BookEnrichmentTask {
@@ -29,6 +30,8 @@ export async function enrichBookNode(nodeId: number): Promise<BookEnrichmentOutc
   const currentTitle = typeof metadata.book_title === 'string' ? metadata.book_title : node.title;
   const currentAuthor = typeof metadata.book_author === 'string' ? metadata.book_author : undefined;
   const currentIsbn = typeof metadata.book_isbn === 'string' ? metadata.book_isbn : undefined;
+
+  logBookTelemetry('book_enrichment_started', { nodeId });
 
   const lookup = await lookupBookMetadata(
     {
@@ -71,6 +74,14 @@ export async function enrichBookNode(nodeId: number): Promise<BookEnrichmentOutc
   await nodeService.updateNode(nodeId, {
     metadata: nextMetadata,
   });
+
+  if (lookup.status === 'matched') {
+    logBookTelemetry('book_enrichment_matched', { nodeId, matchSource: lookup.matchSource, confidence: lookup.confidence });
+  } else if (lookup.status === 'ambiguous') {
+    logBookTelemetry('book_enrichment_ambiguous', { nodeId, matchSource: lookup.matchSource, confidence: lookup.confidence });
+  } else {
+    logBookTelemetry('book_enrichment_failed', { nodeId });
+  }
 
   return lookup.status;
 }
