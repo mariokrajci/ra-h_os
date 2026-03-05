@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SQLiteClient } from '@/services/database/sqlite-client';
-import { LogEntry, LogsResponse } from '@/types/logs';
+import { AuditLogEntry, LogsResponse } from '@/types/logs';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     let result;
     if (threadId) {
-      result = db.query<LogEntry>(
+      result = db.query<AuditLogEntry>(
         `SELECT id, ts, table_name, action, row_id, summary, snapshot_json, enriched_summary
          FROM logs
          WHERE table_name = 'chats' AND json_extract(snapshot_json, '$.thread') = ?
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         [threadId]
       );
     } else if (traceId) {
-      result = db.query<LogEntry>(
+      result = db.query<AuditLogEntry>(
         `SELECT id, ts, table_name, action, row_id, summary, snapshot_json, enriched_summary
          FROM logs
          WHERE json_extract(snapshot_json, '$.trace_id') = ?
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         params.unshift(tableFilter);
       }
 
-      result = db.query<LogEntry>(
+      result = db.query<AuditLogEntry>(
         `SELECT id, ts, table_name, action, row_id, summary, snapshot_json, enriched_summary
          FROM logs
          ${tableClause}

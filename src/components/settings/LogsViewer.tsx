@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LogEntry, LogsResponse } from '@/types/logs';
+import { AuditLogEntry, LogsResponse } from '@/types/logs';
 import LogsRow from './LogsRow';
 
 type AppliedFilters = {
@@ -13,7 +13,7 @@ type AppliedFilters = {
 export default function LogsViewer() {
   const LIMIT = 100;
 
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

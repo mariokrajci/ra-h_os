@@ -1,4 +1,4 @@
-export interface LogEntry {
+export interface AuditLogEntry {
   id: number;
   ts: string;
   table_name: string;
@@ -10,7 +10,7 @@ export interface LogEntry {
 }
 
 export interface LogsResponse {
-  logs: LogEntry[];
+  logs: AuditLogEntry[];
   page: number;
   limit: number;
   threadId?: string;

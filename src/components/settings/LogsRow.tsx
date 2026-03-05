@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from 'react';
-import { LogEntry } from '@/types/logs';
+import { AuditLogEntry } from '@/types/logs';
 
 interface LogsRowProps {
-  log: LogEntry;
+  log: AuditLogEntry;
   isEven: boolean;
 }
 

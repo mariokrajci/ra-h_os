@@ -227,4 +227,5 @@ export interface LogEntryData {
   date: string;
   content: string;
   order_idx?: number;
+  promoted_node_id?: number | null;
 }
