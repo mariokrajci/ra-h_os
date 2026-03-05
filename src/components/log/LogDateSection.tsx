@@ -1,5 +1,6 @@
 import { LogEntry as LogEntryType } from '@/types/database';
 import LogEntryComponent from './LogEntry';
+import LogGhostEntry from './LogGhostEntry';
 
 interface LogDateSectionProps {
   date: string;
@@ -10,6 +11,8 @@ interface LogDateSectionProps {
   onEnterAtEnd: (afterId: number) => void;
   onNodeOpen?: (nodeId: number) => void;
   newEntryId?: number | null;
+  showGhost?: boolean;
+  onGhostCommit?: (content: string) => void;
 }
 
 function formatDateHeader(isoDate: string): string {
@@ -19,7 +22,7 @@ function formatDateHeader(isoDate: string): string {
 }
 
 export default function LogDateSection({
-  date, entries, onSave, onDelete, onPromote, onEnterAtEnd, onNodeOpen, newEntryId,
+  date, entries, onSave, onDelete, onPromote, onEnterAtEnd, onNodeOpen, newEntryId, showGhost, onGhostCommit,
 }: LogDateSectionProps) {
   return (
     <div style={{ marginBottom: '24px' }}>
@@ -42,6 +45,12 @@ export default function LogDateSection({
             autoFocus={entry.id === newEntryId}
           />
         ))}
+        {showGhost && onGhostCommit && (
+          <LogGhostEntry
+            onCommit={onGhostCommit}
+            autoFocus={true}
+          />
+        )}
       </div>
     </div>
   );

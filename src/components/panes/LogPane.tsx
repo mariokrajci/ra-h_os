@@ -5,7 +5,6 @@ import { LogEntry } from '@/types/database';
 import { LogPaneProps } from './types';
 import PaneHeader from './PaneHeader';
 import LogDateSection from '@/components/log/LogDateSection';
-import { Plus } from 'lucide-react';
 
 type EntriesByDate = Record<string, LogEntry[]>;
 
@@ -112,27 +111,6 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
     onNodeOpen?.(nodeId);
   }, [onNodeOpen]);
 
-  const handleAddEntry = useCallback(async () => {
-    const today = getToday();
-    const existing = entriesByDate[today] ?? [];
-    const order_idx = existing.length;
-    const res = await fetch('/api/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: today, content: '', order_idx }),
-    });
-    const json = await res.json();
-    if (!json.success) return;
-    const newEntry: LogEntry = json.data;
-    setEntriesByDate(prev => ({ ...prev, [today]: [...(prev[today] ?? []), newEntry] }));
-    if (!loadedDates.includes(today)) {
-      setLoadedDates(prev => [today, ...prev]);
-    }
-    if (newEntryTimerRef.current) clearTimeout(newEntryTimerRef.current);
-    setNewEntryId(newEntry.id);
-    newEntryTimerRef.current = setTimeout(() => setNewEntryId(null), 100);
-  }, [entriesByDate, loadedDates]);
-
   const handleEnterAtEnd = useCallback(async (afterId: number) => {
     let entryDate = getToday();
     for (const [date, entries] of Object.entries(entriesByDate)) {
@@ -159,6 +137,24 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
     newEntryTimerRef.current = setTimeout(() => setNewEntryId(null), 100);
   }, [entriesByDate]);
 
+  const handleGhostCommit = useCallback(async (content: string) => {
+    const today = getToday();
+    const existing = entriesByDate[today] ?? [];
+    const order_idx = existing.length;
+    const res = await fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: today, content, order_idx }),
+    });
+    const json = await res.json();
+    if (!json.success) return;
+    const newEntry: LogEntry = json.data;
+    setEntriesByDate(prev => ({ ...prev, [today]: [...(prev[today] ?? []), newEntry] }));
+    if (!loadedDates.includes(today)) {
+      setLoadedDates(prev => [today, ...prev]);
+    }
+  }, [entriesByDate, loadedDates]);
+
   useEffect(() => {
     const handler = () => {
       const active = document.activeElement as HTMLElement | null;
@@ -173,15 +169,6 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
       <PaneHeader slot={slot} onCollapse={onCollapse} onSwapPanes={onSwapPanes}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0 12px' }}>
           <span style={{ fontSize: '13px', color: '#888', fontWeight: 500 }}>Log</span>
-          <button
-            onClick={handleAddEntry}
-            title="New entry"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#22c55e')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#555')}
-          >
-            <Plus size={14} /> Entry
-          </button>
         </div>
       </PaneHeader>
 
@@ -197,6 +184,8 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
             onEnterAtEnd={handleEnterAtEnd}
             onNodeOpen={onNodeOpen}
             newEntryId={newEntryId}
+            showGhost={date === getToday()}
+            onGhostCommit={handleGhostCommit}
           />
         ))}
         {hasMore && (
