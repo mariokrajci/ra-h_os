@@ -11,6 +11,7 @@ interface LogEntryProps {
   onPromote: (id: number) => void;
   onEnterAtEnd: (afterId: number) => void;
   onNodeOpen?: (nodeId: number) => void;
+  autoFocus?: boolean;
 }
 
 export default function LogEntry({
@@ -20,6 +21,7 @@ export default function LogEntry({
   onPromote,
   onEnterAtEnd,
   onNodeOpen,
+  autoFocus,
 }: LogEntryProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
@@ -29,6 +31,12 @@ export default function LogEntry({
       divRef.current.textContent = entry.content;
     }
   }, [entry.content]);
+
+  useEffect(() => {
+    if (autoFocus && divRef.current) {
+      divRef.current.focus();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBlur = () => {
     const current = divRef.current?.textContent ?? '';

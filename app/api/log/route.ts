@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { date, content, order_idx } = body;
-    if (!date || !content) {
+    if (!date || content === undefined || content === null) {
       return NextResponse.json({ success: false, error: 'date and content are required' }, { status: 400 });
     }
     const entry = logService.createEntry({ date, content, order_idx });

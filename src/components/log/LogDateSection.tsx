@@ -9,6 +9,7 @@ interface LogDateSectionProps {
   onPromote: (id: number) => void;
   onEnterAtEnd: (afterId: number) => void;
   onNodeOpen?: (nodeId: number) => void;
+  newEntryId?: number | null;
 }
 
 function formatDateHeader(isoDate: string): string {
@@ -18,7 +19,7 @@ function formatDateHeader(isoDate: string): string {
 }
 
 export default function LogDateSection({
-  date, entries, onSave, onDelete, onPromote, onEnterAtEnd, onNodeOpen,
+  date, entries, onSave, onDelete, onPromote, onEnterAtEnd, onNodeOpen, newEntryId,
 }: LogDateSectionProps) {
   return (
     <div style={{ marginBottom: '24px' }}>
@@ -38,6 +39,7 @@ export default function LogDateSection({
             onPromote={onPromote}
             onEnterAtEnd={onEnterAtEnd}
             onNodeOpen={onNodeOpen}
+            autoFocus={entry.id === newEntryId}
           />
         ))}
       </div>

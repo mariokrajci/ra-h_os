@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { LogEntry } from '@/types/database';
 import { LogPaneProps } from './types';
 import PaneHeader from './PaneHeader';
@@ -20,6 +20,8 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
   const [allDates, setAllDates] = useState<string[]>([]);
   const [loadedDates, setLoadedDates] = useState<string[]>([]);
   const [hasMore, setHasMore] = useState(false);
+  const [newEntryId, setNewEntryId] = useState<number | null>(null);
+  const newEntryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchDates();
@@ -65,11 +67,14 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
   };
 
   const handleSave = useCallback(async (id: number, content: string) => {
-    await fetch(`/api/log/${id}`, {
+    const res = await fetch(`/api/log/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
+      keepalive: true,
     });
+    const json = await res.json();
+    if (!json.success) return;
     setEntriesByDate(prev => {
       const next = { ...prev };
       for (const date of Object.keys(next)) {
@@ -80,7 +85,9 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
   }, []);
 
   const handleDelete = useCallback(async (id: number) => {
-    await fetch(`/api/log/${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/log/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (!json.success) return;
     setEntriesByDate(prev => {
       const next = { ...prev };
       for (const date of Object.keys(next)) {
@@ -121,6 +128,9 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
     if (!loadedDates.includes(today)) {
       setLoadedDates(prev => [today, ...prev]);
     }
+    if (newEntryTimerRef.current) clearTimeout(newEntryTimerRef.current);
+    setNewEntryId(newEntry.id);
+    newEntryTimerRef.current = setTimeout(() => setNewEntryId(null), 100);
   }, [entriesByDate, loadedDates]);
 
   const handleEnterAtEnd = useCallback(async (afterId: number) => {
@@ -144,6 +154,9 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
       dateEntries.splice(order_idx, 0, newEntry);
       return { ...prev, [entryDate]: dateEntries };
     });
+    if (newEntryTimerRef.current) clearTimeout(newEntryTimerRef.current);
+    setNewEntryId(newEntry.id);
+    newEntryTimerRef.current = setTimeout(() => setNewEntryId(null), 100);
   }, [entriesByDate]);
 
   useEffect(() => {
@@ -183,6 +196,7 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
             onPromote={handlePromote}
             onEnterAtEnd={handleEnterAtEnd}
             onNodeOpen={onNodeOpen}
+            newEntryId={newEntryId}
           />
         ))}
         {hasMore && (
