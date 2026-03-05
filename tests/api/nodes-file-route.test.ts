@@ -2,31 +2,39 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   getNodeByIdMock,
+  updateNodeMock,
   getFileRecordByNodeAndKindMock,
+  upsertFileRecordMock,
   markFileStatusMock,
   existsAtPathMock,
   readAtPathMock,
   existsLegacyMock,
   readLegacyMock,
+  saveFileMock,
 } = vi.hoisted(() => ({
   getNodeByIdMock: vi.fn(),
+  updateNodeMock: vi.fn(),
   getFileRecordByNodeAndKindMock: vi.fn(),
+  upsertFileRecordMock: vi.fn(),
   markFileStatusMock: vi.fn(),
   existsAtPathMock: vi.fn(),
   readAtPathMock: vi.fn(),
   existsLegacyMock: vi.fn(),
   readLegacyMock: vi.fn(),
+  saveFileMock: vi.fn(),
 }));
 
 vi.mock('@/services/database', () => ({
   nodeService: {
     getNodeById: getNodeByIdMock,
+    updateNode: updateNodeMock,
   },
 }));
 
 vi.mock('@/services/storage/fileRegistryService', () => ({
   fileRegistryService: {
     getFileRecordByNodeAndKind: getFileRecordByNodeAndKindMock,
+    upsertFileRecord: upsertFileRecordMock,
     markFileStatus: markFileStatusMock,
   },
 }));
@@ -37,6 +45,7 @@ vi.mock('@/services/storage/fileService', () => ({
     readAtPath: readAtPathMock,
     exists: existsLegacyMock,
     read: readLegacyMock,
+    save: saveFileMock,
   },
 }));
 
@@ -51,6 +60,14 @@ describe('GET /api/nodes/[id]/file', () => {
     readAtPathMock.mockResolvedValue(Buffer.from(''));
     existsLegacyMock.mockResolvedValue(false);
     readLegacyMock.mockResolvedValue(Buffer.from(''));
+    saveFileMock.mockResolvedValue({
+      path: '/srv/files/15.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 100,
+      sha256: 'abc123',
+    });
+    upsertFileRecordMock.mockResolvedValue(undefined);
+    updateNodeMock.mockResolvedValue(undefined);
   });
 
   it('serves a registered file when registry record and path exist', async () => {
@@ -125,6 +142,74 @@ describe('GET /api/nodes/[id]/file', () => {
     expect(json.success).toBe(false);
     expect(json.code).toBe('REMOTE_FETCH_FAILED');
     expect(json.error).toContain('Failed to fetch remote document');
+  });
+
+  it('repairs registry entry from legacy local file when legacy path exists', async () => {
+    getNodeByIdMock.mockResolvedValue({
+      id: 15,
+      link: null,
+      metadata: { file_type: 'pdf' },
+    });
+    existsLegacyMock.mockResolvedValue(true);
+    readLegacyMock.mockResolvedValue(Buffer.from('%PDF-legacy'));
+
+    const response = await GET(new Request('http://localhost/api/nodes/15/file') as any, {
+      params: Promise.resolve({ id: '15' }),
+    });
+    const body = await response.arrayBuffer();
+
+    expect(response.status).toBe(200);
+    expect(Buffer.from(body).toString()).toContain('%PDF-legacy');
+    expect(saveFileMock).toHaveBeenCalledWith(15, 'pdf', expect.any(Buffer));
+    expect(upsertFileRecordMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodeId: 15,
+        kind: 'pdf',
+        storagePath: '/srv/files/15.pdf',
+        mimeType: 'application/pdf',
+        status: 'ready',
+      }),
+    );
+  });
+
+  it('caches remote pdf locally after successful fetch', async () => {
+    getNodeByIdMock.mockResolvedValue({
+      id: 15,
+      link: 'https://example.com/file.pdf',
+      metadata: { source: 'pdf' },
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(Buffer.from('%PDF-remote'), {
+          status: 200,
+          headers: { 'content-type': 'application/pdf' },
+        }),
+      ),
+    );
+
+    const response = await GET(new Request('http://localhost/api/nodes/15/file') as any, {
+      params: Promise.resolve({ id: '15' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(saveFileMock).toHaveBeenCalledWith(15, 'pdf', expect.any(Buffer));
+    expect(upsertFileRecordMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodeId: 15,
+        kind: 'pdf',
+      }),
+    );
+    expect(updateNodeMock).toHaveBeenCalledWith(
+      15,
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          file_type: 'pdf',
+          file_path: '/srv/files/15.pdf',
+        }),
+      }),
+    );
   });
 
   it('returns 404 when no file source is available', async () => {

@@ -50,6 +50,24 @@ function jsonError(
   );
 }
 
+async function cacheStoredFileForNode(
+  nodeId: number,
+  kind: StoredFileType,
+  buffer: Buffer,
+): Promise<{ path: string; mimeType: string }> {
+  const saved = await fileService.save(nodeId, kind, buffer);
+  await fileRegistryService.upsertFileRecord({
+    nodeId,
+    kind,
+    storagePath: saved.path,
+    mimeType: saved.mimeType,
+    sizeBytes: saved.sizeBytes,
+    sha256: saved.sha256,
+    status: 'ready',
+  });
+  return { path: saved.path, mimeType: saved.mimeType };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -104,9 +122,18 @@ export async function GET(
       // Legacy compatibility fallback (node-id derived storage path)
       if (await fileService.exists(nodeId, requestedType)) {
         const buffer = await fileService.read(nodeId, requestedType);
+        const cached = await cacheStoredFileForNode(nodeId, requestedType, buffer);
+        await nodeService.updateNode(nodeId, {
+          metadata: {
+            ...(node.metadata || {}),
+            file_type: requestedType,
+            file_path: cached.path,
+          },
+        });
+
         return new NextResponse(new Uint8Array(buffer), {
           headers: {
-            'Content-Type': requestedType === 'pdf' ? 'application/pdf' : 'application/epub+zip',
+            'Content-Type': cached.mimeType,
             'Content-Length': buffer.byteLength.toString(),
             'Cache-Control': 'no-store, no-cache, must-revalidate',
             Pragma: 'no-cache',
@@ -150,10 +177,19 @@ export async function GET(
     }
 
     const buffer = Buffer.from(await remoteResponse.arrayBuffer());
+    const cacheType = requestedType ?? remoteFileType;
+    const cached = await cacheStoredFileForNode(nodeId, cacheType, buffer);
+    await nodeService.updateNode(nodeId, {
+      metadata: {
+        ...(node.metadata || {}),
+        file_type: cacheType,
+        file_path: cached.path,
+      },
+    });
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
-        'Content-Type': remoteResponse.headers.get('content-type') || (remoteFileType === 'pdf' ? 'application/pdf' : 'application/epub+zip'),
+        'Content-Type': remoteResponse.headers.get('content-type') || cached.mimeType,
         'Content-Length': buffer.byteLength.toString(),
         'Cache-Control': 'no-store, no-cache, must-revalidate',
         Pragma: 'no-cache',
