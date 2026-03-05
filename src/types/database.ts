@@ -212,3 +212,19 @@ export interface AnnotationData {
   anchor?: Record<string, unknown>;
   fallback_context?: string;
 }
+
+export interface LogEntry {
+  id: number;
+  date: string;                  // ISO date, e.g. '2026-03-05'
+  content: string;               // markdown text
+  order_idx: number;
+  promoted_node_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LogEntryData {
+  date: string;
+  content: string;
+  order_idx?: number;
+}
