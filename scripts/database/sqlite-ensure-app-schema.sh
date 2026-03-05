@@ -167,6 +167,27 @@ CREATE INDEX idx_edges_to ON edges(to_node_id);
 SQL
 fi
 
+if ! has_table files; then
+  "$SQLITE_BIN" "$DB_PATH" <<'SQL'
+CREATE TABLE files (
+  id INTEGER PRIMARY KEY,
+  node_id INTEGER NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('pdf', 'epub')),
+  storage_path TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ready' CHECK (status IN ('ready', 'missing', 'orphaned', 'deleted')),
+  created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+  updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+  last_verified_at TEXT,
+  FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX idx_files_node_kind ON files(node_id, kind);
+CREATE INDEX idx_files_status ON files(status);
+SQL
+fi
+
 echo "Dropping legacy episodic/semantic memory tables if they exist..."
 
 if has_table chats; then

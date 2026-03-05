@@ -16,6 +16,10 @@
     "setup": "npm install",
     "sqlite:backup": "bash scripts/database/sqlite-backup.sh",
     "sqlite:restore": "bash scripts/database/sqlite-restore.sh",
+    "files:verify": "tsx scripts/database/verify-files-integrity.ts",
+    "files:backup": "bash scripts/database/files-backup.sh",
+    "backup:all": "bash scripts/database/backup-all.sh",
+    "restore:all": "bash scripts/database/restore-all.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "evals": "RAH_EVALS_LOG=1 tsx tests/evals/runner.ts"

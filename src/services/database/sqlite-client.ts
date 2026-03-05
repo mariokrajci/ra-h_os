@@ -693,6 +693,30 @@ class SQLiteClient {
         }
       }
 
+      // 11) Ensure files registry table exists (single-server file management)
+      try {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS files (
+            id INTEGER PRIMARY KEY,
+            node_id INTEGER NOT NULL,
+            kind TEXT NOT NULL CHECK (kind IN ('pdf', 'epub')),
+            storage_path TEXT NOT NULL,
+            mime_type TEXT NOT NULL,
+            size_bytes INTEGER NOT NULL,
+            sha256 TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'ready' CHECK (status IN ('ready', 'missing', 'orphaned', 'deleted')),
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+            updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+            last_verified_at TEXT,
+            FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+          );
+        `);
+        this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_files_node_kind ON files(node_id, kind);`);
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_files_status ON files(status);`);
+      } catch (filesSchemaErr) {
+        console.warn('Failed to ensure files table schema:', filesSchemaErr);
+      }
+
       // 10) Final schema pass migrations (content→notes, event_date, icon, drop dead columns)
       try {
         const nodeCols2 = this.db.prepare('PRAGMA table_info(nodes)').all() as Array<{ name: string }>;

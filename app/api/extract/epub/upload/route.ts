@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchBookMetadata } from '@/services/ingestion/bookMetadata';
-import { saveFile } from '@/services/storage/fileStorage';
+import { fileRegistryService } from '@/services/storage/fileRegistryService';
+import { fileService } from '@/services/storage/fileService';
 import { extractEpubFromBuffer } from '@/services/typescript/extractors/epub';
 
 export const runtime = 'nodejs';
@@ -68,7 +69,16 @@ export async function POST(request: NextRequest) {
     }
 
     const nodeId = nodeResult.data.id;
-    const filePath = await saveFile(nodeId, 'epub', buffer);
+    const storedFile = await fileService.save(nodeId, 'epub', buffer);
+    await fileRegistryService.upsertFileRecord({
+      nodeId,
+      kind: 'epub',
+      storagePath: storedFile.path,
+      mimeType: storedFile.mimeType,
+      sizeBytes: storedFile.sizeBytes,
+      sha256: storedFile.sha256,
+      status: 'ready',
+    });
     const bookMetadata = await fetchBookMetadata({
       title,
       author: extraction.metadata.author,
@@ -87,7 +97,7 @@ export async function POST(request: NextRequest) {
           extraction_method: extraction.metadata.extraction_method,
           imported_at: new Date().toISOString(),
           file_type: 'epub',
-          file_path: filePath,
+          file_path: storedFile.path,
           ...bookMetadata,
         },
       }),
