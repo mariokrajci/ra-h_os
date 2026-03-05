@@ -10,6 +10,7 @@ interface BookCardProps {
   node: Node;
   onOpen: (node: Node) => void;
   onConfirmMatch?: (node: Node, candidate: BookMatchCandidate) => Promise<void> | void;
+  onRetryMetadata?: (node: Node) => Promise<void> | void;
 }
 
 function gradientForTitle(title: string): string {
@@ -23,7 +24,7 @@ function gradientForTitle(title: string): string {
   return `linear-gradient(135deg, hsl(${a} 55% 42%), hsl(${b} 45% 24%))`;
 }
 
-export default function BookCard({ node, onOpen, onConfirmMatch }: BookCardProps) {
+export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata }: BookCardProps) {
   const [imgError, setImgError] = useState(false);
   const title = node.metadata?.book_title || node.title;
   const author = node.metadata?.book_author;
@@ -110,6 +111,26 @@ export default function BookCard({ node, onOpen, onConfirmMatch }: BookCardProps
                 }}
               >
                 Confirm
+              </button>
+            ) : null}
+            {statusHint?.label === 'Add author/ISBN to improve match' && onRetryMetadata ? (
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRetryMetadata(node);
+                }}
+                style={{
+                  marginTop: '6px',
+                  border: '1px solid rgba(106,106,106,0.45)',
+                  background: 'rgba(106,106,106,0.12)',
+                  color: '#b8b8b8',
+                  borderRadius: '6px',
+                  padding: '2px 6px',
+                  fontSize: '10px',
+                  cursor: 'pointer',
+                }}
+              >
+                Retry
               </button>
             ) : null}
           </div>

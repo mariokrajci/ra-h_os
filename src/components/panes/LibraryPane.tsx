@@ -91,6 +91,24 @@ export default function LibraryPane({
     )));
   }, []);
 
+  const retryBookEnrichment = useCallback(async (node: Node) => {
+    await fetch(`/api/nodes/${node.id}/enrich-book`, {
+      method: 'POST',
+    });
+
+    setNodes((prev) => prev.map((item) => (
+      item.id === node.id
+        ? {
+          ...item,
+          metadata: {
+            ...(item.metadata || {}),
+            book_metadata_status: 'pending',
+          },
+        }
+        : item
+    )));
+  }, []);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <PaneHeader slot={slot} onCollapse={onCollapse} onSwapPanes={onSwapPanes}>
@@ -105,7 +123,13 @@ export default function LibraryPane({
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '18px' }}>
             {visibleNodes.map((node) => (
-              <BookCard key={node.id} node={node} onOpen={setReaderNode} onConfirmMatch={confirmMatch} />
+              <BookCard
+                key={node.id}
+                node={node}
+                onOpen={setReaderNode}
+                onConfirmMatch={confirmMatch}
+                onRetryMetadata={retryBookEnrichment}
+              />
             ))}
           </div>
         )}
