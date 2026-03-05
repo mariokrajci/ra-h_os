@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const entries = logService.getEntriesByDate(date);
     return NextResponse.json({ success: true, data: entries });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
@@ -28,6 +28,6 @@ export async function POST(request: NextRequest) {
     const entry = logService.createEntry({ date, content, order_idx });
     return NextResponse.json({ success: true, data: entry }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

@@ -9,6 +9,6 @@ export async function GET() {
     const dates = logService.getDatesWithEntries();
     return NextResponse.json({ success: true, data: dates });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
