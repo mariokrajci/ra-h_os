@@ -717,7 +717,7 @@ class SQLiteClient {
         console.warn('Failed to ensure files table schema:', filesSchemaErr);
       }
 
-      // 11) Log entries table
+      // 12) Log entries table
       try {
         this.db.exec(`
           CREATE TABLE IF NOT EXISTS log_entries (
@@ -755,7 +755,7 @@ class SQLiteClient {
               INSERT INTO log_entries_fts(log_entries_fts, rowid, content) VALUES('delete', old.id, old.content);
             END;
           CREATE TRIGGER IF NOT EXISTS log_entries_updated_at
-            AFTER UPDATE ON log_entries BEGIN
+            AFTER UPDATE OF content, date, order_idx, promoted_node_id ON log_entries BEGIN
               UPDATE log_entries SET updated_at = datetime('now') WHERE id = old.id;
             END;
         `);
