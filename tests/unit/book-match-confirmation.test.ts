@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyBookMatchCandidate, getFirstBookMatchCandidate } from '@/components/panes/library/bookMatch';
+import {
+  applyBookMatchCandidate,
+  getBookMatchCandidates,
+  getFirstBookMatchCandidate,
+} from '@/components/panes/library/bookMatch';
 
 describe('book match confirmation helpers', () => {
   it('returns the first candidate when present', () => {
@@ -16,6 +20,18 @@ describe('book match confirmation helpers', () => {
       isbn: '9780735211292',
       cover_url: 'https://example.com/c.jpg',
     });
+  });
+
+  it('returns all available candidates for picker rendering', () => {
+    const candidates = getBookMatchCandidates({
+      book_match_candidates: [
+        { title: 'Atomic Habits', author: 'James Clear' },
+        { title: 'Atomic Habits: Workbook', author: 'James Clear' },
+      ],
+    });
+
+    expect(candidates).toHaveLength(2);
+    expect(candidates[1].title).toBe('Atomic Habits: Workbook');
   });
 
   it('applies confirmed candidate metadata and clears ambiguity', () => {

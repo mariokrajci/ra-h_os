@@ -154,6 +154,22 @@ describe('enrichBookNode', () => {
         coverUrl: 'https://covers.example/atomic-habits.jpg',
         confidence: 0.72,
       },
+      candidates: [
+        {
+          title: 'Atomic Habits',
+          author: 'James Clear',
+          isbn: '9780735211292',
+          coverUrl: 'https://covers.example/atomic-habits.jpg',
+          confidence: 0.72,
+        },
+        {
+          title: 'Atomic Habits: Workbook',
+          author: 'James Clear',
+          isbn: '9780735211293',
+          coverUrl: 'https://covers.example/atomic-habits-workbook.jpg',
+          confidence: 0.66,
+        },
+      ],
     });
 
     await expect(enrichBookNode(5)).resolves.toBe('ambiguous');
@@ -168,6 +184,12 @@ describe('enrichBookNode', () => {
               author: 'James Clear',
               isbn: '9780735211292',
               cover_url: 'https://covers.example/atomic-habits.jpg',
+            }),
+            expect.objectContaining({
+              title: 'Atomic Habits: Workbook',
+              author: 'James Clear',
+              isbn: '9780735211293',
+              cover_url: 'https://covers.example/atomic-habits-workbook.jpg',
             }),
           ],
         }),

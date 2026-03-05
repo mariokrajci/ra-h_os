@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { Node } from '@/types/database';
 import ProgressRing from './ProgressRing';
 import { getBookStatusHint } from './bookStatus';
-import { getFirstBookMatchCandidate, type BookMatchCandidate } from './bookMatch';
+import { getBookMatchCandidates, type BookMatchCandidate } from './bookMatch';
 
 interface BookCardProps {
   node: Node;
@@ -31,7 +31,9 @@ export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata
   const cover = !imgError ? node.metadata?.cover_url : null;
   const percent = node.metadata?.reading_progress?.percent ?? 0;
   const statusHint = getBookStatusHint(node.metadata);
-  const firstCandidate = getFirstBookMatchCandidate(node.metadata);
+  const candidates = getBookMatchCandidates(node.metadata);
+  const [selectedCandidateIndex, setSelectedCandidateIndex] = useState(0);
+  const selectedCandidate = candidates[selectedCandidateIndex] || candidates[0] || null;
 
   return (
     <button
@@ -93,25 +95,49 @@ export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata
                 {statusHint.label}
               </div>
             ) : null}
-            {statusHint?.label === 'Confirm book match' && firstCandidate && onConfirmMatch ? (
-              <button
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onConfirmMatch(node, firstCandidate);
-                }}
-                style={{
-                  marginTop: '6px',
-                  border: '1px solid rgba(217,164,65,0.45)',
-                  background: 'rgba(217,164,65,0.12)',
-                  color: '#d9a441',
-                  borderRadius: '6px',
-                  padding: '2px 6px',
-                  fontSize: '10px',
-                  cursor: 'pointer',
-                }}
-              >
-                Confirm
-              </button>
+            {statusHint?.label === 'Confirm book match' && selectedCandidate && onConfirmMatch ? (
+              <div style={{ marginTop: '6px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                {candidates.length > 1 ? (
+                  <select
+                    value={String(selectedCandidateIndex)}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={(event) => setSelectedCandidateIndex(Number(event.target.value))}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      background: 'rgba(20,20,20,0.75)',
+                      color: '#d5d5d5',
+                      border: '1px solid rgba(217,164,65,0.35)',
+                      borderRadius: '6px',
+                      fontSize: '10px',
+                      padding: '2px 4px',
+                    }}
+                  >
+                    {candidates.map((candidate, index) => (
+                      <option key={`${candidate.title}-${index}`} value={index}>
+                        {candidate.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onConfirmMatch(node, selectedCandidate);
+                  }}
+                  style={{
+                    border: '1px solid rgba(217,164,65,0.45)',
+                    background: 'rgba(217,164,65,0.12)',
+                    color: '#d9a441',
+                    borderRadius: '6px',
+                    padding: '2px 6px',
+                    fontSize: '10px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
             ) : null}
             {statusHint?.label === 'Add author/ISBN to improve match' && onRetryMetadata ? (
               <button

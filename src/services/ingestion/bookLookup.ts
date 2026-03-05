@@ -18,6 +18,7 @@ export interface BookLookupProvider {
   lookupByIsbn: (isbn: string) => Promise<BookLookupCandidate | null>;
   lookupByTitleAuthor: (title: string, author?: string) => Promise<BookLookupCandidate | null>;
   lookupByTitle: (title: string) => Promise<BookLookupCandidate | null>;
+  lookupCandidates?: (title: string, author?: string) => Promise<BookLookupCandidate[]>;
 }
 
 export interface BookLookupResult {
@@ -25,6 +26,7 @@ export interface BookLookupResult {
   matchSource?: 'isbn' | 'title_author' | 'title';
   confidence: number;
   candidate: BookLookupCandidate | null;
+  candidates?: BookLookupCandidate[];
 }
 
 function normalizeIsbn(raw?: string): string | undefined {
@@ -42,6 +44,22 @@ function pickCoverFromOpenLibrary(doc: Record<string, unknown>): string | undefi
 export function createOpenLibraryBookLookupProvider(
   fetchImpl: typeof fetch = fetch,
 ): BookLookupProvider {
+  const mapDocToCandidate = (doc: Record<string, unknown>, confidence: number): BookLookupCandidate | null => {
+    const title = typeof doc.title === 'string' ? doc.title.trim() : '';
+    if (!title) return null;
+    return {
+      title,
+      author: Array.isArray(doc.author_name) && typeof doc.author_name[0] === 'string'
+        ? String(doc.author_name[0]).trim()
+        : undefined,
+      isbn: Array.isArray(doc.isbn) && typeof doc.isbn[0] === 'string'
+        ? String(doc.isbn[0]).replace(/-/g, '')
+        : undefined,
+      coverUrl: pickCoverFromOpenLibrary(doc),
+      confidence,
+    };
+  };
+
   return {
     async lookupByIsbn(isbn: string) {
       const response = await fetchImpl(`https://openlibrary.org/isbn/${encodeURIComponent(isbn)}.json`);
@@ -67,21 +85,7 @@ export function createOpenLibraryBookLookupProvider(
       const payload = await response.json() as { docs?: Array<Record<string, unknown>> };
       const doc = payload.docs?.[0];
       if (!doc) return null;
-      const matchTitle = typeof doc.title === 'string' ? doc.title.trim() : '';
-      if (!matchTitle) return null;
-      const authorName = Array.isArray(doc.author_name) && typeof doc.author_name[0] === 'string'
-        ? String(doc.author_name[0]).trim()
-        : undefined;
-      const isbn = Array.isArray(doc.isbn) && typeof doc.isbn[0] === 'string'
-        ? String(doc.isbn[0]).replace(/-/g, '')
-        : undefined;
-      return {
-        title: matchTitle,
-        author: authorName,
-        isbn,
-        coverUrl: pickCoverFromOpenLibrary(doc),
-        confidence: author ? 0.9 : 0.75,
-      };
+      return mapDocToCandidate(doc, author ? 0.9 : 0.75);
     },
     async lookupByTitle(title: string) {
       const search = new URL('https://openlibrary.org/search.json');
@@ -91,20 +95,38 @@ export function createOpenLibraryBookLookupProvider(
       if (!response.ok) return null;
       const payload = await response.json() as { docs?: Array<Record<string, unknown>> };
       const doc = payload.docs?.[0];
-      if (!doc || typeof doc.title !== 'string' || !doc.title.trim()) return null;
-      return {
-        title: doc.title.trim(),
-        author: Array.isArray(doc.author_name) && typeof doc.author_name[0] === 'string'
-          ? String(doc.author_name[0]).trim()
-          : undefined,
-        isbn: Array.isArray(doc.isbn) && typeof doc.isbn[0] === 'string'
-          ? String(doc.isbn[0]).replace(/-/g, '')
-          : undefined,
-        coverUrl: pickCoverFromOpenLibrary(doc),
-        confidence: 0.68,
-      };
+      if (!doc) return null;
+      return mapDocToCandidate(doc, 0.68);
+    },
+    async lookupCandidates(title: string, author?: string) {
+      const search = new URL('https://openlibrary.org/search.json');
+      search.searchParams.set('title', title);
+      if (author) search.searchParams.set('author', author);
+      search.searchParams.set('limit', '3');
+
+      const response = await fetchImpl(search.toString());
+      if (!response.ok) return [];
+      const payload = await response.json() as { docs?: Array<Record<string, unknown>> };
+      const docs = Array.isArray(payload.docs) ? payload.docs : [];
+      return docs
+        .map((doc, index) => mapDocToCandidate(doc, Math.max(0.55, 0.78 - index * 0.07)))
+        .filter((candidate): candidate is BookLookupCandidate => Boolean(candidate));
     },
   };
+}
+
+function dedupeCandidates(candidates: BookLookupCandidate[]): BookLookupCandidate[] {
+  const seen = new Set<string>();
+  const deduped: BookLookupCandidate[] = [];
+
+  for (const candidate of candidates) {
+    const key = candidate.title.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(candidate);
+  }
+
+  return deduped;
 }
 
 export async function lookupBookMetadata(input: BookLookupInput, provider: BookLookupProvider): Promise<BookLookupResult> {
@@ -125,21 +147,31 @@ export async function lookupBookMetadata(input: BookLookupInput, provider: BookL
     if (input.title?.trim()) {
       const byTitleAuthor = await provider.lookupByTitleAuthor(input.title.trim(), input.author?.trim());
       if (byTitleAuthor) {
+        const classification = classifyBookMatchConfidence(byTitleAuthor.confidence);
+        const candidates = classification === 'medium' && provider.lookupCandidates
+          ? dedupeCandidates([byTitleAuthor, ...(await provider.lookupCandidates(input.title.trim(), input.author?.trim()))]).slice(0, 3)
+          : undefined;
         return {
-          status: classifyBookMatchConfidence(byTitleAuthor.confidence) === 'high' ? 'matched' : 'ambiguous',
+          status: classification === 'high' ? 'matched' : 'ambiguous',
           matchSource: 'title_author',
           confidence: byTitleAuthor.confidence,
           candidate: byTitleAuthor,
+          candidates,
         };
       }
 
       const byTitle = await provider.lookupByTitle(input.title.trim());
       if (byTitle) {
+        const classification = classifyBookMatchConfidence(byTitle.confidence);
+        const candidates = classification === 'medium' && provider.lookupCandidates
+          ? dedupeCandidates([byTitle, ...(await provider.lookupCandidates(input.title.trim(), input.author?.trim()))]).slice(0, 3)
+          : undefined;
         return {
-          status: classifyBookMatchConfidence(byTitle.confidence) === 'high' ? 'matched' : 'ambiguous',
+          status: classification === 'high' ? 'matched' : 'ambiguous',
           matchSource: 'title',
           confidence: byTitle.confidence,
           candidate: byTitle,
+          candidates,
         };
       }
     }

@@ -54,6 +54,23 @@ describe('lookupBookMetadata', () => {
     expect(result).toMatchObject({ status: 'ambiguous', matchSource: 'title' });
   });
 
+  it('returns multiple candidates for ambiguous title matches when provider supports it', async () => {
+    const provider: BookLookupProvider = {
+      lookupByIsbn: async () => null,
+      lookupByTitleAuthor: async () => null,
+      lookupByTitle: async () => ({ title: 'Atomic Habits', confidence: 0.72 }),
+      lookupCandidates: async () => ([
+        { title: 'Atomic Habits', author: 'James Clear', confidence: 0.72 },
+        { title: 'Atomic Habits: Workbook', author: 'James Clear', confidence: 0.66 },
+      ]),
+    };
+
+    const result = await lookupBookMetadata({ title: 'Atomic Habits' }, provider);
+    expect(result.status).toBe('ambiguous');
+    expect(result.candidates).toHaveLength(2);
+    expect(result.candidates?.[1].title).toBe('Atomic Habits: Workbook');
+  });
+
   it('returns failed when provider throws', async () => {
     const provider: BookLookupProvider = {
       lookupByIsbn: async () => {

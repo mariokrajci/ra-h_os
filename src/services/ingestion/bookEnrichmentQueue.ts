@@ -71,14 +71,17 @@ export async function enrichBookNode(nodeId: number): Promise<BookEnrichmentOutc
     }
 
     if (lookup.status === 'ambiguous') {
-      nextMetadata.book_match_candidates = [
-        {
-          title: candidate.title,
-          author: candidate.author,
-          isbn: candidate.isbn,
-          cover_url: candidate.coverUrl,
-        },
-      ];
+      const normalizedCandidates = (lookup.candidates && lookup.candidates.length > 0
+        ? lookup.candidates
+        : [candidate])
+        .map((option) => ({
+          title: option.title,
+          author: option.author,
+          isbn: option.isbn,
+          cover_url: option.coverUrl,
+        }));
+
+      nextMetadata.book_match_candidates = normalizedCandidates;
     } else {
       nextMetadata.book_match_candidates = [];
     }

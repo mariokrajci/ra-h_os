@@ -12,7 +12,7 @@ function isCoverLocked(metadata: NodeMetadata): boolean {
 }
 
 export function getFirstBookMatchCandidate(metadata?: NodeMetadata | null): BookMatchCandidate | null {
-  const candidate = metadata?.book_match_candidates?.[0];
+  const candidate = getBookMatchCandidates(metadata)[0];
   if (!candidate || typeof candidate.title !== 'string' || !candidate.title.trim()) {
     return null;
   }
@@ -23,6 +23,20 @@ export function getFirstBookMatchCandidate(metadata?: NodeMetadata | null): Book
     isbn: candidate.isbn,
     cover_url: candidate.cover_url,
   };
+}
+
+export function getBookMatchCandidates(metadata?: NodeMetadata | null): BookMatchCandidate[] {
+  const candidates = metadata?.book_match_candidates;
+  if (!Array.isArray(candidates)) return [];
+
+  return candidates
+    .filter((candidate) => candidate && typeof candidate.title === 'string' && candidate.title.trim().length > 0)
+    .map((candidate) => ({
+      title: candidate.title,
+      author: candidate.author,
+      isbn: candidate.isbn,
+      cover_url: candidate.cover_url,
+    }));
 }
 
 export function applyBookMatchCandidate(
