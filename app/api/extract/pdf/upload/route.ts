@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         title,
         type: 'pdf',
+        dimensions: ['books'],
         // Keep content readable in UI (not the full extracted text)
         content: `Imported PDF: ${file.name} (${extraction.metadata.pages} pages, ${Math.round(extraction.metadata.text_length / 1000)}k characters)`,
         // Full extracted text goes in chunk for universal chunking/embedding

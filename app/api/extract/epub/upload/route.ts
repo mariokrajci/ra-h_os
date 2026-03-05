@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         title,
         type: 'book',
+        dimensions: ['books'],
         content: extraction.content,
         chunk: extraction.chunk,
         metadata: {

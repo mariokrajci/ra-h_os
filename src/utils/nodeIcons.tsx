@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Video, FileText, File, Globe, Folder, Github, Mic2 } from 'lucide-react';
+import { Video, FileText, File, Globe, Folder, Github, Mic2, BookOpen } from 'lucide-react';
 import { Node } from '@/types/database';
 import { getIconByName } from '@/components/common/LucideIconPicker';
 
@@ -119,6 +119,18 @@ export function getNodeIcon(
   dimensionIcons?: Record<string, string>,
   size: number = 16,
 ): React.ReactElement {
+  const metadata = node.metadata;
+  const isBookNode =
+    metadata?.content_kind === 'book' ||
+    typeof metadata?.book_title === 'string' ||
+    typeof metadata?.book_author === 'string' ||
+    typeof metadata?.book_isbn === 'string' ||
+    node.dimensions?.some((dim) => dim.toLowerCase() === 'books');
+
+  if (isBookNode) {
+    return <BookOpen size={size} color="#94a3b8" />;
+  }
+
   // If node has a link, use URL-derived icon (primary)
   if (node.link) {
     const kind = getLinkIconKind(node.link, node.metadata?.type);

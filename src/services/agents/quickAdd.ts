@@ -214,6 +214,7 @@ async function handleNoteQuickAdd(
   const nodePayload: Record<string, unknown> = {
     title,
     notes: content,
+    ...(isBookCommand ? { dimensions: ['books'] } : {}),
     metadata: {
       source: 'quick-add-note',
       refined_at: new Date().toISOString(),
