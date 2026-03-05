@@ -33,6 +33,80 @@ function normalizeIsbn(raw?: string): string | undefined {
   return normalized.toUpperCase();
 }
 
+function pickCoverFromOpenLibrary(doc: Record<string, unknown>): string | undefined {
+  const coverId = typeof doc.cover_i === 'number' ? doc.cover_i : undefined;
+  if (!coverId) return undefined;
+  return `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
+}
+
+export function createOpenLibraryBookLookupProvider(
+  fetchImpl: typeof fetch = fetch,
+): BookLookupProvider {
+  return {
+    async lookupByIsbn(isbn: string) {
+      const response = await fetchImpl(`https://openlibrary.org/isbn/${encodeURIComponent(isbn)}.json`);
+      if (!response.ok) return null;
+      const payload = await response.json() as Record<string, unknown>;
+      const title = typeof payload.title === 'string' ? payload.title.trim() : '';
+      if (!title) return null;
+      return {
+        title,
+        isbn,
+        coverUrl: `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg`,
+        confidence: 0.98,
+      };
+    },
+    async lookupByTitleAuthor(title: string, author?: string) {
+      const search = new URL('https://openlibrary.org/search.json');
+      search.searchParams.set('title', title);
+      if (author) search.searchParams.set('author', author);
+      search.searchParams.set('limit', '1');
+
+      const response = await fetchImpl(search.toString());
+      if (!response.ok) return null;
+      const payload = await response.json() as { docs?: Array<Record<string, unknown>> };
+      const doc = payload.docs?.[0];
+      if (!doc) return null;
+      const matchTitle = typeof doc.title === 'string' ? doc.title.trim() : '';
+      if (!matchTitle) return null;
+      const authorName = Array.isArray(doc.author_name) && typeof doc.author_name[0] === 'string'
+        ? String(doc.author_name[0]).trim()
+        : undefined;
+      const isbn = Array.isArray(doc.isbn) && typeof doc.isbn[0] === 'string'
+        ? String(doc.isbn[0]).replace(/-/g, '')
+        : undefined;
+      return {
+        title: matchTitle,
+        author: authorName,
+        isbn,
+        coverUrl: pickCoverFromOpenLibrary(doc),
+        confidence: author ? 0.9 : 0.75,
+      };
+    },
+    async lookupByTitle(title: string) {
+      const search = new URL('https://openlibrary.org/search.json');
+      search.searchParams.set('title', title);
+      search.searchParams.set('limit', '1');
+      const response = await fetchImpl(search.toString());
+      if (!response.ok) return null;
+      const payload = await response.json() as { docs?: Array<Record<string, unknown>> };
+      const doc = payload.docs?.[0];
+      if (!doc || typeof doc.title !== 'string' || !doc.title.trim()) return null;
+      return {
+        title: doc.title.trim(),
+        author: Array.isArray(doc.author_name) && typeof doc.author_name[0] === 'string'
+          ? String(doc.author_name[0]).trim()
+          : undefined,
+        isbn: Array.isArray(doc.isbn) && typeof doc.isbn[0] === 'string'
+          ? String(doc.isbn[0]).replace(/-/g, '')
+          : undefined,
+        coverUrl: pickCoverFromOpenLibrary(doc),
+        confidence: 0.68,
+      };
+    },
+  };
+}
+
 export async function lookupBookMetadata(input: BookLookupInput, provider: BookLookupProvider): Promise<BookLookupResult> {
   try {
     const isbn = normalizeIsbn(input.isbn);

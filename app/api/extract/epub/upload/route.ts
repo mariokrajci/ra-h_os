@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchBookMetadata } from '@/services/ingestion/bookMetadata';
+import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 import { fileRegistryService } from '@/services/storage/fileRegistryService';
 import { fileService } from '@/services/storage/fileService';
 import { extractEpubFromBuffer } from '@/services/typescript/extractors/epub';
@@ -107,6 +108,8 @@ export async function POST(request: NextRequest) {
       const patchError = await patchResponse.json().catch(() => ({}));
       throw new Error(patchError.error || `Failed to finalize uploaded EPUB node: ${patchResponse.status}`);
     }
+
+    bookEnrichmentQueue.enqueue(nodeId, { reason: 'epub_upload' });
 
     return NextResponse.json({
       success: true,

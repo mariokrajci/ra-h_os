@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchBookMetadata } from '@/services/ingestion/bookMetadata';
+import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 import { fileRegistryService } from '@/services/storage/fileRegistryService';
 import { fileService } from '@/services/storage/fileService';
 import { PaperExtractor } from '@/services/typescript/extractors/paper';
@@ -125,6 +126,8 @@ export async function POST(request: NextRequest) {
       const patchError = await patchResponse.json().catch(() => ({}));
       throw new Error(patchError.error || `Failed to finalize uploaded PDF node: ${patchResponse.status}`);
     }
+
+    bookEnrichmentQueue.enqueue(nodeId, { reason: 'pdf_upload' });
 
     return NextResponse.json({
       success: true,

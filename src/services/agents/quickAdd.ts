@@ -9,6 +9,7 @@ import { detectInputType, resolveQuickAddRouting, type QuickAddInputType, type Q
 import { eventBroadcaster } from '@/services/events';
 import { fetchBookMetadata } from '@/services/ingestion/bookMetadata';
 import type { BookCommandParseResult } from '@/services/ingestion/bookCommand';
+import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 
 export type { QuickAddMode, QuickAddInputType } from './quickAddDetection';
 export { detectInputType } from './quickAddDetection';
@@ -249,6 +250,9 @@ async function handleNoteQuickAdd(
   }
 
   const nodeId = rawResult?.data?.id;
+  if (isBookCommand && typeof nodeId === 'number') {
+    bookEnrichmentQueue.enqueue(nodeId, { reason: 'quick_add_book' });
+  }
   const nodeReference = nodeId ? formatNodeForChat({ id: nodeId, title }) : 'None';
   const resultMessage = nodeId ? `Created note ${nodeReference}.` : 'Created note.';
 
