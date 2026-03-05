@@ -21,6 +21,9 @@ import { websiteExtractTool } from '../other/websiteExtract';
 import { paperExtractTool } from '../other/paperExtract';
 import { sqliteQueryTool } from '../other/sqliteQuery';
 import { logEvalToolCall } from '@/services/evals/evalsLogger';
+import { logSearchTool } from '../log/logSearch';
+import { logAddTool } from '../log/logAdd';
+import { logPromoteTool } from '../log/logPromote';
 
 // Core tools available to all agents (read-only graph operations)
 const CORE_TOOLS: Record<string, any> = {
@@ -32,6 +35,7 @@ const CORE_TOOLS: Record<string, any> = {
   getDimension: getDimensionTool,
   queryDimensionNodes: queryDimensionNodesTool,
   searchContentEmbeddings: searchContentEmbeddingsTool,
+  logSearch: logSearchTool,
 };
 
 const ORCHESTRATION_TOOLS: Record<string, any> = {
@@ -51,6 +55,8 @@ const EXECUTION_TOOLS: Record<string, any> = {
   youtubeExtract: youtubeExtractTool,
   websiteExtract: websiteExtractTool,
   paperExtract: paperExtractTool,
+  logAdd: logAddTool,
+  logPromote: logPromoteTool,
 };
 
 export const TOOL_SETS = {

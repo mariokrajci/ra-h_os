@@ -54,7 +54,10 @@ export const TOOL_GROUP_ASSIGNMENTS: Record<string, string> = {
   embedContent: 'execution',
   youtubeExtract: 'execution',
   websiteExtract: 'execution',
-  paperExtract: 'execution'
+  paperExtract: 'execution',
+  logSearch: 'core',
+  logAdd: 'execution',
+  logPromote: 'execution',
 };
 
 /**
