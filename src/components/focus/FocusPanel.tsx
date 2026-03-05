@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, type DragEvent } from 'react';
+import { useState, useEffect, useMemo, useRef, type DragEvent } from 'react';
 import { Eye, Trash2, Link, Loader, Database, Check, RefreshCw, Pencil, X, Save, Plus, BookOpen } from 'lucide-react';
 import { parseAndRenderContent } from '@/components/helpers/NodeLabelRenderer';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
@@ -17,6 +17,7 @@ import { BookReader, type ReaderAnnotationInput } from './reader';
 import { FOCUS_PANEL_BODY_TEXT_STYLE, FOCUS_PANEL_BODY_TEXTAREA_STYLE } from './focusPanelStyles';
 import { getQuotaWarningMessage, isInsufficientQuotaError } from '@/services/embedding/errors';
 import { getNodeNotesStatus, getNodeSourceStatus } from './nodeIngestionStatus';
+import { applyBookMatchCandidate, getBookMatchCandidates } from '@/components/panes/library/bookMatch';
 
 interface PopularDimension {
   dimension: string;
@@ -157,7 +158,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   const [regeneratingDescription, setRegeneratingDescription] = useState<number | null>(null);
 
   // Content tab state: 'notes', 'desc', or 'source'
-  const [activeContentTab, setActiveContentTab] = useState<'notes' | 'desc' | 'edges' | 'source'>('desc');
+  const [activeContentTab, setActiveContentTab] = useState<'notes' | 'desc' | 'edges' | 'source' | 'metadata'>('desc');
 
   // Desc (description) edit mode state
   const [descEditMode, setDescEditMode] = useState(false);
@@ -174,9 +175,30 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   const [sourceEditMode, setSourceEditMode] = useState(false);
   const [sourceEditValue, setSourceEditValue] = useState('');
   const [sourceSaving, setSourceSaving] = useState(false);
+  const [metadataEditMode, setMetadataEditMode] = useState(false);
+  const [metadataSaving, setMetadataSaving] = useState(false);
+  const [metadataRetrying, setMetadataRetrying] = useState(false);
+  const [metadataConfirming, setMetadataConfirming] = useState(false);
+  const [metadataEditValue, setMetadataEditValue] = useState({ title: '', author: '', isbn: '' });
+  const [selectedMetadataCandidateIndex, setSelectedMetadataCandidateIndex] = useState(0);
 
   // Source reader mode: 'raw' (monospace) or 'reader' (formatted typography)
   const [sourceReaderMode, setSourceReaderMode] = useState<'raw' | 'reader'>('reader');
+
+  const currentMetadata = currentNode?.metadata ?? {};
+  const isBookNode = useMemo(() => {
+    if (!currentNode) return false;
+    const metadata = currentNode.metadata;
+    if (!metadata) return false;
+    if (metadata.content_kind === 'book') return true;
+    if (metadata.file_type === 'pdf' || metadata.file_type === 'epub') return true;
+    if (metadata.book_title || metadata.book_author || metadata.book_isbn || metadata.book_metadata_status || metadata.cover_url) return true;
+    return false;
+  }, [currentNode]);
+  const metadataCandidates = useMemo(
+    () => getBookMatchCandidates(currentNode?.metadata),
+    [currentNode?.metadata],
+  );
 
   // Embedded chunks state (actual chunks from chunks table)
   const [chunksData, setChunksData] = useState<Record<number, Chunk[]>>({});
@@ -326,7 +348,22 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     setDescEditValue('');
     setSourceEditMode(false);
     setSourceEditValue('');
+    setMetadataEditMode(false);
+    setMetadataEditValue({ title: '', author: '', isbn: '' });
+    setSelectedMetadataCandidateIndex(0);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeContentTab === 'metadata' && !isBookNode) {
+      setActiveContentTab('desc');
+    }
+  }, [activeContentTab, isBookNode]);
+
+  useEffect(() => {
+    if (selectedMetadataCandidateIndex >= metadataCandidates.length) {
+      setSelectedMetadataCandidateIndex(0);
+    }
+  }, [selectedMetadataCandidateIndex, metadataCandidates.length]);
 
   const fetchPriorityDimensions = async () => {
     try {
@@ -872,6 +909,137 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     if (!activeTab || !nodesData[activeTab]) return;
     setSourceEditValue(nodesData[activeTab].chunk || '');
     setSourceEditMode(true);
+  };
+
+  const startMetadataEdit = () => {
+    if (!activeTab || !nodesData[activeTab]) return;
+    const metadata = nodesData[activeTab].metadata ?? {};
+    setMetadataEditValue({
+      title: typeof metadata.book_title === 'string' ? metadata.book_title : '',
+      author: typeof metadata.book_author === 'string' ? metadata.book_author : '',
+      isbn: typeof metadata.book_isbn === 'string' ? metadata.book_isbn : '',
+    });
+    setMetadataEditMode(true);
+  };
+
+  const cancelMetadataEdit = () => {
+    setMetadataEditMode(false);
+    setMetadataEditValue({ title: '', author: '', isbn: '' });
+  };
+
+  const saveMetadataFields = async () => {
+    if (!activeTab || !nodesData[activeTab]) return;
+    setMetadataSaving(true);
+    try {
+      const existing = nodesData[activeTab].metadata ?? {};
+      const nextMetadata = {
+        ...existing,
+        content_kind: 'book' as const,
+        book_title: metadataEditValue.title.trim() || undefined,
+        book_author: metadataEditValue.author.trim() || undefined,
+        book_isbn: metadataEditValue.isbn.trim() || undefined,
+        book_metadata_locked: {
+          ...(existing.book_metadata_locked ?? {}),
+          title: true,
+          author: true,
+          isbn: true,
+        },
+      };
+
+      const response = await fetch(`/api/nodes/${activeTab}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metadata: nextMetadata }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to save metadata');
+      }
+
+      if (result.node) {
+        setNodesData((prev) => ({ ...prev, [activeTab]: result.node }));
+      }
+
+      setMetadataEditMode(false);
+      setMetadataEditValue({ title: '', author: '', isbn: '' });
+    } catch (error) {
+      console.error('Failed to save metadata fields:', error);
+      alert('Failed to save book metadata.');
+    } finally {
+      setMetadataSaving(false);
+    }
+  };
+
+  const retryMetadataEnrichment = async () => {
+    if (!activeTab || !nodesData[activeTab]) return;
+    setMetadataRetrying(true);
+    try {
+      const response = await fetch(`/api/nodes/${activeTab}/enrich-book`, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to retry enrichment');
+      }
+
+      setNodesData((prev) => ({
+        ...prev,
+        [activeTab]: {
+          ...prev[activeTab],
+          metadata: {
+            ...(prev[activeTab].metadata ?? {}),
+            content_kind: 'book',
+            book_metadata_status: 'pending',
+          },
+        },
+      }));
+    } catch (error) {
+      console.error('Failed to retry enrichment:', error);
+      alert('Failed to queue metadata retry.');
+    } finally {
+      setMetadataRetrying(false);
+    }
+  };
+
+  const confirmMetadataCandidate = async () => {
+    if (!activeTab || !nodesData[activeTab]) return;
+    const candidate = metadataCandidates[selectedMetadataCandidateIndex];
+    if (!candidate) {
+      alert('No candidate selected.');
+      return;
+    }
+
+    setMetadataConfirming(true);
+    try {
+      const metadata = nodesData[activeTab].metadata ?? {};
+      const nextMetadata = applyBookMatchCandidate(metadata, candidate);
+
+      const response = await fetch(`/api/nodes/${activeTab}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metadata: nextMetadata }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to confirm candidate');
+      }
+
+      if (result.node) {
+        setNodesData((prev) => ({ ...prev, [activeTab]: result.node }));
+      } else {
+        setNodesData((prev) => ({
+          ...prev,
+          [activeTab]: {
+            ...prev[activeTab],
+            metadata: nextMetadata,
+          },
+        }));
+      }
+      setSelectedMetadataCandidateIndex(0);
+    } catch (error) {
+      console.error('Failed to confirm candidate:', error);
+      alert('Failed to confirm metadata candidate.');
+    } finally {
+      setMetadataConfirming(false);
+    }
   };
 
   // Sync Notes content to Source (with confirmation)
@@ -2319,7 +2487,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 borderBottom: '1px solid #1a1a1a'
               }}>
                 <button
-                  onClick={() => { setActiveContentTab('desc'); setNotesEditMode(false); setSourceEditMode(false); setPendingAnnotation(null); }}
+                  onClick={() => { setActiveContentTab('desc'); setNotesEditMode(false); setSourceEditMode(false); setMetadataEditMode(false); setPendingAnnotation(null); }}
                   style={{
                     padding: '8px 16px',
                     fontSize: '11px',
@@ -2336,7 +2504,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   Desc
                 </button>
                 <button
-                  onClick={() => { setActiveContentTab('notes'); setDescEditMode(false); setSourceEditMode(false); setPendingAnnotation(null); }}
+                  onClick={() => { setActiveContentTab('notes'); setDescEditMode(false); setSourceEditMode(false); setMetadataEditMode(false); setPendingAnnotation(null); }}
                   style={{
                     padding: '8px 16px',
                     fontSize: '11px',
@@ -2353,7 +2521,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   Notes
                 </button>
                 <button
-                  onClick={() => { setActiveContentTab('edges'); setDescEditMode(false); setNotesEditMode(false); setSourceEditMode(false); setPendingAnnotation(null); }}
+                  onClick={() => { setActiveContentTab('edges'); setDescEditMode(false); setNotesEditMode(false); setSourceEditMode(false); setMetadataEditMode(false); setPendingAnnotation(null); }}
                   style={{
                     padding: '8px 16px',
                     fontSize: '11px',
@@ -2370,7 +2538,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   Edges{activeTab && edgesData[activeTab]?.length ? ` (${edgesData[activeTab].length})` : ''}
                 </button>
                 <button
-                  onClick={() => { setActiveContentTab('source'); setDescEditMode(false); setNotesEditMode(false); setEdgeSearchOpen(false); setPendingAnnotation(null); }}
+                  onClick={() => { setActiveContentTab('source'); setDescEditMode(false); setNotesEditMode(false); setMetadataEditMode(false); setEdgeSearchOpen(false); setPendingAnnotation(null); }}
                   style={{
                     padding: '8px 16px',
                     fontSize: '11px',
@@ -2386,6 +2554,25 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 >
                   Source
                 </button>
+                {isBookNode && (
+                  <button
+                    onClick={() => { setActiveContentTab('metadata'); setDescEditMode(false); setNotesEditMode(false); setSourceEditMode(false); setPendingAnnotation(null); }}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '11px',
+                      fontWeight: activeContentTab === 'metadata' ? 600 : 400,
+                      color: activeContentTab === 'metadata' ? '#e5e5e5' : '#666',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: activeContentTab === 'metadata' ? '2px solid #22c55e' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      marginBottom: '-1px'
+                    }}
+                  >
+                    Metadata
+                  </button>
+                )}
                 <div style={{ flex: 1 }} />
                 {/* Action buttons for Desc tab */}
                 {activeContentTab === 'desc' && !descEditMode && (
@@ -2513,6 +2700,68 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                     >
                       <Plus size={12} />
                       {edgeSearchOpen ? 'Cancel' : 'Create'}
+                    </button>
+                  </div>
+                )}
+                {activeContentTab === 'metadata' && !metadataEditMode && (
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                    <button
+                      onClick={retryMetadataEnrichment}
+                      disabled={metadataRetrying}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 8px',
+                        fontSize: '10px',
+                        color: '#facc15',
+                        background: 'transparent',
+                        border: '1px solid #713f12',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {metadataRetrying ? <Loader size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                      Retry enrichment
+                    </button>
+                    {metadataCandidates.length > 0 && (
+                      <button
+                        onClick={confirmMetadataCandidate}
+                        disabled={metadataConfirming}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          color: '#22c55e',
+                          background: 'transparent',
+                          border: '1px solid #166534',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {metadataConfirming ? <Loader size={12} className="animate-spin" /> : <Check size={12} />}
+                        Confirm candidate
+                      </button>
+                    )}
+                    <button
+                      onClick={startMetadataEdit}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 8px',
+                        fontSize: '10px',
+                        color: '#888',
+                        background: 'transparent',
+                        border: '1px solid #2a2a2a',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Pencil size={12} />
+                      Edit
                     </button>
                   </div>
                 )}
@@ -3230,6 +3479,198 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                         )}
                       </div>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* Metadata Tab Content */}
+              {activeContentTab === 'metadata' && (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'auto', padding: '4px' }}>
+                  {metadataEditMode ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '560px' }}>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: '#777' }}>
+                        Title
+                        <input
+                          value={metadataEditValue.title}
+                          onChange={(e) => setMetadataEditValue((prev) => ({ ...prev, title: e.target.value }))}
+                          placeholder="Book title"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #2a2a2a',
+                            borderRadius: '4px',
+                            color: '#ddd',
+                            fontSize: '12px',
+                            padding: '8px 10px',
+                            outline: 'none',
+                          }}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: '#777' }}>
+                        Author
+                        <input
+                          value={metadataEditValue.author}
+                          onChange={(e) => setMetadataEditValue((prev) => ({ ...prev, author: e.target.value }))}
+                          placeholder="Author name"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #2a2a2a',
+                            borderRadius: '4px',
+                            color: '#ddd',
+                            fontSize: '12px',
+                            padding: '8px 10px',
+                            outline: 'none',
+                          }}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: '#777' }}>
+                        ISBN
+                        <input
+                          value={metadataEditValue.isbn}
+                          onChange={(e) => setMetadataEditValue((prev) => ({ ...prev, isbn: e.target.value }))}
+                          placeholder="ISBN-10 or ISBN-13"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #2a2a2a',
+                            borderRadius: '4px',
+                            color: '#ddd',
+                            fontSize: '12px',
+                            padding: '8px 10px',
+                            outline: 'none',
+                          }}
+                        />
+                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <button
+                          onClick={cancelMetadataEdit}
+                          disabled={metadataSaving}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '6px 12px',
+                            fontSize: '11px',
+                            color: '#888',
+                            background: 'transparent',
+                            border: '1px solid #2a2a2a',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <X size={14} />
+                          Cancel
+                        </button>
+                        <button
+                          onClick={saveMetadataFields}
+                          disabled={metadataSaving}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '6px 12px',
+                            fontSize: '11px',
+                            color: '#000',
+                            background: '#22c55e',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: 600
+                          }}
+                        >
+                          {metadataSaving ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                        gap: '10px',
+                      }}>
+                        <div style={{ border: '1px solid #1f1f1f', borderRadius: '6px', padding: '10px' }}>
+                          <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Enrichment status</div>
+                          <div style={{ fontSize: '13px', color: '#ddd' }}>{String(currentMetadata.book_metadata_status || 'none')}</div>
+                          {typeof currentMetadata.book_match_confidence === 'number' && (
+                            <div style={{ fontSize: '11px', color: '#777', marginTop: '4px' }}>
+                              Confidence: {Math.round(currentMetadata.book_match_confidence * 100)}%
+                            </div>
+                          )}
+                          {currentMetadata.book_match_source && (
+                            <div style={{ fontSize: '11px', color: '#777', marginTop: '2px' }}>
+                              Match source: {String(currentMetadata.book_match_source)}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ border: '1px solid #1f1f1f', borderRadius: '6px', padding: '10px' }}>
+                          <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Cover</div>
+                          <div style={{ fontSize: '13px', color: '#ddd' }}>{String(currentMetadata.cover_source || 'none')}</div>
+                          <div style={{ fontSize: '11px', color: '#777', marginTop: '4px' }}>
+                            Locked: {currentMetadata.book_metadata_locked?.cover ? 'yes' : 'no'}
+                          </div>
+                          {typeof currentMetadata.cover_url === 'string' && currentMetadata.cover_url.trim().length > 0 && (
+                            <a
+                              href={currentMetadata.cover_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: '#7dd3fc', fontSize: '11px', textDecoration: 'none' }}
+                            >
+                              Open cover URL
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ border: '1px solid #1f1f1f', borderRadius: '6px', padding: '10px' }}>
+                        <div style={{ fontSize: '11px', color: '#888', marginBottom: '10px' }}>Book fields</div>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                            <span style={{ color: '#666', fontSize: '11px' }}>Title</span>
+                            <span style={{ color: '#ddd', fontSize: '12px' }}>{String(currentMetadata.book_title || '—')}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                            <span style={{ color: '#666', fontSize: '11px' }}>Author</span>
+                            <span style={{ color: '#ddd', fontSize: '12px' }}>{String(currentMetadata.book_author || '—')}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                            <span style={{ color: '#666', fontSize: '11px' }}>ISBN</span>
+                            <span style={{ color: '#ddd', fontSize: '12px' }}>{String(currentMetadata.book_isbn || '—')}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                            <span style={{ color: '#666', fontSize: '11px' }}>Locks</span>
+                            <span style={{ color: '#aaa', fontSize: '11px' }}>
+                              title:{currentMetadata.book_metadata_locked?.title ? 'on' : 'off'} | author:{currentMetadata.book_metadata_locked?.author ? 'on' : 'off'} | isbn:{currentMetadata.book_metadata_locked?.isbn ? 'on' : 'off'} | cover:{currentMetadata.book_metadata_locked?.cover ? 'on' : 'off'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {metadataCandidates.length > 0 && (
+                        <div style={{ border: '1px solid #1f1f1f', borderRadius: '6px', padding: '10px' }}>
+                          <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px' }}>Candidates</div>
+                          <select
+                            value={selectedMetadataCandidateIndex}
+                            onChange={(e) => setSelectedMetadataCandidateIndex(Number(e.target.value))}
+                            style={{
+                              width: '100%',
+                              background: '#111',
+                              border: '1px solid #2a2a2a',
+                              borderRadius: '4px',
+                              color: '#ddd',
+                              fontSize: '12px',
+                              padding: '8px',
+                              outline: 'none',
+                            }}
+                          >
+                            {metadataCandidates.map((candidate, index) => (
+                              <option key={`${candidate.title}-${candidate.isbn || index}`} value={index}>
+                                {candidate.title}{candidate.author ? ` — ${candidate.author}` : ''}{candidate.isbn ? ` (${candidate.isbn})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
