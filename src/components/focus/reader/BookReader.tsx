@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AnnotationToolbar, { type AnnotationColor } from '@/components/annotations/AnnotationToolbar';
 import BookFormatter from '../source/formatters/BookFormatter';
 import MarkdownFormatter from '../source/formatters/MarkdownFormatter';
@@ -17,6 +17,7 @@ import {
   resolveTextFallbackType,
   type ReaderMode,
 } from './utils';
+import { restoreNodeFile } from './fileRestore';
 
 const PdfViewer = dynamic(() => import('./PdfViewer'), { ssr: false });
 const EpubViewer = dynamic(() => import('./EpubViewer'), { ssr: false });
@@ -74,6 +75,8 @@ export default function BookReader({
   const [percent, setPercent] = useState(metadata?.reading_progress?.percent ?? 0);
   const [viewerModeOverride, setViewerModeOverride] = useState<ReaderMode | null>(null);
   const [viewerErrorMessage, setViewerErrorMessage] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [isRestoringFile, setIsRestoringFile] = useState(false);
   const [pendingAnnotation, setPendingAnnotation] = useState<{
     text: string;
     position: { x: number; y: number };
@@ -87,8 +90,10 @@ export default function BookReader({
   const textFallbackType = useMemo(() => resolveTextFallbackType(content), [content]);
   const mode = viewerModeOverride ?? detectedMode;
   const src = useMemo(() => getReaderSource(nodeId, metadata, link), [link, metadata, nodeId]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const background = theme === 'dark' ? '#0f0f0f' : '#f7f1e3';
   const textColor = theme === 'dark' ? '#d4d4d4' : '#2c2820';
+  const restoreKind = detectedMode === 'pdf' ? 'pdf' : detectedMode === 'epub' ? 'epub' : null;
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowChrome(false), 2500);
@@ -112,6 +117,7 @@ export default function BookReader({
   useEffect(() => {
     setViewerModeOverride(null);
     setViewerErrorMessage(null);
+    setRestoreError(null);
   }, [detectedMode, nodeId, src]);
 
   const handleProgress = (progress: NonNullable<NodeMetadata['reading_progress']>) => {
@@ -123,6 +129,31 @@ export default function BookReader({
     if (!content.trim()) return;
     setViewerModeOverride('text');
     setViewerErrorMessage(error instanceof Error ? error.message : 'Native document source unavailable');
+  };
+
+  const handleRestoreFileSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    event.target.value = '';
+    if (!selectedFile || !restoreKind) return;
+
+    const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
+    const isEpub = selectedFile.type === 'application/epub+zip' || selectedFile.name.toLowerCase().endsWith('.epub');
+    if ((restoreKind === 'pdf' && !isPdf) || (restoreKind === 'epub' && !isEpub)) {
+      setRestoreError(`Please select a valid ${restoreKind.toUpperCase()} file.`);
+      return;
+    }
+
+    try {
+      setIsRestoringFile(true);
+      setRestoreError(null);
+      await restoreNodeFile(nodeId, selectedFile);
+      setViewerErrorMessage(null);
+      setViewerModeOverride(null);
+    } catch (error) {
+      setRestoreError(error instanceof Error ? error.message : 'Failed to restore file.');
+    } finally {
+      setIsRestoringFile(false);
+    }
   };
 
   return (
@@ -191,6 +222,35 @@ export default function BookReader({
                 }}
               >
                 Native document source unavailable. Showing extracted text fallback.
+                {restoreKind ? (
+                  <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isRestoringFile}
+                      style={{
+                        border: '1px solid rgba(140, 108, 60, 0.55)',
+                        background: 'rgba(140, 108, 60, 0.15)',
+                        color: theme === 'dark' ? '#f7d8b2' : '#6f4a1f',
+                        borderRadius: '6px',
+                        padding: '4px 8px',
+                        fontSize: '11px',
+                        cursor: isRestoringFile ? 'default' : 'pointer',
+                      }}
+                    >
+                      {isRestoringFile ? 'Restoring...' : `Restore ${restoreKind.toUpperCase()} file`}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={restoreKind === 'pdf' ? '.pdf,application/pdf' : '.epub,application/epub+zip'}
+                      onChange={handleRestoreFileSelection}
+                      style={{ display: 'none' }}
+                    />
+                    {restoreError ? (
+                      <span style={{ fontSize: '11px', opacity: 0.9 }}>{restoreError}</span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <div
