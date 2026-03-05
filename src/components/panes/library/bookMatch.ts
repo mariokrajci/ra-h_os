@@ -57,6 +57,7 @@ export function applyBookMatchCandidate(
 
   if (candidate.cover_url && !isCoverLocked(metadata)) {
     next.cover_url = candidate.cover_url;
+    next.cover_remote_url = candidate.cover_url;
     next.cover_source = 'remote';
     next.cover_fetched_at = new Date().toISOString();
   }

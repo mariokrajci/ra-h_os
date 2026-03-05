@@ -10,11 +10,18 @@ export interface StoredFileDescriptor {
 }
 
 function getMimeType(kind: StoredFileType): string {
-  return kind === 'pdf' ? 'application/pdf' : 'application/epub+zip';
+  if (kind === 'pdf') return 'application/pdf';
+  if (kind === 'epub') return 'application/epub+zip';
+  return 'image/jpeg';
 }
 
 class FileService {
-  async save(nodeId: number, kind: StoredFileType, buffer: Buffer): Promise<StoredFileDescriptor> {
+  async save(
+    nodeId: number,
+    kind: StoredFileType,
+    buffer: Buffer,
+    options?: { mimeType?: string },
+  ): Promise<StoredFileDescriptor> {
     const filesDir = getFilesDir();
     const finalPath = getFilePath(nodeId, kind);
     const tempPath = `${finalPath}.${Date.now()}.tmp`;
@@ -28,7 +35,7 @@ class FileService {
 
     return {
       path: finalPath,
-      mimeType: getMimeType(kind),
+      mimeType: options?.mimeType || getMimeType(kind),
       sizeBytes: stats.size,
       sha256,
     };

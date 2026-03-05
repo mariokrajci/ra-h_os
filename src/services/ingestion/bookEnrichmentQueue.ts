@@ -1,6 +1,7 @@
 import { nodeService } from '@/services/database';
 import { logBookTelemetry } from '@/services/analytics/bookTelemetry';
 import { createOpenLibraryBookLookupProvider, lookupBookMetadata } from './bookLookup';
+import { cacheBookCoverForNode } from './bookCoverCache';
 
 interface BookEnrichmentTask {
   nodeId: number;
@@ -66,8 +67,14 @@ export async function enrichBookNode(nodeId: number): Promise<BookEnrichmentOutc
     const coverLocked = shouldLockField(metadata, 'cover');
     if (lookup.status === 'matched' && candidate.coverUrl && !hasManualCover && !coverLocked) {
       nextMetadata.cover_url = candidate.coverUrl;
+      nextMetadata.cover_remote_url = candidate.coverUrl;
       nextMetadata.cover_source = 'remote';
       nextMetadata.cover_fetched_at = new Date().toISOString();
+      try {
+        await cacheBookCoverForNode(nodeId, candidate.coverUrl);
+      } catch (error) {
+        console.warn('[BookEnrichmentQueue] Failed to cache cover', { nodeId, error });
+      }
     }
 
     if (lookup.status === 'ambiguous') {

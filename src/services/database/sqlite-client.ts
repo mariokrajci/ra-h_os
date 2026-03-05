@@ -699,7 +699,7 @@ class SQLiteClient {
           CREATE TABLE IF NOT EXISTS files (
             id INTEGER PRIMARY KEY,
             node_id INTEGER NOT NULL,
-            kind TEXT NOT NULL CHECK (kind IN ('pdf', 'epub')),
+            kind TEXT NOT NULL CHECK (kind IN ('pdf', 'epub', 'cover')),
             storage_path TEXT NOT NULL,
             mime_type TEXT NOT NULL,
             size_bytes INTEGER NOT NULL,
@@ -713,6 +713,38 @@ class SQLiteClient {
         `);
         this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_files_node_kind ON files(node_id, kind);`);
         this.db.exec(`CREATE INDEX IF NOT EXISTS idx_files_status ON files(status);`);
+
+        const filesSchema = this.db
+          .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'files'`)
+          .get() as { sql?: string } | undefined;
+
+        if (filesSchema?.sql && !filesSchema.sql.includes("'cover'")) {
+          this.db.exec(`
+            BEGIN;
+            ALTER TABLE files RENAME TO files_legacy;
+            CREATE TABLE files (
+              id INTEGER PRIMARY KEY,
+              node_id INTEGER NOT NULL,
+              kind TEXT NOT NULL CHECK (kind IN ('pdf', 'epub', 'cover')),
+              storage_path TEXT NOT NULL,
+              mime_type TEXT NOT NULL,
+              size_bytes INTEGER NOT NULL,
+              sha256 TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'ready' CHECK (status IN ('ready', 'missing', 'orphaned', 'deleted')),
+              created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+              updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+              last_verified_at TEXT,
+              FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+            );
+            INSERT INTO files (id, node_id, kind, storage_path, mime_type, size_bytes, sha256, status, created_at, updated_at, last_verified_at)
+            SELECT id, node_id, kind, storage_path, mime_type, size_bytes, sha256, status, created_at, updated_at, last_verified_at
+            FROM files_legacy;
+            DROP TABLE files_legacy;
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_files_node_kind ON files(node_id, kind);
+            CREATE INDEX IF NOT EXISTS idx_files_status ON files(status);
+            COMMIT;
+          `);
+        }
       } catch (filesSchemaErr) {
         console.warn('Failed to ensure files table schema:', filesSchemaErr);
       }

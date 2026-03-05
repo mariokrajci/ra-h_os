@@ -5,8 +5,9 @@ import { fileService } from '@/services/storage/fileService';
 import type { StoredFileType } from '@/services/storage/fileStorage';
 
 export const runtime = 'nodejs';
+type DocumentFileType = Extract<StoredFileType, 'pdf' | 'epub'>;
 
-function inferKind(file: File): StoredFileType | null {
+function inferKind(file: File): DocumentFileType | null {
   if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) return 'pdf';
   if (file.type === 'application/epub+zip' || file.name.toLowerCase().endsWith('.epub')) return 'epub';
   return null;

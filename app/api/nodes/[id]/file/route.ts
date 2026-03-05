@@ -5,6 +5,7 @@ import { fileService } from '@/services/storage/fileService';
 import type { StoredFileType } from '@/services/storage/fileStorage';
 
 export const runtime = 'nodejs';
+type DocumentFileType = Extract<StoredFileType, 'pdf' | 'epub'>;
 
 function inferRemoteFileType(link?: string): 'pdf' | 'epub' | null {
   if (!link) return null;
@@ -26,7 +27,7 @@ function inferStoredFileType(metadata?: Record<string, unknown> | null): 'pdf' |
 function inferRequestedFileType(
   metadata?: Record<string, unknown> | null,
   link?: string,
-): StoredFileType | null {
+): DocumentFileType | null {
   return inferStoredFileType(metadata) ?? inferRemoteFileType(link);
 }
 
@@ -35,7 +36,7 @@ function jsonError(
   code: string,
   message: string,
   nodeId?: number,
-  kind?: StoredFileType,
+  kind?: DocumentFileType,
 ) {
   return NextResponse.json(
     {
@@ -52,7 +53,7 @@ function jsonError(
 
 async function cacheStoredFileForNode(
   nodeId: number,
-  kind: StoredFileType,
+  kind: DocumentFileType,
   buffer: Buffer,
 ): Promise<{ path: string; mimeType: string }> {
   const saved = await fileService.save(nodeId, kind, buffer);

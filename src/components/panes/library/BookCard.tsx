@@ -24,11 +24,18 @@ function gradientForTitle(title: string): string {
   return `linear-gradient(135deg, hsl(${a} 55% 42%), hsl(${b} 45% 24%))`;
 }
 
+function resolveCoverSrc(node: Node): string | null {
+  const coverUrl = node.metadata?.cover_url;
+  if (!coverUrl) return null;
+  if (/^https?:\/\//i.test(coverUrl)) return `/api/nodes/${node.id}/cover`;
+  return coverUrl;
+}
+
 export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata }: BookCardProps) {
   const [imgError, setImgError] = useState(false);
   const title = node.metadata?.book_title || node.title;
   const author = node.metadata?.book_author;
-  const cover = !imgError ? node.metadata?.cover_url : null;
+  const cover = !imgError ? resolveCoverSrc(node) : null;
   const percent = node.metadata?.reading_progress?.percent ?? 0;
   const statusHint = getBookStatusHint(node.metadata);
   const candidates = getBookMatchCandidates(node.metadata);

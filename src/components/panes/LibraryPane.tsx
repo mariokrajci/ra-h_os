@@ -121,7 +121,14 @@ export default function LibraryPane({
         {visibleNodes.length === 0 ? (
           <div style={{ color: '#666', fontSize: '13px' }}>No readable PDFs or EPUBs yet.</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '18px' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(124px, 140px))',
+              gap: '12px',
+              justifyContent: 'start',
+            }}
+          >
             {visibleNodes.map((node) => (
               <BookCard
                 key={node.id}

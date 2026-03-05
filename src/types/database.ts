@@ -57,6 +57,7 @@ export interface NodeMetadata {
   book_author?: string;
   book_isbn?: string;
   cover_url?: string;
+  cover_remote_url?: string;
   cover_fetched_at?: string;
   [key: string]: unknown;
 }
