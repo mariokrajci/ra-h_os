@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { Node } from '@/types/database';
 import ProgressRing from './ProgressRing';
+import { getBookStatusHint } from './bookStatus';
 
 interface BookCardProps {
   node: Node;
@@ -26,6 +27,7 @@ export default function BookCard({ node, onOpen }: BookCardProps) {
   const author = node.metadata?.book_author;
   const cover = !imgError ? node.metadata?.cover_url : null;
   const percent = node.metadata?.reading_progress?.percent ?? 0;
+  const statusHint = getBookStatusHint(node.metadata);
 
   return (
     <button
@@ -70,6 +72,21 @@ export default function BookCard({ node, onOpen }: BookCardProps) {
             {author ? (
               <div style={{ fontSize: '11px', color: '#7a7a7a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {author}
+              </div>
+            ) : null}
+            {statusHint ? (
+              <div
+                style={{
+                  marginTop: '4px',
+                  fontSize: '10px',
+                  color: statusHint.tone === 'warning' ? '#d9a441' : '#6a6a6a',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+                title={statusHint.label}
+              >
+                {statusHint.label}
               </div>
             ) : null}
           </div>
