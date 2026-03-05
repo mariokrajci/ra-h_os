@@ -4,6 +4,12 @@ export interface NodeMetadata {
   book_metadata_status?: 'pending' | 'matched' | 'ambiguous' | 'failed';
   book_match_confidence?: number;
   book_match_source?: 'isbn' | 'title_author' | 'title' | 'manual';
+  book_match_candidates?: Array<{
+    title: string;
+    author?: string;
+    isbn?: string;
+    cover_url?: string;
+  }>;
   cover_source?: 'generated' | 'remote' | 'manual';
   book_metadata_locked?: {
     title?: boolean;

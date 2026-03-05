@@ -69,6 +69,21 @@ export async function enrichBookNode(nodeId: number): Promise<BookEnrichmentOutc
       nextMetadata.cover_source = 'remote';
       nextMetadata.cover_fetched_at = new Date().toISOString();
     }
+
+    if (lookup.status === 'ambiguous') {
+      nextMetadata.book_match_candidates = [
+        {
+          title: candidate.title,
+          author: candidate.author,
+          isbn: candidate.isbn,
+          cover_url: candidate.coverUrl,
+        },
+      ];
+    } else {
+      nextMetadata.book_match_candidates = [];
+    }
+  } else {
+    nextMetadata.book_match_candidates = [];
   }
 
   await nodeService.updateNode(nodeId, {

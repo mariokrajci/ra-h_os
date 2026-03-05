@@ -7,6 +7,7 @@ import PaneHeader from './PaneHeader';
 import type { LibraryPaneProps } from './types';
 import BookCard from './library/BookCard';
 import LibraryFilters, { type LibraryFilter, type LibrarySort } from './library/LibraryFilters';
+import { applyBookMatchCandidate, type BookMatchCandidate } from './library/bookMatch';
 
 function isLibraryNode(node: Node): boolean {
   if (node.metadata?.file_type === 'pdf' || node.metadata?.file_type === 'epub') return true;
@@ -75,6 +76,21 @@ export default function LibraryPane({
     [filter, nodes, sort],
   );
 
+  const confirmMatch = useCallback(async (node: Node, candidate: BookMatchCandidate) => {
+    const nextMetadata = applyBookMatchCandidate(node.metadata || {}, candidate);
+    await fetch(`/api/nodes/${node.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metadata: nextMetadata }),
+    });
+
+    setNodes((prev) => prev.map((item) => (
+      item.id === node.id
+        ? { ...item, metadata: nextMetadata }
+        : item
+    )));
+  }, []);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <PaneHeader slot={slot} onCollapse={onCollapse} onSwapPanes={onSwapPanes}>
@@ -89,7 +105,7 @@ export default function LibraryPane({
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '18px' }}>
             {visibleNodes.map((node) => (
-              <BookCard key={node.id} node={node} onOpen={setReaderNode} />
+              <BookCard key={node.id} node={node} onOpen={setReaderNode} onConfirmMatch={confirmMatch} />
             ))}
           </div>
         )}

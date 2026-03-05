@@ -4,10 +4,12 @@ import { useState } from 'react';
 import type { Node } from '@/types/database';
 import ProgressRing from './ProgressRing';
 import { getBookStatusHint } from './bookStatus';
+import { getFirstBookMatchCandidate, type BookMatchCandidate } from './bookMatch';
 
 interface BookCardProps {
   node: Node;
   onOpen: (node: Node) => void;
+  onConfirmMatch?: (node: Node, candidate: BookMatchCandidate) => Promise<void> | void;
 }
 
 function gradientForTitle(title: string): string {
@@ -21,13 +23,14 @@ function gradientForTitle(title: string): string {
   return `linear-gradient(135deg, hsl(${a} 55% 42%), hsl(${b} 45% 24%))`;
 }
 
-export default function BookCard({ node, onOpen }: BookCardProps) {
+export default function BookCard({ node, onOpen, onConfirmMatch }: BookCardProps) {
   const [imgError, setImgError] = useState(false);
   const title = node.metadata?.book_title || node.title;
   const author = node.metadata?.book_author;
   const cover = !imgError ? node.metadata?.cover_url : null;
   const percent = node.metadata?.reading_progress?.percent ?? 0;
   const statusHint = getBookStatusHint(node.metadata);
+  const firstCandidate = getFirstBookMatchCandidate(node.metadata);
 
   return (
     <button
@@ -88,6 +91,26 @@ export default function BookCard({ node, onOpen }: BookCardProps) {
               >
                 {statusHint.label}
               </div>
+            ) : null}
+            {statusHint?.label === 'Confirm book match' && firstCandidate && onConfirmMatch ? (
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onConfirmMatch(node, firstCandidate);
+                }}
+                style={{
+                  marginTop: '6px',
+                  border: '1px solid rgba(217,164,65,0.45)',
+                  background: 'rgba(217,164,65,0.12)',
+                  color: '#d9a441',
+                  borderRadius: '6px',
+                  padding: '2px 6px',
+                  fontSize: '10px',
+                  cursor: 'pointer',
+                }}
+              >
+                Confirm
+              </button>
             ) : null}
           </div>
           <ProgressRing percent={percent} />

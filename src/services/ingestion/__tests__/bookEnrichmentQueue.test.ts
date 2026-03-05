@@ -135,4 +135,43 @@ describe('enrichBookNode', () => {
       }),
     );
   });
+
+  it('stores match candidates when lookup is ambiguous', async () => {
+    getNodeByIdMock.mockResolvedValue({
+      id: 5,
+      title: 'Atomic Habits',
+      metadata: { content_kind: 'book' },
+    });
+
+    lookupBookMetadataMock.mockResolvedValue({
+      status: 'ambiguous',
+      matchSource: 'title',
+      confidence: 0.72,
+      candidate: {
+        title: 'Atomic Habits',
+        author: 'James Clear',
+        isbn: '9780735211292',
+        coverUrl: 'https://covers.example/atomic-habits.jpg',
+        confidence: 0.72,
+      },
+    });
+
+    await expect(enrichBookNode(5)).resolves.toBe('ambiguous');
+    expect(updateNodeMock).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          book_metadata_status: 'ambiguous',
+          book_match_candidates: [
+            expect.objectContaining({
+              title: 'Atomic Habits',
+              author: 'James Clear',
+              isbn: '9780735211292',
+              cover_url: 'https://covers.example/atomic-habits.jpg',
+            }),
+          ],
+        }),
+      }),
+    );
+  });
 });
