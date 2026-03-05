@@ -4,6 +4,7 @@ export { chunkService, ChunkService } from './chunks';
 export { edgeService, EdgeService } from './edges';
 export { dimensionService, DimensionService } from './dimensionService';
 export { annotationService, AnnotationService } from './annotations';
+export { logService, LogService } from './log';
 // export { HelperService } from './helpers'; // Removed - migrated to JSON-based service
 
 // Types
