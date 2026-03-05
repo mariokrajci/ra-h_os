@@ -10,6 +10,7 @@ const {
   assignDimensionsMock,
   ensureKeywordDimensionMock,
   scheduleAutoEdgeCreationMock,
+  enqueueBookEnrichmentMock,
 } = vi.hoisted(() => ({
   createNodeMock: vi.fn(),
   getNodesMock: vi.fn(),
@@ -20,6 +21,7 @@ const {
   assignDimensionsMock: vi.fn(),
   ensureKeywordDimensionMock: vi.fn(),
   scheduleAutoEdgeCreationMock: vi.fn(),
+  enqueueBookEnrichmentMock: vi.fn(),
 }));
 
 vi.mock('@/services/database', () => ({
@@ -53,6 +55,12 @@ vi.mock('@/services/database/descriptionService', () => ({
 
 vi.mock('@/services/agents/autoEdge', () => ({
   scheduleAutoEdgeCreation: scheduleAutoEdgeCreationMock,
+}));
+
+vi.mock('@/services/ingestion/bookEnrichmentQueue', () => ({
+  bookEnrichmentQueue: {
+    enqueue: enqueueBookEnrichmentMock,
+  },
 }));
 
 import { POST } from '../../app/api/nodes/route';
@@ -116,5 +124,25 @@ describe('POST /api/nodes', () => {
       }),
     );
     expect(enqueueMock).toHaveBeenCalledWith(101, { reason: 'node_created' });
+  });
+
+  it('enqueues book enrichment for explicit book nodes', async () => {
+    const request = new Request('http://localhost/api/nodes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Atomic Habits',
+        notes: 'book notes',
+        metadata: {
+          content_kind: 'book',
+          book_metadata_status: 'pending',
+        },
+      }),
+    });
+
+    const response = await POST(request as any);
+
+    expect(response.status).toBe(201);
+    expect(enqueueBookEnrichmentMock).toHaveBeenCalledWith(101, { reason: 'book_node_created' });
   });
 });

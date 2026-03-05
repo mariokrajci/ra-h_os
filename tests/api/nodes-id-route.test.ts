@@ -4,11 +4,13 @@ const {
   getNodeByIdMock,
   updateNodeMock,
   enqueueMock,
+  enqueueBookEnrichmentMock,
   hasSufficientContentMock,
 } = vi.hoisted(() => ({
   getNodeByIdMock: vi.fn(),
   updateNodeMock: vi.fn(),
   enqueueMock: vi.fn(),
+  enqueueBookEnrichmentMock: vi.fn(),
   hasSufficientContentMock: vi.fn(),
 }));
 
@@ -28,6 +30,12 @@ vi.mock('@/services/embedding/autoEmbedQueue', () => ({
 
 vi.mock('@/services/embedding/constants', () => ({
   hasSufficientContent: hasSufficientContentMock,
+}));
+
+vi.mock('@/services/ingestion/bookEnrichmentQueue', () => ({
+  bookEnrichmentQueue: {
+    enqueue: enqueueBookEnrichmentMock,
+  },
 }));
 
 import { PATCH } from '../../app/api/nodes/[id]/route';
@@ -94,5 +102,25 @@ describe('PATCH /api/nodes/[id]', () => {
     );
     expect(json.success).toBe(true);
     expect(enqueueMock).not.toHaveBeenCalled();
+  });
+
+  it('enqueues book enrichment when book metadata is patched', async () => {
+    const request = new Request('http://localhost/api/nodes/42', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        metadata: {
+          content_kind: 'book',
+          book_author: 'James Clear',
+        },
+      }),
+    });
+
+    const response = await PATCH(request as any, {
+      params: Promise.resolve({ id: '42' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(enqueueBookEnrichmentMock).toHaveBeenCalledWith(42, { reason: 'book_node_updated' });
   });
 });

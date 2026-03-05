@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { nodeService } from '@/services/database';
 import { autoEmbedQueue } from '@/services/embedding/autoEmbedQueue';
 import { hasSufficientContent } from '@/services/embedding/constants';
+import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 
 export const runtime = 'nodejs';
 
@@ -68,6 +69,10 @@ async function updateNodeHandler(
 
   if (shouldQueueEmbed) {
     autoEmbedQueue.enqueue(nodeId, { reason: 'node_updated' });
+  }
+
+  if (node.metadata?.content_kind === 'book' && body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)) {
+    bookEnrichmentQueue.enqueue(nodeId, { reason: 'book_node_updated' });
   }
 
   return NextResponse.json({

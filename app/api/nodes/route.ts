@@ -6,6 +6,7 @@ import { hasSufficientContent } from '@/services/embedding/constants';
 import { DimensionService } from '@/services/database/dimensionService';
 import { generateDescription } from '@/services/database/descriptionService';
 import { scheduleAutoEdgeCreation } from '@/services/agents/autoEdge';
+import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 
 export const runtime = 'nodejs';
 
@@ -171,6 +172,10 @@ export async function POST(request: NextRequest) {
 
     if ((chunkStatus === 'not_chunked' || shouldAutoEmbedNotesOnly) && node.id && process.env.DISABLE_EMBEDDINGS !== 'true') {
       autoEmbedQueue.enqueue(node.id, { reason: chunkStatus === 'not_chunked' ? 'node_created' : 'note_created' });
+    }
+
+    if (node.id && body.metadata?.content_kind === 'book') {
+      bookEnrichmentQueue.enqueue(node.id, { reason: 'book_node_created' });
     }
 
     // Schedule auto-edge creation (fire-and-forget, non-blocking)
