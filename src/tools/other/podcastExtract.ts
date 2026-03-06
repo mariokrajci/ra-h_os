@@ -5,6 +5,7 @@ import { generateText } from 'ai';
 import { extractPodcast } from '@/services/typescript/extractors/podcast';
 import { discoverTranscript } from '@/services/typescript/extractors/podcast-transcript';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
+import { extractCreatedNodeDimensions, extractCreatedNodeId, resolveCreateNodeError } from '../infrastructure/createNodeResult';
 import { getOpenAIChatModel } from '@/config/openaiModels';
 import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
 
@@ -111,22 +112,22 @@ export const podcastExtractTool = tool({
         }),
       });
 
-      const createResult = await createResponse.json();
+      const createResult = await createResponse.json().catch(() => null);
 
       if (!createResponse.ok) {
         return {
           success: false,
-          error: createResult.error || 'Failed to create node',
+          error: resolveCreateNodeError(createResult, createResponse),
           data: null,
         };
       }
 
-      const nodeId: number = createResult?.data?.id;
+      const nodeId = extractCreatedNodeId(createResult);
 
       if (!nodeId) {
         return {
           success: false,
-          error: 'Failed to create node',
+          error: 'Failed to create node (missing node id in response)',
           data: null,
         };
       }
@@ -141,7 +142,7 @@ export const podcastExtractTool = tool({
         });
       }
 
-      const actualDimensions: string[] = createResult.data?.dimensions || nodeDimensions;
+      const actualDimensions = extractCreatedNodeDimensions(createResult) || nodeDimensions;
       const formattedNode = formatNodeForChat({
         id: nodeId,
         title: episodeTitle,

@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
+import { extractCreatedNodeDimensions, extractCreatedNodeId, resolveCreateNodeError } from '../infrastructure/createNodeResult';
 import { finalizePdfNode } from '@/services/ingestion/finalizeSourceNode';
 
 function getPdfTitle(url: string, providedTitle?: string): string {
@@ -68,20 +69,20 @@ export const paperExtractTool = tool({
         })
       });
 
-      const createResult = await createResponse.json();
+      const createResult = await createResponse.json().catch(() => null);
       if (!createResponse.ok) {
         return {
           success: false,
-          error: createResult.error || 'Failed to create node',
+          error: resolveCreateNodeError(createResult, createResponse),
           data: null
         };
       }
 
-      const nodeId: number | undefined = createResult.data?.id;
+      const nodeId = extractCreatedNodeId(createResult);
       if (!nodeId) {
         return {
           success: false,
-          error: 'Failed to create node',
+          error: 'Failed to create node (missing node id in response)',
           data: null
         };
       }
@@ -92,7 +93,7 @@ export const paperExtractTool = tool({
         );
       });
 
-      const actualDimensions: string[] = createResult.data?.dimensions || trimmedDimensions;
+      const actualDimensions = extractCreatedNodeDimensions(createResult) || trimmedDimensions;
       const formattedNode = formatNodeForChat({ id: nodeId, title: nodeTitle, dimensions: actualDimensions });
       const dimsDisplay = actualDimensions.length > 0 ? actualDimensions.join(', ') : 'none';
 
