@@ -62,6 +62,15 @@ export async function enrichBookNode(nodeId: number): Promise<BookEnrichmentOutc
     if (!shouldLockField(metadata, 'isbn') && candidate.isbn) {
       nextMetadata.book_isbn = candidate.isbn;
     }
+    if (candidate.publisher) {
+      nextMetadata.book_publisher = candidate.publisher;
+    }
+    if (typeof candidate.firstPublishedYear === 'number') {
+      nextMetadata.book_first_published_year = candidate.firstPublishedYear;
+    }
+    if (typeof candidate.pageCount === 'number') {
+      nextMetadata.book_page_count = candidate.pageCount;
+    }
 
     const hasManualCover = metadata.cover_source === 'manual';
     const coverLocked = shouldLockField(metadata, 'cover');
@@ -86,6 +95,9 @@ export async function enrichBookNode(nodeId: number): Promise<BookEnrichmentOutc
           author: option.author,
           isbn: option.isbn,
           cover_url: option.coverUrl,
+          publisher: option.publisher,
+          first_published_year: option.firstPublishedYear,
+          page_count: option.pageCount,
         }));
 
       nextMetadata.book_match_candidates = normalizedCandidates;

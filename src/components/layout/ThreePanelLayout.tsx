@@ -555,7 +555,15 @@ export default function ThreePanelLayout() {
     input: string;
     mode: 'link' | 'note' | 'chat';
     description?: string;
-    bookSelection?: { title: string; author?: string; isbn?: string; cover_url?: string };
+    bookSelection?: {
+      title: string;
+      author?: string;
+      isbn?: string;
+      cover_url?: string;
+      publisher?: string;
+      first_published_year?: number;
+      page_count?: number;
+    };
   }) => {
     try {
       const response = await fetch('/api/quick-add', {

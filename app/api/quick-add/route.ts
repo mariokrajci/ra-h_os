@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
         author: typeof selection.author === 'string' ? selection.author.trim() : undefined,
         isbn: typeof selection.isbn === 'string' ? selection.isbn.trim() : undefined,
         cover_url: typeof selection.cover_url === 'string' ? selection.cover_url.trim() : undefined,
+        publisher: typeof selection.publisher === 'string' ? selection.publisher.trim() : undefined,
+        first_published_year: typeof selection.first_published_year === 'number' ? selection.first_published_year : undefined,
+        page_count: typeof selection.page_count === 'number' ? selection.page_count : undefined,
       };
     })();
 

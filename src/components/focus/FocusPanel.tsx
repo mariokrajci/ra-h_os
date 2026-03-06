@@ -3425,6 +3425,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
               {/* Metadata Tab Content */}
               {activeContentTab === 'metadata' && (
                 <BookMetadataTab
+                  nodeId={activeTab}
                   metadata={currentMetadata}
                   editMode={metadataEditMode}
                   saving={metadataSaving}

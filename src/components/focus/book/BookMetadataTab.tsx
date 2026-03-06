@@ -1,4 +1,5 @@
 import { Check, Loader, Pencil, RefreshCw, Save, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import type { NodeMetadata } from '@/types/database';
 import type { BookMatchCandidate } from '@/components/panes/library/bookMatch';
 
@@ -9,6 +10,7 @@ interface MetadataEditValue {
 }
 
 interface BookMetadataTabProps {
+  nodeId: number;
   metadata: NodeMetadata;
   editMode: boolean;
   saving: boolean;
@@ -26,7 +28,14 @@ interface BookMetadataTabProps {
   onSaveEdit: () => void;
 }
 
+function toDisplay(value?: string | number | null): string {
+  if (value === undefined || value === null) return '—';
+  const asString = String(value).trim();
+  return asString.length > 0 ? asString : '—';
+}
+
 export function BookMetadataTab({
+  nodeId,
   metadata,
   editMode,
   saving,
@@ -43,9 +52,18 @@ export function BookMetadataTab({
   onCancelEdit,
   onSaveEdit,
 }: BookMetadataTabProps) {
+  const [coverError, setCoverError] = useState(false);
   const updateField = (field: keyof MetadataEditValue, value: string) => {
     onEditValueChange({ ...editValue, [field]: value });
   };
+  const coverSrc = useMemo(() => {
+    if (coverError) return null;
+    if (typeof metadata.cover_url !== 'string' || !metadata.cover_url.trim()) return null;
+    if (/^https?:\/\//i.test(metadata.cover_url)) {
+      return `/api/nodes/${nodeId}/cover`;
+    }
+    return metadata.cover_url;
+  }, [coverError, metadata.cover_url, nodeId]);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'auto', padding: '4px' }}>
@@ -209,66 +227,37 @@ export function BookMetadataTab({
         </div>
       ) : (
         <>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '10px',
-            }}
-          >
-            <div style={{ border: '1px solid #1f1f1f', borderRadius: '6px', padding: '10px' }}>
-              <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Enrichment status</div>
-              <div style={{ fontSize: '13px', color: '#ddd' }}>{String(metadata.book_metadata_status || 'none')}</div>
-              {typeof metadata.book_match_confidence === 'number' && (
-                <div style={{ fontSize: '11px', color: '#777', marginTop: '4px' }}>
-                  Confidence: {Math.round(metadata.book_match_confidence * 100)}%
-                </div>
-              )}
-              {metadata.book_match_source && (
-                <div style={{ fontSize: '11px', color: '#777', marginTop: '2px' }}>
-                  Match source: {String(metadata.book_match_source)}
+          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '12px' }}>
+            <div style={{ border: '1px solid #1f1f1f', borderRadius: '8px', overflow: 'hidden', aspectRatio: '2 / 3', background: '#121212' }}>
+              {coverSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={coverSrc}
+                  alt={metadata.book_title || 'Book cover'}
+                  onError={() => setCoverError(true)}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ color: '#666', fontSize: '11px', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '8px' }}>
+                  Cover unavailable
                 </div>
               )}
             </div>
-            <div style={{ border: '1px solid #1f1f1f', borderRadius: '6px', padding: '10px' }}>
-              <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Cover</div>
-              <div style={{ fontSize: '13px', color: '#ddd' }}>{String(metadata.cover_source || 'none')}</div>
-              <div style={{ fontSize: '11px', color: '#777', marginTop: '4px' }}>
-                Locked: {metadata.book_metadata_locked?.cover ? 'yes' : 'no'}
-              </div>
-              {typeof metadata.cover_url === 'string' && metadata.cover_url.trim().length > 0 && (
-                <a
-                  href={metadata.cover_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: '#7dd3fc', fontSize: '11px', textDecoration: 'none' }}
-                >
-                  Open cover URL
-                </a>
-              )}
-            </div>
-          </div>
-
-          <div style={{ border: '1px solid #1f1f1f', borderRadius: '6px', padding: '10px' }}>
-            <div style={{ fontSize: '11px', color: '#888', marginBottom: '10px' }}>Book fields</div>
-            <div style={{ display: 'grid', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+            <div style={{ border: '1px solid #1f1f1f', borderRadius: '8px', padding: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '10px' }}>Book details</div>
+              <div style={{ display: 'grid', rowGap: '9px', columnGap: '12px', gridTemplateColumns: '150px minmax(0, 1fr)' }}>
                 <span style={{ color: '#666', fontSize: '11px' }}>Title</span>
-                <span style={{ color: '#ddd', fontSize: '12px' }}>{String(metadata.book_title || '—')}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                <span style={{ color: '#ddd', fontSize: '12px' }}>{toDisplay(metadata.book_title)}</span>
                 <span style={{ color: '#666', fontSize: '11px' }}>Author</span>
-                <span style={{ color: '#ddd', fontSize: '12px' }}>{String(metadata.book_author || '—')}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                <span style={{ color: '#ddd', fontSize: '12px' }}>{toDisplay(metadata.book_author)}</span>
                 <span style={{ color: '#666', fontSize: '11px' }}>ISBN</span>
-                <span style={{ color: '#ddd', fontSize: '12px' }}>{String(metadata.book_isbn || '—')}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-                <span style={{ color: '#666', fontSize: '11px' }}>Locks</span>
-                <span style={{ color: '#aaa', fontSize: '11px' }}>
-                  title:{metadata.book_metadata_locked?.title ? 'on' : 'off'} | author:{metadata.book_metadata_locked?.author ? 'on' : 'off'} | isbn:{metadata.book_metadata_locked?.isbn ? 'on' : 'off'} | cover:{metadata.book_metadata_locked?.cover ? 'on' : 'off'}
-                </span>
+                <span style={{ color: '#ddd', fontSize: '12px' }}>{toDisplay(metadata.book_isbn)}</span>
+                <span style={{ color: '#666', fontSize: '11px' }}>Publisher</span>
+                <span style={{ color: '#ddd', fontSize: '12px' }}>{toDisplay(metadata.book_publisher)}</span>
+                <span style={{ color: '#666', fontSize: '11px' }}>First published</span>
+                <span style={{ color: '#ddd', fontSize: '12px' }}>{toDisplay(metadata.book_first_published_year)}</span>
+                <span style={{ color: '#666', fontSize: '11px' }}>Pages</span>
+                <span style={{ color: '#ddd', fontSize: '12px' }}>{toDisplay(metadata.book_page_count)}</span>
               </div>
             </div>
           </div>

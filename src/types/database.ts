@@ -9,6 +9,9 @@ export interface NodeMetadata {
     author?: string;
     isbn?: string;
     cover_url?: string;
+    publisher?: string;
+    first_published_year?: number;
+    page_count?: number;
   }>;
   cover_source?: 'generated' | 'remote' | 'manual';
   book_metadata_locked?: {
@@ -56,6 +59,9 @@ export interface NodeMetadata {
   book_title?: string;
   book_author?: string;
   book_isbn?: string;
+  book_publisher?: string;
+  book_first_published_year?: number;
+  book_page_count?: number;
   cover_url?: string;
   cover_remote_url?: string;
   cover_fetched_at?: string;

@@ -25,6 +25,9 @@ export async function POST(request: NextRequest) {
         author: candidate.author,
         isbn: candidate.isbn,
         cover_url: candidate.coverUrl,
+        publisher: candidate.publisher,
+        first_published_year: candidate.firstPublishedYear,
+        page_count: candidate.pageCount,
         confidence: candidate.confidence,
       }));
 

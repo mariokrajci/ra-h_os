@@ -5,6 +5,9 @@ export interface BookMatchCandidate {
   author?: string;
   isbn?: string;
   cover_url?: string;
+  publisher?: string;
+  first_published_year?: number;
+  page_count?: number;
 }
 
 function isCoverLocked(metadata: NodeMetadata): boolean {
@@ -22,6 +25,9 @@ export function getFirstBookMatchCandidate(metadata?: NodeMetadata | null): Book
     author: candidate.author,
     isbn: candidate.isbn,
     cover_url: candidate.cover_url,
+    publisher: candidate.publisher,
+    first_published_year: candidate.first_published_year,
+    page_count: candidate.page_count,
   };
 }
 
@@ -36,6 +42,9 @@ export function getBookMatchCandidates(metadata?: NodeMetadata | null): BookMatc
       author: candidate.author,
       isbn: candidate.isbn,
       cover_url: candidate.cover_url,
+      publisher: candidate.publisher,
+      first_published_year: candidate.first_published_year,
+      page_count: candidate.page_count,
     }));
 }
 
@@ -49,6 +58,9 @@ export function applyBookMatchCandidate(
     book_title: candidate.title,
     book_author: candidate.author,
     book_isbn: candidate.isbn,
+    book_publisher: candidate.publisher,
+    book_first_published_year: candidate.first_published_year,
+    book_page_count: candidate.page_count,
     book_metadata_status: 'matched',
     book_match_source: 'manual',
     book_match_confidence: 1,

@@ -26,6 +26,9 @@ export interface QuickAddInput {
     author?: string;
     isbn?: string;
     cover_url?: string;
+    publisher?: string;
+    first_published_year?: number;
+    page_count?: number;
   };
 }
 
@@ -204,13 +207,14 @@ async function handleNoteQuickAdd(
   command?: BookCommandParseResult,
   bookSelection?: QuickAddInput['bookSelection'],
 ): Promise<string> {
-  const content = rawInput.trim();
-  if (!content) {
+  const trimmedInput = rawInput.trim();
+  if (!trimmedInput) {
     throw new Error('Input is required to create a note');
   }
 
   const isBookCommand = command?.kind === 'book';
-  const title = isBookCommand ? command.title || deriveNoteTitle(content) : deriveNoteTitle(content);
+  const content = isBookCommand ? '' : trimmedInput;
+  const title = isBookCommand ? command.title || deriveNoteTitle(trimmedInput) : deriveNoteTitle(trimmedInput);
   const bookMetadata = isBookCommand && !bookSelection
     ? await fetchBookMetadata({
       title: command.title || title,
@@ -221,7 +225,7 @@ async function handleNoteQuickAdd(
 
   const nodePayload: Record<string, unknown> = {
     title,
-    notes: content,
+    ...(content ? { notes: content } : {}),
     ...(isBookCommand ? { dimensions: ['books'] } : {}),
     metadata: {
       source: 'quick-add-note',
@@ -238,6 +242,9 @@ async function handleNoteQuickAdd(
         book_title: bookSelection?.title || command.title || title,
         book_author: bookSelection?.author || command.author,
         book_isbn: bookSelection?.isbn || command.isbn,
+        book_publisher: bookSelection?.publisher,
+        book_first_published_year: bookSelection?.first_published_year,
+        book_page_count: bookSelection?.page_count,
         cover_url: bookSelection?.cover_url,
         cover_remote_url: bookSelection?.cover_url,
         book_match_candidates: [],

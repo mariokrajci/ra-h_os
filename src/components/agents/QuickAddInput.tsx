@@ -13,6 +13,9 @@ interface QuickAddSubmitPayload {
     author?: string;
     isbn?: string;
     cover_url?: string;
+    publisher?: string;
+    first_published_year?: number;
+    page_count?: number;
   };
 }
 
@@ -28,6 +31,9 @@ interface BookLookupCandidate {
   author?: string;
   isbn?: string;
   cover_url?: string;
+  publisher?: string;
+  first_published_year?: number;
+  page_count?: number;
   confidence?: number;
 }
 
@@ -81,6 +87,11 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
   const detectedType = useMemo(() => detectType(input), [input]);
   const effectiveType = manualType ?? detectedType;
   const parsedBookCommand = useMemo(() => parseBookCommand(input), [input]);
+  const parsedSlashCommand = useMemo(() => {
+    const trimmed = input.trim();
+    const match = trimmed.match(/^\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1].toLowerCase() : null;
+  }, [input]);
   const isBookFlow = !uploadedFile && parsedBookCommand.kind === 'book';
   const showTypePill = input.trim().length > 0 && !uploadedFile;
 
@@ -221,6 +232,9 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           author: selectedBookCandidate.author,
           isbn: selectedBookCandidate.isbn,
           cover_url: selectedBookCandidate.cover_url,
+          publisher: selectedBookCandidate.publisher,
+          first_published_year: selectedBookCandidate.first_published_year,
+          page_count: selectedBookCandidate.page_count,
         } : undefined,
       });
       setInput('');
@@ -372,6 +386,13 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
       {/* Input area */}
       {!uploadedFile && (
         <div className={`qa-input-area ${dragOver ? 'dragging' : ''}`}>
+          {parsedSlashCommand && (
+            <div className="qa-command-banner">
+              <span className="qa-command-label">Action command</span>
+              <code className="qa-command-name">/{parsedSlashCommand}</code>
+              {isBookFlow ? <span className="qa-command-hint">Select a match to continue</span> : null}
+            </div>
+          )}
           {dragOver && (
             <div className="qa-drag-overlay">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.5">
@@ -495,6 +516,39 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
         .qa-input-area {
           position: relative;
           transition: all 0.2s ease;
+        }
+
+        .qa-command-banner {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-bottom: 1px solid rgba(34, 197, 94, 0.16);
+          background: rgba(34, 197, 94, 0.06);
+        }
+
+        .qa-command-label {
+          font-size: 10px;
+          color: #8be3af;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          font-weight: 700;
+        }
+
+        .qa-command-name {
+          font-size: 12px;
+          color: #d3fbe1;
+          background: rgba(0, 0, 0, 0.22);
+          border: 1px solid rgba(34, 197, 94, 0.25);
+          border-radius: 4px;
+          padding: 2px 6px;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .qa-command-hint {
+          font-size: 10px;
+          color: #9ca3af;
+          margin-left: auto;
         }
 
         .qa-input-area.dragging {

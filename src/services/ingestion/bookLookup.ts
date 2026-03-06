@@ -11,6 +11,9 @@ export interface BookLookupCandidate {
   author?: string;
   isbn?: string;
   coverUrl?: string;
+  publisher?: string;
+  firstPublishedYear?: number;
+  pageCount?: number;
   confidence: number;
 }
 
@@ -41,6 +44,39 @@ function pickCoverFromOpenLibrary(doc: Record<string, unknown>): string | undefi
   return `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
 }
 
+function pickPublisherFromDoc(doc: Record<string, unknown>): string | undefined {
+  if (Array.isArray(doc.publisher) && typeof doc.publisher[0] === 'string') {
+    const value = String(doc.publisher[0]).trim();
+    return value || undefined;
+  }
+  if (Array.isArray(doc.publishers) && typeof doc.publishers[0] === 'string') {
+    const value = String(doc.publishers[0]).trim();
+    return value || undefined;
+  }
+  return undefined;
+}
+
+function pickFirstPublishedYearFromDoc(doc: Record<string, unknown>): number | undefined {
+  if (typeof doc.first_publish_year === 'number' && Number.isFinite(doc.first_publish_year)) {
+    return doc.first_publish_year;
+  }
+  const publishDate = typeof doc.publish_date === 'string' ? doc.publish_date : undefined;
+  if (!publishDate) return undefined;
+  const yearMatch = publishDate.match(/\b(1[5-9]\d{2}|20\d{2}|2100)\b/);
+  if (!yearMatch) return undefined;
+  return Number(yearMatch[1]);
+}
+
+function pickPageCountFromDoc(doc: Record<string, unknown>): number | undefined {
+  if (typeof doc.number_of_pages_median === 'number' && Number.isFinite(doc.number_of_pages_median)) {
+    return doc.number_of_pages_median;
+  }
+  if (typeof doc.number_of_pages === 'number' && Number.isFinite(doc.number_of_pages)) {
+    return doc.number_of_pages;
+  }
+  return undefined;
+}
+
 export function createOpenLibraryBookLookupProvider(
   fetchImpl: typeof fetch = fetch,
 ): BookLookupProvider {
@@ -56,6 +92,9 @@ export function createOpenLibraryBookLookupProvider(
         ? String(doc.isbn[0]).replace(/-/g, '')
         : undefined,
       coverUrl: pickCoverFromOpenLibrary(doc),
+      publisher: pickPublisherFromDoc(doc),
+      firstPublishedYear: pickFirstPublishedYearFromDoc(doc),
+      pageCount: pickPageCountFromDoc(doc),
       confidence,
     };
   };
@@ -71,6 +110,9 @@ export function createOpenLibraryBookLookupProvider(
         title,
         isbn,
         coverUrl: `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg`,
+        publisher: pickPublisherFromDoc(payload),
+        firstPublishedYear: pickFirstPublishedYearFromDoc(payload),
+        pageCount: pickPageCountFromDoc(payload),
         confidence: 0.98,
       };
     },
