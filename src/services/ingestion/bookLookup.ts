@@ -77,6 +77,67 @@ function pickPageCountFromDoc(doc: Record<string, unknown>): number | undefined 
   return undefined;
 }
 
+function normalizeLoose(value?: string): string {
+  return (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function titleBase(value: string): string {
+  return value
+    .replace(/[:\-–(].*$/, '')
+    .trim();
+}
+
+function scoreOpenLibraryDoc(
+  doc: Record<string, unknown>,
+  queryTitle: string,
+  queryAuthor?: string,
+): number {
+  const title = typeof doc.title === 'string' ? doc.title.trim() : '';
+  if (!title) return Number.NEGATIVE_INFINITY;
+
+  const normalizedTitle = normalizeLoose(title);
+  const normalizedQueryTitle = normalizeLoose(queryTitle);
+  const normalizedBaseTitle = normalizeLoose(titleBase(title));
+  const normalizedQueryBase = normalizeLoose(titleBase(queryTitle));
+  const author = Array.isArray(doc.author_name) && typeof doc.author_name[0] === 'string'
+    ? String(doc.author_name[0]).trim()
+    : '';
+  const normalizedAuthor = normalizeLoose(author);
+  const normalizedQueryAuthor = normalizeLoose(queryAuthor);
+
+  let score = 0;
+  if (normalizedTitle === normalizedQueryTitle) score += 90;
+  if (normalizedBaseTitle === normalizedQueryBase) score += 55;
+  if (normalizedTitle.startsWith(normalizedQueryTitle)) score += 25;
+  if (normalizedTitle.includes(normalizedQueryBase)) score += 10;
+
+  if (normalizedQueryAuthor) {
+    if (normalizedAuthor === normalizedQueryAuthor) score += 50;
+    else if (normalizedAuthor.includes(normalizedQueryAuthor)) score += 30;
+  }
+
+  const editionCount = typeof doc.edition_count === 'number' ? doc.edition_count : 0;
+  score += Math.min(editionCount, 40) * 0.6;
+
+  const fullText = normalizeLoose([
+    title,
+    ...(Array.isArray(doc.subtitle) ? doc.subtitle : [doc.subtitle]),
+    ...(Array.isArray(doc.subject) ? doc.subject : [doc.subject]),
+  ].filter(Boolean).join(' '));
+
+  if (!/graphic novel|manga|comic|workbook|summary|companion|illustrated|adaptation/.test(normalizedQueryTitle)) {
+    if (/graphic novel|manga|comic/.test(fullText)) score -= 45;
+    if (/workbook|summary|companion|study guide/.test(fullText)) score -= 35;
+    if (/illustrated|adaptation/.test(fullText)) score -= 18;
+  }
+
+  return score;
+}
+
 export function createOpenLibraryBookLookupProvider(
   fetchImpl: typeof fetch = fetch,
 ): BookLookupProvider {
@@ -120,23 +181,31 @@ export function createOpenLibraryBookLookupProvider(
       const search = new URL('https://openlibrary.org/search.json');
       search.searchParams.set('title', title);
       if (author) search.searchParams.set('author', author);
-      search.searchParams.set('limit', '1');
+      search.searchParams.set('limit', '20');
 
       const response = await fetchImpl(search.toString());
       if (!response.ok) return null;
       const payload = await response.json() as { docs?: Array<Record<string, unknown>> };
-      const doc = payload.docs?.[0];
+      const docs = Array.isArray(payload.docs) ? payload.docs : [];
+      const sorted = [...docs].sort(
+        (a, b) => scoreOpenLibraryDoc(b, title, author) - scoreOpenLibraryDoc(a, title, author),
+      );
+      const doc = sorted[0];
       if (!doc) return null;
       return mapDocToCandidate(doc, author ? 0.9 : 0.75);
     },
     async lookupByTitle(title: string) {
       const search = new URL('https://openlibrary.org/search.json');
       search.searchParams.set('title', title);
-      search.searchParams.set('limit', '1');
+      search.searchParams.set('limit', '20');
       const response = await fetchImpl(search.toString());
       if (!response.ok) return null;
       const payload = await response.json() as { docs?: Array<Record<string, unknown>> };
-      const doc = payload.docs?.[0];
+      const docs = Array.isArray(payload.docs) ? payload.docs : [];
+      const sorted = [...docs].sort(
+        (a, b) => scoreOpenLibraryDoc(b, title) - scoreOpenLibraryDoc(a, title),
+      );
+      const doc = sorted[0];
       if (!doc) return null;
       return mapDocToCandidate(doc, 0.68);
     },
@@ -144,14 +213,18 @@ export function createOpenLibraryBookLookupProvider(
       const search = new URL('https://openlibrary.org/search.json');
       search.searchParams.set('title', title);
       if (author) search.searchParams.set('author', author);
-      search.searchParams.set('limit', '3');
+      search.searchParams.set('limit', '20');
 
       const response = await fetchImpl(search.toString());
       if (!response.ok) return [];
       const payload = await response.json() as { docs?: Array<Record<string, unknown>> };
       const docs = Array.isArray(payload.docs) ? payload.docs : [];
-      return docs
-        .map((doc, index) => mapDocToCandidate(doc, Math.max(0.55, 0.78 - index * 0.07)))
+      const ranked = [...docs].sort(
+        (a, b) => scoreOpenLibraryDoc(b, title, author) - scoreOpenLibraryDoc(a, title, author),
+      );
+      return ranked
+        .slice(0, 5)
+        .map((doc, index) => mapDocToCandidate(doc, Math.max(0.58, 0.84 - index * 0.06)))
         .filter((candidate): candidate is BookLookupCandidate => Boolean(candidate));
     },
   };

@@ -92,6 +92,11 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     const match = trimmed.match(/^\/([a-zA-Z0-9_-]+)/);
     return match ? match[1].toLowerCase() : null;
   }, [input]);
+  const parsedSlashPayload = useMemo(() => {
+    if (!parsedSlashCommand) return '';
+    const match = input.match(/^\/[a-zA-Z0-9_-]+\s*(.*)$/s);
+    return match?.[1] || '';
+  }, [input, parsedSlashCommand]);
   const isBookFlow = !uploadedFile && parsedBookCommand.kind === 'book';
   const showTypePill = input.trim().length > 0 && !uploadedFile;
 
@@ -177,6 +182,15 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
       ? 'note'
       : 'link';
   const selectedBookCandidate = bookCandidates[selectedBookCandidateIndex] || null;
+
+  const setInputFromVisibleValue = (value: string) => {
+    if (parsedSlashCommand) {
+      const normalized = value.trim();
+      setInput(normalized ? `/${parsedSlashCommand} ${normalized}` : `/${parsedSlashCommand}`);
+      return;
+    }
+    setInput(value);
+  };
 
   const handleFileUpload = useCallback(async (file: File) => {
     setIsPosting(true);
@@ -387,10 +401,10 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
       {!uploadedFile && (
         <div className={`qa-input-area ${dragOver ? 'dragging' : ''}`}>
           {parsedSlashCommand && (
-            <div className="qa-command-banner">
-              <span className="qa-command-label">Action command</span>
-              <code className="qa-command-name">/{parsedSlashCommand}</code>
-              {isBookFlow ? <span className="qa-command-hint">Select a match to continue</span> : null}
+            <div className="qa-command-inline">
+              <span className="qa-command-inline-label">Action</span>
+              <code className="qa-command-inline-chip">/{parsedSlashCommand}</code>
+              {isBookFlow ? <span className="qa-command-inline-hint">Select a match to continue</span> : null}
             </div>
           )}
           {dragOver && (
@@ -403,8 +417,8 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
             </div>
           )}
           <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={parsedSlashCommand ? parsedSlashPayload : input}
+            onChange={(e) => setInputFromVisibleValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Paste a URL, write a note, or drop a PDF/EPUB..."
             disabled={isPosting}
@@ -518,16 +532,14 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           transition: all 0.2s ease;
         }
 
-        .qa-command-banner {
+        .qa-command-inline {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 8px 12px;
-          border-bottom: 1px solid rgba(34, 197, 94, 0.16);
-          background: rgba(34, 197, 94, 0.06);
+          padding: 8px 12px 0 12px;
         }
 
-        .qa-command-label {
+        .qa-command-inline-label {
           font-size: 10px;
           color: #8be3af;
           text-transform: uppercase;
@@ -535,7 +547,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           font-weight: 700;
         }
 
-        .qa-command-name {
+        .qa-command-inline-chip {
           font-size: 12px;
           color: #d3fbe1;
           background: rgba(0, 0, 0, 0.22);
@@ -545,7 +557,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
 
-        .qa-command-hint {
+        .qa-command-inline-hint {
           font-size: 10px;
           color: #9ca3af;
           margin-left: auto;
