@@ -15,6 +15,7 @@ interface DimensionSummary {
   count: number;
   isPriority: boolean;
   description?: string | null;
+  icon?: string | null;
 }
 
 interface FolderViewOverlayProps {
@@ -169,7 +170,17 @@ export default function FolderViewOverlay({ onClose, onNodeOpen, refreshToken, o
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Failed to fetch dimensions');
       }
-      setDimensions(data.data || []);
+      const fetchedDimensions: DimensionSummary[] = data.data || [];
+      setDimensions(fetchedDimensions);
+      setDimensionIcons(prev => {
+        const next = { ...prev };
+        for (const dim of fetchedDimensions) {
+          if (dim.icon && dim.icon.trim()) {
+            next[dim.dimension] = dim.icon.trim();
+          }
+        }
+        return next;
+      });
     } catch (error) {
       console.error('Error fetching dimensions:', error);
       setDimensionsError('Failed to load dimensions');
@@ -455,7 +466,7 @@ export default function FolderViewOverlay({ onClose, onNodeOpen, refreshToken, o
     setEditingDimensionModal(dimension);
     setEditModalName(dimension.dimension);
     setEditModalDescription(dimension.description || '');
-    setEditModalIcon(dimensionIcons[dimension.dimension] || 'Folder');
+    setEditModalIcon(dimension.icon || dimensionIcons[dimension.dimension] || 'Folder');
     setEditModalNameError('');
   };
 
@@ -491,7 +502,8 @@ export default function FolderViewOverlay({ onClose, onNodeOpen, refreshToken, o
     try {
       // Save description (and optionally rename) via API
       const body: Record<string, string> = {
-        description: editModalDescription.trim()
+        description: editModalDescription.trim(),
+        icon: editModalIcon
       };
       if (isRenamed) {
         body.currentName = editingDimensionModal.dimension;

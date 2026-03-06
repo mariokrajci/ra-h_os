@@ -36,7 +36,8 @@ async function getPopularDimensionsSQLite() {
     SELECT ad.name AS dimension, 
            COALESCE(dc.count, 0) AS count, 
            COALESCE(dim.is_priority, 0) AS is_priority,
-           dim.description
+           dim.description,
+           dim.icon
     FROM all_dimensions ad
     LEFT JOIN dimension_counts dc ON dc.dimension = ad.name
     LEFT JOIN dimensions dim ON dim.name = ad.name
@@ -51,7 +52,8 @@ async function getPopularDimensionsSQLite() {
       dimension: row.dimension,
       count: Number(row.count),
       isPriority: Boolean(row.is_priority),
-      description: row.description || null
+      description: row.description || null,
+      icon: row.icon || null
     }))
   });
 }

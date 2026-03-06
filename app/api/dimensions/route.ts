@@ -119,9 +119,13 @@ export async function PUT(request: NextRequest) {
     const name = typeof body?.name === 'string' ? body.name.trim() : '';
     const description = typeof body?.description === 'string' ? body.description.trim() : '';
     const isPriority = typeof body?.isPriority === 'boolean' ? body.isPriority : undefined;
+    const hasIconField = Object.prototype.hasOwnProperty.call(body ?? {}, 'icon');
+    const icon = hasIconField
+      ? (typeof body?.icon === 'string' ? body.icon.trim() : null)
+      : undefined;
     
     // Handle isPriority update (lock/unlock) - simple case
-    if (isPriority !== undefined && name && !currentName && !newName) {
+    if (isPriority !== undefined && name && !currentName && !newName && description === '' && icon === undefined) {
       const sqlite = getSQLiteClient();
       const updateResult = sqlite.prepare(`
         UPDATE dimensions 
@@ -185,6 +189,11 @@ export async function PUT(request: NextRequest) {
           updates.push('is_priority = ?');
           values.push(isPriority ? 1 : 0);
         }
+
+        if (icon !== undefined) {
+          updates.push('icon = ?');
+          values.push(icon || null);
+        }
         
         values.push(currentName);
         
@@ -220,6 +229,7 @@ export async function PUT(request: NextRequest) {
           dimension: newName, 
           previousName: currentName,
           description: description || undefined,
+          icon: icon !== undefined ? (icon || null) : undefined,
           isPriority: isPriority !== undefined ? isPriority : undefined,
           renamed: true 
         }
@@ -231,6 +241,7 @@ export async function PUT(request: NextRequest) {
           dimension: newName,
           previousName: currentName,
           description: description || undefined,
+          icon: icon !== undefined ? (icon || null) : undefined,
           isPriority: isPriority !== undefined ? isPriority : undefined,
           nodeLinksUpdated: updateResult.nodeLinksUpdated
         }
@@ -256,7 +267,7 @@ export async function PUT(request: NextRequest) {
     const sqlite = getSQLiteClient();
     
     // Build update query
-    if (description !== '' || isPriority !== undefined) {
+    if (description !== '' || isPriority !== undefined || icon !== undefined) {
       const updates: string[] = ['updated_at = CURRENT_TIMESTAMP'];
       const values: any[] = [];
       
@@ -268,6 +279,11 @@ export async function PUT(request: NextRequest) {
       if (isPriority !== undefined) {
         updates.push('is_priority = ?');
         values.push(isPriority ? 1 : 0);
+      }
+
+      if (icon !== undefined) {
+        updates.push('icon = ?');
+        values.push(icon || null);
       }
       
       values.push(targetName);
@@ -288,7 +304,7 @@ export async function PUT(request: NextRequest) {
       // No updates provided
       return NextResponse.json({
         success: false,
-        error: 'At least one update field (description or isPriority) must be provided'
+        error: 'At least one update field (description, icon, or isPriority) must be provided'
       }, { status: 400 });
     }
 
@@ -297,6 +313,7 @@ export async function PUT(request: NextRequest) {
       data: { 
         dimension: targetName, 
         description: description !== '' ? description : undefined,
+        icon: icon !== undefined ? (icon || null) : undefined,
         isPriority: isPriority !== undefined ? isPriority : undefined
       }
     });
@@ -306,6 +323,7 @@ export async function PUT(request: NextRequest) {
       data: {
         dimension: targetName,
         description: description !== '' ? description : undefined,
+        icon: icon !== undefined ? (icon || null) : undefined,
         isPriority: isPriority !== undefined ? isPriority : undefined
       }
     });
