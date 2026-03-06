@@ -105,6 +105,17 @@ function maybeWrapAsciiTreeAsCode(content: string): string {
   return content;
 }
 
+function flattenCodeChildren(children: React.ReactNode): string {
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(flattenCodeChildren).join('');
+  if (React.isValidElement(children)) {
+    const nested = (children.props as { children?: React.ReactNode })?.children;
+    return nested !== undefined ? flattenCodeChildren(nested) : '';
+  }
+  return '';
+}
+
 function CodeBlock({ code, language }: { code: string; language: string }) {
   const [copied, setCopied] = React.useState(false);
 
@@ -334,7 +345,7 @@ export default function MarkdownWithNodeTokens({
       </a>
     ),
     code: ({ children, className, ...props }: any) => {
-      const codeText = String(children).replace(/\n$/, '');
+      const codeText = flattenCodeChildren(children).replace(/\n$/, '');
       const explicitInline = typeof props?.inline === 'boolean' ? props.inline : undefined;
       const isInline = explicitInline ?? (!className && !codeText.includes('\n'));
       const language = className?.replace('language-', '').toLowerCase() || 'text';
