@@ -165,13 +165,13 @@ function isCreateNodeResponse(value: unknown): value is CreateNodeResponse {
   return true;
 }
 
-async function handleExtractionQuickAdd(type: ExtractionQuickAddType, url: string, task: string): Promise<string> {
+async function handleExtractionQuickAdd(type: ExtractionQuickAddType, url: string, task: string, apiBaseUrl: string): Promise<string> {
   const { toolName, execute } = EXTRACTION_TOOL_MAP[type];
   if (!execute) {
     throw new Error(`Tool ${toolName} does not have an execute function`);
   }
   const normalizedUrl = normalizeUrlLikeInput(url);
-  const rawResult = await execute({ url: normalizedUrl }, { toolCallId: 'quickadd-extract', messages: [] });
+  const rawResult = await execute({ url: normalizedUrl, apiBaseUrl }, { toolCallId: 'quickadd-extract', messages: [] });
 
   if (!isExtractionToolResult(rawResult)) {
     throw new Error(`Unexpected response from ${toolName}`);
@@ -442,7 +442,7 @@ export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl, bo
       } else if (inputType === 'chat') {
         summary = await handleChatTranscriptQuickAdd(rawInput, task, apiBaseUrl);
       } else {
-        summary = await handleExtractionQuickAdd(inputType as ExtractionQuickAddType, rawInput, task);
+        summary = await handleExtractionQuickAdd(inputType as ExtractionQuickAddType, rawInput, task, apiBaseUrl);
       }
 
       console.log(`[QuickAdd] Completed: ${task}`);

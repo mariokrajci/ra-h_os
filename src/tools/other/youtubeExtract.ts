@@ -55,9 +55,10 @@ export const youtubeExtractTool = tool({
   inputSchema: z.object({
     url: z.string().describe('The YouTube video URL to add to knowledge base'),
     title: z.string().optional().describe('Custom title (auto-generated if not provided)'),
-    dimensions: z.array(z.string()).min(1).max(5).optional().describe('Dimension tags to apply to the created node (locked dimensions first)')
+    dimensions: z.array(z.string()).min(1).max(5).optional().describe('Dimension tags to apply to the created node (locked dimensions first)'),
+    apiBaseUrl: z.string().optional().describe('Internal API base URL override')
   }),
-  execute: async ({ url, title, dimensions }) => {
+  execute: async ({ url, title, dimensions, apiBaseUrl }) => {
     try {
       if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
         return {
@@ -74,7 +75,8 @@ export const youtubeExtractTool = tool({
         .filter(Boolean)
         .slice(0, 5);
 
-      const createResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/nodes`, {
+      const baseUrl = (apiBaseUrl || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+      const createResponse = await fetch(`${baseUrl}/api/nodes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

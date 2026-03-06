@@ -68,8 +68,9 @@ export const podcastExtractTool = tool({
     url: z.string().describe('The podcast episode URL (Spotify, Apple, Pocket Casts, RSS feed, or episode page)'),
     title: z.string().optional().describe('Optional override for the episode title'),
     dimensions: z.array(z.string()).min(1).max(5).optional().describe('Dimensions/tags for the node'),
+    apiBaseUrl: z.string().optional().describe('Internal API base URL override'),
   }),
-  execute: async ({ url, title, dimensions }) => {
+  execute: async ({ url, title, dimensions, apiBaseUrl }) => {
     try {
       // Phase 1: Extract podcast metadata
       const extraction = await extractPodcast(url);
@@ -100,7 +101,8 @@ export const podcastExtractTool = tool({
       ].slice(0, 8);
 
       // Create node immediately
-      const createResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/nodes`, {
+      const baseUrl = (apiBaseUrl || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+      const createResponse = await fetch(`${baseUrl}/api/nodes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
