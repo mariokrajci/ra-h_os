@@ -2,11 +2,18 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { parseBookCommand } from '@/services/ingestion/bookCommand';
 
 interface QuickAddSubmitPayload {
   input: string;
   mode: 'link' | 'note' | 'chat';
   description?: string;
+  bookSelection?: {
+    title: string;
+    author?: string;
+    isbn?: string;
+    cover_url?: string;
+  };
 }
 
 interface QuickAddInputProps {
@@ -16,6 +23,13 @@ interface QuickAddInputProps {
 }
 
 type DetectedType = 'youtube' | 'website' | 'pdf-url' | 'epub-url' | 'note' | 'chat';
+interface BookLookupCandidate {
+  title: string;
+  author?: string;
+  isbn?: string;
+  cover_url?: string;
+  confidence?: number;
+}
 
 function detectType(raw: string): DetectedType {
   const trimmed = raw.trim();
@@ -53,6 +67,10 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [manualType, setManualType] = useState<DetectedType | null>(null);
+  const [bookCandidates, setBookCandidates] = useState<BookLookupCandidate[]>([]);
+  const [selectedBookCandidateIndex, setSelectedBookCandidateIndex] = useState(0);
+  const [bookLookupLoading, setBookLookupLoading] = useState(false);
+  const [bookLookupError, setBookLookupError] = useState<string | null>(null);
 
   const isControlled = isOpen !== undefined;
   const isExpanded = isControlled ? isOpen : isExpandedInternal;
@@ -62,11 +80,71 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
 
   const detectedType = useMemo(() => detectType(input), [input]);
   const effectiveType = manualType ?? detectedType;
+  const parsedBookCommand = useMemo(() => parseBookCommand(input), [input]);
+  const isBookFlow = !uploadedFile && parsedBookCommand.kind === 'book';
   const showTypePill = input.trim().length > 0 && !uploadedFile;
 
   useEffect(() => {
     setManualType(null);
   }, [input, uploadedFile]);
+
+  useEffect(() => {
+    if (!isBookFlow) {
+      setBookCandidates([]);
+      setSelectedBookCandidateIndex(0);
+      setBookLookupLoading(false);
+      setBookLookupError(null);
+      return;
+    }
+
+    const title = parsedBookCommand.title?.trim();
+    const author = parsedBookCommand.author?.trim();
+    const isbn = parsedBookCommand.isbn?.trim();
+    if (!title && !isbn) {
+      setBookCandidates([]);
+      setSelectedBookCandidateIndex(0);
+      setBookLookupError('Add a title or ISBN so we can match the book.');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      setBookLookupLoading(true);
+      setBookLookupError(null);
+      try {
+        const response = await fetch('/api/books/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, author, isbn }),
+          signal: controller.signal,
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to fetch book matches');
+        }
+
+        const candidates = Array.isArray(result.candidates)
+          ? result.candidates.filter((candidate: any) => typeof candidate?.title === 'string' && candidate.title.trim().length > 0)
+          : [];
+        setBookCandidates(candidates);
+        setSelectedBookCandidateIndex(0);
+        if (candidates.length === 0) {
+          setBookLookupError('No matches found. Try adding author or ISBN.');
+        }
+      } catch (error) {
+        if ((error as Error)?.name === 'AbortError') return;
+        setBookCandidates([]);
+        setBookLookupError(error instanceof Error ? error.message : 'Failed to fetch book matches');
+      } finally {
+        setBookLookupLoading(false);
+      }
+    }, 220);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, [isBookFlow, parsedBookCommand]);
 
   const typeOptions = useMemo<DetectedType[]>(() => {
     if (detectedType === 'note' || detectedType === 'chat') {
@@ -87,6 +165,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     : effectiveType === 'note'
       ? 'note'
       : 'link';
+  const selectedBookCandidate = bookCandidates[selectedBookCandidateIndex] || null;
 
   const handleFileUpload = useCallback(async (file: File) => {
     setIsPosting(true);
@@ -131,9 +210,19 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
       return;
     }
     if (!input.trim() || isPosting) return;
+    if (isBookFlow && !selectedBookCandidate) return;
     setIsPosting(true);
     try {
-      await onSubmit({ input: input.trim(), mode: submitMode });
+      await onSubmit({
+        input: input.trim(),
+        mode: submitMode,
+        bookSelection: isBookFlow && selectedBookCandidate ? {
+          title: selectedBookCandidate.title,
+          author: selectedBookCandidate.author,
+          isbn: selectedBookCandidate.isbn,
+          cover_url: selectedBookCandidate.cover_url,
+        } : undefined,
+      });
       setInput('');
       setIsExpanded(false);
     } catch (error) {
@@ -189,7 +278,11 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     setInput('');
   }, []);
 
-  const hasContent = input.trim() || uploadedFile;
+  const canSubmit = uploadedFile
+    ? true
+    : isBookFlow
+      ? !!input.trim() && !!selectedBookCandidate
+      : !!input.trim();
 
   const handleClose = () => {
     setIsExpanded(false);
@@ -302,9 +395,49 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
       )}
 
       {/* Footer */}
+      {isBookFlow && !uploadedFile && (
+        <div className="qa-book-matches">
+          <div className="qa-book-header">
+            <span className="qa-book-title">Pick the correct book</span>
+            {bookLookupLoading ? <span className="qa-book-meta">Searching...</span> : null}
+          </div>
+          {bookLookupError && !bookLookupLoading ? (
+            <div className="qa-book-error">{bookLookupError}</div>
+          ) : null}
+          {bookCandidates.length > 0 && (
+            <div className="qa-book-grid">
+              {bookCandidates.map((candidate, index) => {
+                const active = selectedBookCandidateIndex === index;
+                return (
+                  <button
+                    key={`${candidate.title}-${candidate.isbn || index}`}
+                    onClick={() => setSelectedBookCandidateIndex(index)}
+                    className={`qa-book-card ${active ? 'active' : ''}`}
+                    type="button"
+                  >
+                    <div className="qa-book-cover">
+                      {candidate.cover_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={candidate.cover_url} alt={candidate.title} />
+                      ) : (
+                        <span>{candidate.title.slice(0, 1).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div className="qa-book-copy">
+                      <div className="qa-book-copy-title">{candidate.title}</div>
+                      {candidate.author ? <div className="qa-book-copy-author">{candidate.author}</div> : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="qa-footer">
         <div className="qa-footer-left">
-          {showTypePill && (
+          {showTypePill && !isBookFlow && (
             <button
               type="button"
               className="qa-type-pill"
@@ -327,8 +460,8 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
         </div>
         <button
           onClick={handleSubmit}
-          disabled={!hasContent || isPosting}
-          className={`qa-submit ${hasContent && !isPosting ? 'active' : ''}`}
+          disabled={!canSubmit || isPosting}
+          className={`qa-submit ${canSubmit && !isPosting ? 'active' : ''}`}
         >
           {isPosting ? (
             <span className="qa-spinner" />
@@ -456,6 +589,116 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           justify-content: space-between;
           padding: 12px 14px 12px 18px;
           border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .qa-book-matches {
+          border-top: 1px solid rgba(255, 255, 255, 0.04);
+          padding: 12px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          max-height: 260px;
+          overflow: auto;
+        }
+
+        .qa-book-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .qa-book-title {
+          font-size: 11px;
+          color: #8b8b8b;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+          font-weight: 600;
+        }
+
+        .qa-book-meta {
+          font-size: 10px;
+          color: #666;
+        }
+
+        .qa-book-error {
+          font-size: 11px;
+          color: #b06a6a;
+        }
+
+        .qa-book-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+          gap: 8px;
+        }
+
+        .qa-book-card {
+          display: flex;
+          gap: 8px;
+          align-items: stretch;
+          border: 1px solid #252525;
+          background: #141414;
+          border-radius: 8px;
+          padding: 8px;
+          cursor: pointer;
+          transition: border-color 0.12s ease, background 0.12s ease;
+          text-align: left;
+        }
+
+        .qa-book-card:hover {
+          border-color: #2f2f2f;
+        }
+
+        .qa-book-card.active {
+          border-color: rgba(34, 197, 94, 0.6);
+          background: rgba(34, 197, 94, 0.08);
+        }
+
+        .qa-book-cover {
+          width: 34px;
+          min-width: 34px;
+          height: 48px;
+          border-radius: 4px;
+          overflow: hidden;
+          background: #1d1d1d;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #777;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .qa-book-cover img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .qa-book-copy {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          justify-content: center;
+        }
+
+        .qa-book-copy-title {
+          font-size: 11px;
+          color: #d6d6d6;
+          line-height: 1.3;
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+
+        .qa-book-copy-author {
+          font-size: 10px;
+          color: #8a8a8a;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .qa-footer-left {

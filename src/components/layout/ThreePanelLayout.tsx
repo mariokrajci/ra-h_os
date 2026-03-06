@@ -546,12 +546,22 @@ export default function ThreePanelLayout() {
   }, [slotA, slotB, handlePaneTypeClick]);
 
   // Handle Quick Add submit (used by global Add Stuff modal)
-  const handleQuickAddSubmit = useCallback(async ({ input, mode, description }: { input: string; mode: 'link' | 'note' | 'chat'; description?: string }) => {
+  const handleQuickAddSubmit = useCallback(async ({
+    input,
+    mode,
+    description,
+    bookSelection,
+  }: {
+    input: string;
+    mode: 'link' | 'note' | 'chat';
+    description?: string;
+    bookSelection?: { title: string; author?: string; isbn?: string; cover_url?: string };
+  }) => {
     try {
       const response = await fetch('/api/quick-add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, mode, description })
+        body: JSON.stringify({ input, mode, description, bookSelection })
       });
 
       if (!response.ok) {

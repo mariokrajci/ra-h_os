@@ -11,6 +11,7 @@ import { fetchBookMetadata } from '@/services/ingestion/bookMetadata';
 import type { BookCommandParseResult } from '@/services/ingestion/bookCommand';
 import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 import { logBookTelemetry } from '@/services/analytics/bookTelemetry';
+import { cacheBookCoverForNode } from '@/services/ingestion/bookCoverCache';
 
 export type { QuickAddMode, QuickAddInputType } from './quickAddDetection';
 export { detectInputType } from './quickAddDetection';
@@ -20,6 +21,12 @@ export interface QuickAddInput {
   mode?: QuickAddMode;
   description?: string;
   baseUrl?: string;
+  bookSelection?: {
+    title: string;
+    author?: string;
+    isbn?: string;
+    cover_url?: string;
+  };
 }
 
 function normalizeUrlLikeInput(raw: string): string {
@@ -195,6 +202,7 @@ async function handleNoteQuickAdd(
   userDescription: string | undefined,
   apiBaseUrl: string,
   command?: BookCommandParseResult,
+  bookSelection?: QuickAddInput['bookSelection'],
 ): Promise<string> {
   const content = rawInput.trim();
   if (!content) {
@@ -203,7 +211,7 @@ async function handleNoteQuickAdd(
 
   const isBookCommand = command?.kind === 'book';
   const title = isBookCommand ? command.title || deriveNoteTitle(content) : deriveNoteTitle(content);
-  const bookMetadata = isBookCommand
+  const bookMetadata = isBookCommand && !bookSelection
     ? await fetchBookMetadata({
       title: command.title || title,
       author: command.author,
@@ -221,10 +229,18 @@ async function handleNoteQuickAdd(
       ...(isBookCommand ? {
         content_kind: 'book',
         book_detection_status: 'confirmed',
-        book_metadata_status: command.needsConfirmation ? 'ambiguous' : 'pending',
-        book_match_confidence: command.confidence,
-        book_match_source: command.isbn ? 'isbn' : command.author ? 'title_author' : 'title',
-        cover_source: 'generated',
+        book_metadata_status: bookSelection ? 'matched' : (command.needsConfirmation ? 'ambiguous' : 'pending'),
+        book_match_confidence: bookSelection ? 1 : command.confidence,
+        book_match_source: bookSelection
+          ? 'manual'
+          : command.isbn ? 'isbn' : command.author ? 'title_author' : 'title',
+        cover_source: bookSelection?.cover_url ? 'remote' : 'generated',
+        book_title: bookSelection?.title || command.title || title,
+        book_author: bookSelection?.author || command.author,
+        book_isbn: bookSelection?.isbn || command.isbn,
+        cover_url: bookSelection?.cover_url,
+        cover_remote_url: bookSelection?.cover_url,
+        book_match_candidates: [],
         ...bookMetadata,
       } : {}),
     },
@@ -252,8 +268,15 @@ async function handleNoteQuickAdd(
   }
 
   const nodeId = rawResult?.data?.id;
-  if (isBookCommand && typeof nodeId === 'number') {
+  if (isBookCommand && typeof nodeId === 'number' && !bookSelection) {
     bookEnrichmentQueue.enqueue(nodeId, { reason: 'quick_add_book' });
+  }
+  if (isBookCommand && typeof nodeId === 'number' && bookSelection?.cover_url) {
+    try {
+      await cacheBookCoverForNode(nodeId, bookSelection.cover_url);
+    } catch (error) {
+      console.warn('[QuickAdd] Failed to cache selected book cover', { nodeId, error });
+    }
   }
   const nodeReference = nodeId ? formatNodeForChat({ id: nodeId, title }) : 'None';
   const resultMessage = nodeId ? `Created note ${nodeReference}.` : 'Created note.';
@@ -376,7 +399,7 @@ function resolveApiBaseUrl(baseUrl?: string): string {
   return 'http://localhost:3000';
 }
 
-export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl }: QuickAddInput): Promise<QuickAddResult> {
+export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl, bookSelection }: QuickAddInput): Promise<QuickAddResult> {
   const routing = resolveQuickAddRouting(rawInput, mode);
   const inputType = routing.inputType;
   if (rawInput.trim().startsWith('/')) {
@@ -408,7 +431,7 @@ export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl }: 
     try {
       let summary: string;
       if (inputType === 'note') {
-        summary = await handleNoteQuickAdd(routing.normalizedInput, task, description, apiBaseUrl, routing.command);
+        summary = await handleNoteQuickAdd(routing.normalizedInput, task, description, apiBaseUrl, routing.command, bookSelection);
       } else if (inputType === 'chat') {
         summary = await handleChatTranscriptQuickAdd(rawInput, task, apiBaseUrl);
       } else {
