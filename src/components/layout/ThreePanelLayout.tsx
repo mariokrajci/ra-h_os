@@ -356,6 +356,16 @@ export default function ThreePanelLayout() {
     return () => clearInterval(interval);
   }, [pendingNodes.length]);
 
+  // Open Log pane when a log entry is selected from search
+  useEffect(() => {
+    const handler = (e: Event) => {
+      setSlotA(prev => prev ? { ...prev, type: 'log' } : { type: 'log' });
+      setActivePane('A');
+    };
+    window.addEventListener('open-log-entry', handler);
+    return () => window.removeEventListener('open-log-entry', handler);
+  }, [setSlotA]);
+
   // Node tab management
   const handleNodeSelect = useCallback((nodeId: number, multiSelect: boolean) => {
     // If slotA is not a node pane (or doesn't exist), switch it to node

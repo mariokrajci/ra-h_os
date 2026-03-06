@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { ScrollText } from 'lucide-react';
 import Chip from '../common/Chip';
 import { getNodeIcon } from '@/utils/nodeIcons';
 import { useDimensionIcons } from '@/context/DimensionIconsContext';
@@ -20,10 +21,18 @@ interface NodeSuggestion {
   link?: string;
 }
 
+interface LogSuggestion {
+  id: number;
+  date: string;
+  content: string;
+  promoted_node_id: number | null;
+}
+
 export default function SearchModal({ isOpen, onClose, onNodeSelect, existingFilters }: SearchModalProps) {
   const { dimensionIcons } = useDimensionIcons();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<NodeSuggestion[]>([]);
+  const [logSuggestions, setLogSuggestions] = useState<LogSuggestion[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -99,6 +108,7 @@ export default function SearchModal({ isOpen, onClose, onNodeSelect, existingFil
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSuggestions([]);
+      setLogSuggestions([]);
       return;
     }
 
@@ -106,7 +116,7 @@ export default function SearchModal({ isOpen, onClose, onNodeSelect, existingFil
       try {
         const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(searchQuery)}&limit=10`);
         const result = await response.json();
-        
+
         if (result.success) {
           const nodeSuggestions: NodeSuggestion[] = result.data.map((node: any) => ({
             id: node.id,
@@ -114,13 +124,25 @@ export default function SearchModal({ isOpen, onClose, onNodeSelect, existingFil
             dimensions: node.dimensions || [],
             link: node.link || undefined,
           }));
-          
+
           setSuggestions(nodeSuggestions);
           setSelectedIndex(0);
         }
       } catch (error) {
         console.error('Error fetching suggestions:', error);
         setSuggestions([]);
+      }
+
+      if (searchQuery.trim().length >= 2) {
+        try {
+          const logRes = await fetch(`/api/log/search?q=${encodeURIComponent(searchQuery)}`);
+          const logJson = await logRes.json();
+          if (logJson.success) {
+            setLogSuggestions(logJson.data.slice(0, 5));
+          }
+        } catch {
+          // ignore
+        }
       }
     };
 
@@ -218,8 +240,35 @@ export default function SearchModal({ isOpen, onClose, onNodeSelect, existingFil
           </div>
         )}
 
+        {/* Log results */}
+        {logSuggestions.length > 0 && (
+          <div className="search-results" style={{ marginTop: suggestions.length > 0 ? '4px' : '8px' }}>
+            <div style={{ fontSize: '11px', color: '#444', padding: '8px 12px 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Log
+            </div>
+            {logSuggestions.map(entry => (
+              <button
+                key={`log-${entry.id}`}
+                onClick={() => {
+                  onClose();
+                  window.dispatchEvent(new CustomEvent('open-log-entry', { detail: { id: entry.id, date: entry.date } }));
+                }}
+                className="search-result-item"
+              >
+                <ScrollText size={14} style={{ color: '#555', flexShrink: 0 }} />
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#e5e5e5' }}>
+                    {entry.content.split('\n')[0].replace(/^[-*+]\s+/, '').slice(0, 80)}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#555' }}>{entry.date}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Empty state */}
-        {searchQuery && suggestions.length === 0 && (
+        {searchQuery && suggestions.length === 0 && logSuggestions.length === 0 && (
           <div className="search-empty">
             No results for "{searchQuery}"
           </div>
