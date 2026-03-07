@@ -14,8 +14,16 @@ export type AgentDelegation = {
   updatedAt: string;
 };
 
-// Pane types (chat removed in rah-light, guides moved to settings)
-export type PaneType = 'node' | 'dimensions' | 'map' | 'views' | 'table' | 'wiki' | 'library' | 'log';
+export type PaneType =
+  | 'node'
+  | 'dimensions'
+  | 'map'
+  | 'views'
+  | 'table'
+  | 'wiki'
+  | 'library'
+  | 'log'
+  | 'skills';
 
 // State for each slot
 export interface SlotState {
@@ -127,6 +135,7 @@ export const PANE_LABELS: Record<PaneType, string> = {
   wiki: 'Wiki',
   library: 'Library',
   log: 'Log',
+  skills: 'Skills',
 };
 
 // Default slot states

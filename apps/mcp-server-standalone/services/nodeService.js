@@ -180,7 +180,7 @@ function updateNode(id, updates, options = {}) {
   // Check node exists
   const existing = getNodeById(id);
   if (!existing) {
-    throw new Error(`Node with ID ${id} not found`);
+    throw new Error(`Node with ID ${id} not found. Use rah_search_nodes to find nodes by keyword.`);
   }
 
   transaction(() => {
@@ -251,7 +251,7 @@ function updateNode(id, updates, options = {}) {
 function deleteNode(id) {
   const result = query('DELETE FROM nodes WHERE id = ?', [id]);
   if (result.changes === 0) {
-    throw new Error(`Node with ID ${id} not found`);
+    throw new Error(`Node with ID ${id} not found. Use rah_search_nodes to find nodes by keyword.`);
   }
   return true;
 }

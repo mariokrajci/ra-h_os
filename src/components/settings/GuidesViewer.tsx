@@ -3,19 +3,19 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Save, X, FileText } from 'lucide-react';
 
-interface GuideMeta {
+interface SkillMeta {
   name: string;
   description: string;
 }
 
-interface Guide extends GuideMeta {
+interface Skill extends SkillMeta {
   content: string;
 }
 
 export default function GuidesViewer() {
-  const [guides, setGuides] = useState<GuideMeta[]>([]);
+  const [guides, setGuides] = useState<SkillMeta[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<Guide | null>(null);
+  const [editing, setEditing] = useState<Skill | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,13 +25,13 @@ export default function GuidesViewer() {
 
   const fetchGuides = async () => {
     try {
-      const res = await fetch('/api/guides');
+      const res = await fetch('/api/skills');
       const data = await res.json();
       if (data.success) {
         setGuides(data.data);
       }
     } catch (err) {
-      console.error('Failed to fetch guides:', err);
+      console.error('Failed to fetch skills:', err);
     } finally {
       setLoading(false);
     }
@@ -39,7 +39,7 @@ export default function GuidesViewer() {
 
   const handleEdit = async (name: string) => {
     try {
-      const res = await fetch(`/api/guides/${encodeURIComponent(name)}`);
+      const res = await fetch(`/api/skills/${encodeURIComponent(name)}`);
       const data = await res.json();
       if (data.success) {
         setEditing(data.data);
@@ -47,16 +47,16 @@ export default function GuidesViewer() {
         setError(null);
       }
     } catch (err) {
-      console.error('Failed to fetch guide:', err);
+      console.error('Failed to fetch skill:', err);
     }
   };
 
   const handleNew = () => {
-    setEditing({
-      name: '',
-      description: '',
-      content: '# New Guide\n\nWrite your guide content here...',
-    });
+      setEditing({
+        name: '',
+        description: '',
+        content: '# New Skill\n\nWrite your skill content here...',
+      });
     setIsNew(true);
     setError(null);
   };
@@ -69,7 +69,7 @@ export default function GuidesViewer() {
     }
 
     try {
-      const res = await fetch(`/api/guides/${encodeURIComponent(editing.name)}`, {
+      const res = await fetch(`/api/skills/${encodeURIComponent(editing.name)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -81,20 +81,21 @@ export default function GuidesViewer() {
       if (data.success) {
         setEditing(null);
         fetchGuides();
+        window.dispatchEvent(new Event('skills:updated'));
         window.dispatchEvent(new Event('guides:updated'));
       } else {
         setError(data.error || 'Failed to save');
       }
     } catch (err) {
-      setError('Failed to save guide');
+      setError('Failed to save skill');
     }
   };
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Delete guide "${name}"?`)) return;
+    if (!confirm(`Delete skill "${name}"?`)) return;
 
     try {
-      const res = await fetch(`/api/guides/${encodeURIComponent(name)}`, {
+      const res = await fetch(`/api/skills/${encodeURIComponent(name)}`, {
         method: 'DELETE',
       });
       const data = await res.json();
@@ -103,13 +104,13 @@ export default function GuidesViewer() {
         window.dispatchEvent(new Event('guides:updated'));
       }
     } catch (err) {
-      console.error('Failed to delete guide:', err);
+      console.error('Failed to delete skill:', err);
     }
   };
 
   if (loading) {
     return (
-      <div style={{ padding: '24px', color: '#666' }}>Loading guides...</div>
+      <div style={{ padding: '24px', color: '#666' }}>Loading skills...</div>
     );
   }
 
@@ -121,7 +122,7 @@ export default function GuidesViewer() {
             type="text"
             value={editing.name}
             onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-            placeholder="Guide name"
+            placeholder="Skill name"
             disabled={!isNew}
             style={{
               flex: 1,
@@ -193,7 +194,7 @@ export default function GuidesViewer() {
         <textarea
           value={editing.content}
           onChange={(e) => setEditing({ ...editing, content: e.target.value })}
-          placeholder="Guide content (markdown)"
+          placeholder="Skill content (markdown)"
           style={{
             flex: 1,
             padding: '12px',
@@ -209,7 +210,7 @@ export default function GuidesViewer() {
         />
 
         <p style={{ color: '#666', fontSize: '12px', marginTop: '12px' }}>
-          Guides are markdown files that external agents can read via MCP tools. Use them to provide context, instructions, or reference material.
+          Skills are markdown files that agents can read for reusable procedural instructions.
         </p>
       </div>
     );
@@ -219,7 +220,7 @@ export default function GuidesViewer() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>
-          Guides provide context and instructions for external AI agents via MCP.
+          Skills provide reusable context and procedural instructions for agents.
         </p>
         <button
           onClick={handleNew}
@@ -237,7 +238,7 @@ export default function GuidesViewer() {
             fontWeight: 500,
           }}
         >
-          <Plus size={14} /> New Guide
+          <Plus size={14} /> New Skill
         </button>
       </div>
 
@@ -245,8 +246,8 @@ export default function GuidesViewer() {
         {guides.length === 0 ? (
           <div style={{ color: '#555', textAlign: 'center', paddingTop: '48px' }}>
             <FileText size={48} style={{ marginBottom: '12px', opacity: 0.5 }} />
-            <p style={{ fontSize: '14px' }}>No guides yet</p>
-            <p style={{ fontSize: '12px', color: '#444' }}>Create guides to help external agents understand your knowledge base</p>
+            <p style={{ fontSize: '14px' }}>No skills yet</p>
+            <p style={{ fontSize: '12px', color: '#444' }}>Create skills to guide how agents operate in your knowledge base</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

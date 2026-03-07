@@ -95,7 +95,7 @@ function updateEdge(id, updates) {
 
   const existing = getEdgeById(id);
   if (!existing) {
-    throw new Error(`Edge with ID ${id} not found`);
+    throw new Error(`Edge with ID ${id} not found. Use rah_query_edges to find edges by node ID.`);
   }
 
   // If explanation changed, update context
@@ -128,7 +128,7 @@ function updateEdge(id, updates) {
 function deleteEdge(id) {
   const result = query('DELETE FROM edges WHERE id = ?', [id]);
   if (result.changes === 0) {
-    throw new Error(`Edge with ID ${id} not found`);
+    throw new Error(`Edge with ID ${id} not found. Use rah_query_edges to find edges by node ID.`);
   }
   return true;
 }

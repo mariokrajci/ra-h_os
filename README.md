@@ -112,7 +112,7 @@ Add to your `~/.claude.json`:
 
 Restart Claude Code fully (**Cmd+Q on Mac**, not just closing the window).
 
-**Verify it worked:** Ask Claude "Do you have rah_ tools available?" — you should see tools like `rah_add_node`, `rah_search_nodes`, etc.
+**Verify it worked:** Ask Claude "Do you have RA-H tools available?" — you should see tools like `createNode`, `queryNodes`, and `readSkill`.
 
 **For contributors** testing local changes, use the local path instead:
 ```json
@@ -126,30 +126,30 @@ Restart Claude Code fully (**Cmd+Q on Mac**, not just closing the window).
 }
 ```
 
-**What happens:** Once connected, Claude calls `rah_get_context` first to orient itself (stats, hub nodes, dimensions, available guides). It proactively captures knowledge — when a new insight, decision, person, or reference surfaces, it proposes a specific node (title, dimensions, description) so you can approve with minimal friction. For complex tasks it reads guides to understand your graph conventions and custom workflows.
+**What happens:** Once connected, Claude calls `getContext` first to orient itself (stats, hub nodes, dimensions, available skills). It proactively captures knowledge — when a new insight, decision, person, or reference surfaces, it proposes a specific node (title, dimensions, description) so you can approve with minimal friction. For complex tasks it reads skills to follow your graph conventions and workflows.
 
 Available tools:
 
 | Tool | What it does |
 |------|--------------|
-| `rah_get_context` | Get graph overview — stats, hub nodes, dimensions, recent activity |
-| `rah_search_nodes` | Find nodes by keyword |
-| `rah_add_node` | Create a new node |
-| `rah_get_nodes` | Fetch nodes by ID |
-| `rah_update_node` | Edit an existing node |
-| `rah_create_edge` | Link two nodes together |
-| `rah_update_edge` | Update an edge explanation |
-| `rah_query_edges` | Find connections |
-| `rah_list_dimensions` | List all tags/categories |
-| `rah_create_dimension` | Create a new dimension |
-| `rah_update_dimension` | Update/rename a dimension |
-| `rah_delete_dimension` | Delete a dimension |
-| `rah_list_guides` | List available guides (system + custom) |
-| `rah_read_guide` | Read a guide by name |
-| `rah_write_guide` | Create or update a custom guide |
-| `rah_delete_guide` | Delete a custom guide |
-| `rah_search_content` | Search through source content (transcripts, books, articles) |
-| `rah_sqlite_query` | Run read-only SQL queries (SELECT/WITH/PRAGMA) |
+| `getContext` | Get graph overview — stats, hub nodes, dimensions, recent activity |
+| `queryNodes` | Find nodes by keyword |
+| `createNode` | Create a new node |
+| `getNodesById` | Fetch nodes by ID |
+| `updateNode` | Edit an existing node |
+| `createEdge` | Link two nodes together |
+| `updateEdge` | Update an edge explanation |
+| `queryEdge` | Find connections |
+| `queryDimensions` | List all tags/categories |
+| `createDimension` | Create a new dimension |
+| `updateDimension` | Update/rename a dimension |
+| `deleteDimension` | Delete a dimension |
+| `listSkills` | List available skills |
+| `readSkill` | Read a skill by name |
+| `writeSkill` | Create or update a custom skill |
+| `deleteSkill` | Delete a custom skill |
+| `searchContentEmbeddings` | Search through source content (transcripts, books, articles) |
+| `sqliteQuery` | Run read-only SQL queries (SELECT/WITH/PRAGMA) |
 
 **Example prompts for Claude Code:**
 - "What's in my knowledge graph?"
@@ -219,8 +219,9 @@ Without sqlite-vec, everything works except semantic/vector search.
 
 ---
 
-## More
+## Community
 
+- **Discord:** [discord.gg/3cpQj6Jtc9](https://discord.gg/3cpQj6Jtc9) — ask questions, share your setup, get help
 - **Full docs:** [ra-h.app/docs/open-source](https://ra-h.app/docs/open-source)
 - **Issues:** [github.com/bradwmorris/ra-h_os/issues](https://github.com/bradwmorris/ra-h_os/issues)
 - **License:** MIT

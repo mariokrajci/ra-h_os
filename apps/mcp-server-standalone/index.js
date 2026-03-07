@@ -32,40 +32,55 @@ const { initDatabase, getDatabasePath, closeDatabase, getDb, query } = require('
 const nodeService = require('./services/nodeService');
 const edgeService = require('./services/edgeService');
 const dimensionService = require('./services/dimensionService');
-const guideService = require('./services/guideService');
+const skillService = require('./services/skillService');
 
 // Server info
 const serverInfo = {
   name: 'ra-h-standalone',
-  version: '1.4.1'
+  version: '1.8.0'
 };
 
 function buildInstructions() {
   const now = new Date().toISOString().split('T')[0];
-  return [
-    `Today's date: ${now}.`,
-    "RA-H is the user's personal knowledge graph — local SQLite, fully on-device.",
-    'Call rah_get_context first for a quick orientation (stats, hubs, dimensions).',
-    'For simple tasks (add a node, search), the tool descriptions have everything you need — just execute.',
-    'For complex or ambiguous tasks, also call rah_read_guide("start-here") for full graph understanding.',
-    'Knowledge capture: after substantive exchanges, offer to save valuable information.',
-    'Triggers: a new insight emerges, a decision is made, a person/entity/concept is discussed in depth, research or references are shared, a connection to existing knowledge surfaces.',
-    'When offering, propose a specific node — title, dimensions, and a concrete description (WHAT it is + WHY it matters, no vague "discusses/explores") — so the user can approve with minimal friction.',
-    'Don\'t ask "should I save this?" — instead say "I\'d add this as: [title] in [dimensions] — want me to?"',
-    'Search before creating to avoid duplicates.',
-    'All data stays on this device.'
-  ].join(' ');
-}
+  let skillIndex = '- db-operations: Core graph read/write operating policy.';
 
-const instructions = buildInstructions();
+  try {
+    const skills = skillService.listSkills();
+    if (Array.isArray(skills) && skills.length > 0) {
+      skillIndex = skills
+        .map(s => `- ${s.name}: ${s.description}`)
+        .join('\n');
+    }
+  } catch (error) {
+    log('Warning: failed to load skill index for instructions:', error.message);
+  }
+
+  return `Today's date: ${now}. RA-H is the user's personal knowledge graph — local SQLite, fully on-device.
+
+## Quick start
+1. Call getContext for orientation (stats, hubs, dimensions).
+2. For simple tasks, tool descriptions have everything you need.
+3. For complex tasks, call readSkill("db-operations").
+
+## Knowledge capture
+Proactively offer to save valuable information when insights, decisions, or references surface.
+Propose: "I'd add this as: [title] in [dimensions] — want me to?"
+Always search before creating to avoid duplicates.
+
+## Available skills
+${skillIndex}
+Load any skill with readSkill("name").
+
+All data stays on this device.`;
+}
 
 // Tool schemas
 const addNodeInputSchema = {
   title: z.string().min(1).max(160).describe('Clear, descriptive title'),
   content: z.string().max(20000).optional().describe('Node content/notes'),
   link: z.string().url().optional().describe('Source URL'),
-  description: z.string().max(2000).optional().describe('One-sentence summary: WHAT this is (explicit, concrete) + WHY it matters. No weak verbs (discusses, explores, examines). Example: "Podcast — Lex Fridman interviews Sam Altman on AGI timelines. First public comments since board drama."'),
-  dimensions: z.array(z.string()).min(1).max(5).describe('1-5 categories. Call rah_list_dimensions first to use existing ones.'),
+  description: z.string().min(24).max(280).describe('REQUIRED. One-sentence summary: WHAT this is (explicit, concrete) + WHY it matters. No weak verbs (discusses, explores, examines). Example: "Podcast — Lex Fridman interviews Sam Altman on AGI timelines. First public comments since board drama."'),
+  dimensions: z.array(z.string()).min(1).max(5).describe('1-5 categories. Call queryDimensions first to use existing ones.'),
   metadata: z.record(z.any()).optional().describe('Additional metadata'),
   chunk: z.string().max(50000).optional().describe('Full source text')
 };
@@ -88,7 +103,7 @@ const updateNodeInputSchema = {
   id: z.number().int().positive().describe('Node ID'),
   updates: z.object({
     title: z.string().optional().describe('New title'),
-    description: z.string().optional().describe('New description (overwrites existing)'),
+    description: z.string().min(24).max(280).describe('REQUIRED. Explicitly state WHAT this is (podcast, conversation summary, user insight, etc.) + WHY it matters for context grounding. No vague verbs like "discusses/explores/examines".'),
     content: z.string().optional().describe('Content to APPEND'),
     link: z.string().optional().describe('New link'),
     dimensions: z.array(z.string()).optional().describe('New dimensions (replaces existing)'),
@@ -131,17 +146,17 @@ const deleteDimensionInputSchema = {
   name: z.string().min(1).describe('Dimension name to delete')
 };
 
-const readGuideInputSchema = {
-  name: z.string().min(1).describe('Guide name (e.g. "edges", "creating-nodes", "schema")')
+const readSkillInputSchema = {
+  name: z.string().min(1).describe('Skill name (e.g. "db-operations", "onboarding", "persona")')
 };
 
-const writeGuideInputSchema = {
-  name: z.string().min(1).describe('Guide name (lowercase, no spaces)'),
+const writeSkillInputSchema = {
+  name: z.string().min(1).describe('Skill name (lowercase, no spaces)'),
   content: z.string().min(1).describe('Full markdown content including YAML frontmatter (name, description)')
 };
 
-const deleteGuideInputSchema = {
-  name: z.string().min(1).describe('Guide name to delete')
+const deleteSkillInputSchema = {
+  name: z.string().min(1).describe('Skill name to delete')
 };
 
 const searchContentInputSchema = {
@@ -171,6 +186,21 @@ function sanitizeDimensions(raw) {
     if (result.length >= 5) break;
   }
   return result;
+}
+
+function validateExplicitDescription(description) {
+  if (typeof description !== 'string') {
+    return 'Description is required and must be a string.';
+  }
+  const text = description.trim();
+  if (text.length < 24) {
+    return 'Description must be explicit and substantial (at least 24 characters).';
+  }
+  const weakPatterns = /\b(discusses|explores|examines|talks about|is about|delves into)\b/i;
+  if (weakPatterns.test(text)) {
+    return 'Description is too vague. State exactly what this is and why it matters.';
+  }
+  return null;
 }
 
 // FTS5 helpers
@@ -267,21 +297,27 @@ async function main() {
     process.exit(1);
   }
 
+  const instructions = buildInstructions();
   const server = new McpServer(serverInfo, { instructions });
+
+  function registerToolWithAliases(name, config, handler) {
+    server.registerTool(name, config, handler);
+  }
 
   // ========== CONTEXT TOOL ==========
 
-  server.registerTool(
-    'rah_get_context',
+  registerToolWithAliases(
+    'getContext',
     {
       title: 'Get RA-H context',
-      description: 'Get knowledge graph overview: stats, hub nodes (most connected), dimensions, recent activity, and available guides. Call this first to orient yourself. For deeper understanding, follow up with rah_read_guide("start-here").',
+      description: 'Get knowledge graph overview: stats, hub nodes (most connected), dimensions, recent activity, and available skills. Call this first to orient yourself. For deeper operating policy, follow up with readSkill("db-operations").',
       inputSchema: {}
     },
     async () => {
       const context = nodeService.getContext();
-      const guides = guideService.listGuides();
-      context.guides = guides.map(g => ({ name: g.name, description: g.description, immutable: g.immutable }));
+      const skills = skillService.listSkills();
+      context.skills = skills.map(s => ({ name: s.name, description: s.description, immutable: s.immutable }));
+      context.guides = context.skills;
 
       // First-run welcome message
       if (context.stats.nodeCount === 0) {
@@ -295,7 +331,7 @@ async function main() {
         };
       }
 
-      const summary = `Graph: ${context.stats.nodeCount} nodes, ${context.stats.edgeCount} edges, ${context.stats.dimensionCount} dimensions, ${guides.length} guides.`;
+      const summary = `Graph: ${context.stats.nodeCount} nodes, ${context.stats.edgeCount} edges, ${context.stats.dimensionCount} dimensions, ${skills.length} skills.`;
       return {
         content: [{ type: 'text', text: summary }],
         structuredContent: context
@@ -305,11 +341,11 @@ async function main() {
 
   // ========== NODE TOOLS ==========
 
-  server.registerTool(
-    'rah_add_node',
+  registerToolWithAliases(
+    'createNode',
     {
       title: 'Add RA-H node',
-      description: 'Create a new node. Always search first (rah_search_nodes) to avoid duplicates. Title: max 160 chars, clear and descriptive. Use "link" ONLY for external content (URL, video, article) — omit for synthesis/ideas derived from existing nodes. "content" = your notes/analysis. "chunk" = verbatim source text. "description" = one-sentence summary for search. Assign 1-5 dimensions — call rah_list_dimensions first to use existing ones.',
+      description: 'Create a new node. Always search first (queryNodes) to avoid duplicates. Title: max 160 chars, clear and descriptive. Description is REQUIRED and must be explicit about what the thing is and why it matters for contextual grounding. Use "link" ONLY for external content (URL, video, article) — omit for synthesis/ideas derived from existing nodes. "content" = your notes/analysis. "chunk" = verbatim source text. Assign 1-5 dimensions — call queryDimensions first to use existing ones.',
       // Note: MCP schema uses "content" for external API compat; mapped to "notes" internally
       inputSchema: addNodeInputSchema
     },
@@ -317,6 +353,10 @@ async function main() {
       const normalizedDimensions = sanitizeDimensions(dimensions);
       if (normalizedDimensions.length === 0) {
         throw new Error('At least one dimension is required.');
+      }
+      const descriptionError = validateExplicitDescription(description);
+      if (descriptionError) {
+        throw new Error(descriptionError);
       }
 
       const node = nodeService.createNode({
@@ -343,11 +383,11 @@ async function main() {
     }
   );
 
-  server.registerTool(
-    'rah_search_nodes',
+  registerToolWithAliases(
+    'queryNodes',
     {
       title: 'Search RA-H nodes',
-      description: 'Search nodes by keyword across title, description, and content fields. Multi-word queries find nodes containing all words (not exact phrases). Returns up to 25 results (default 10). Call before creating nodes to check for duplicates. Optionally filter by dimensions.',
+      description: 'Search nodes by keyword across title, description, and content fields. Multi-word queries find nodes containing all words (not exact phrases). Returns up to 25 results (default 10). Call before creating nodes to check for duplicates. Optionally filter by dimensions. NOT for searching source documents (transcripts, articles) — use searchContentEmbeddings for that.',
       // Note: searches across title, description, and notes columns
       inputSchema: searchNodesInputSchema
     },
@@ -497,11 +537,11 @@ async function main() {
     }
   );
 
-  server.registerTool(
-    'rah_get_nodes',
+  registerToolWithAliases(
+    'getNodesById',
     {
       title: 'Get RA-H nodes by ID',
-      description: 'Load full node records by their IDs (max 10 per call). Chunks over 10K chars are truncated — check chunk_truncated and chunk_length fields. For full text, use rah_search_content to search or rah_sqlite_query with substr() to read sections.',
+      description: 'Load full node records by their IDs (max 10 per call). Chunks over 10K chars are truncated — check chunk_truncated and chunk_length fields. For full text, use searchContentEmbeddings to search or sqliteQuery with substr() to read sections.',
       inputSchema: getNodesInputSchema
     },
     async ({ nodeIds }) => {
@@ -546,16 +586,23 @@ async function main() {
     }
   );
 
-  server.registerTool(
-    'rah_update_node',
+  registerToolWithAliases(
+    'updateNode',
     {
       title: 'Update RA-H node',
-      description: 'Update an existing node. Content is APPENDED to existing notes (not replaced). Dimensions are REPLACED entirely with the new array. Title, description, and link are overwritten.',
+      description: 'Update an existing node. Description is REQUIRED on every update and must explicitly state WHAT this thing is + WHY it matters for contextual grounding. Content is APPENDED to existing notes (not replaced). Dimensions are REPLACED entirely with the new array. Title, description, and link are overwritten. Call getNodesById first to verify current state before updating.',
       inputSchema: updateNodeInputSchema
     },
     async ({ id, updates }) => {
       if (!updates || Object.keys(updates).length === 0) {
         throw new Error('At least one field must be provided in updates.');
+      }
+      if (!updates.description) {
+        throw new Error('Every node update requires an explicit description (WHAT this is + WHY it matters).');
+      }
+      const descriptionError = validateExplicitDescription(updates.description);
+      if (descriptionError) {
+        throw new Error(descriptionError);
       }
 
       // Map MCP 'content' field → internal 'notes' field
@@ -580,11 +627,11 @@ async function main() {
 
   // ========== EDGE TOOLS ==========
 
-  server.registerTool(
-    'rah_create_edge',
+  registerToolWithAliases(
+    'createEdge',
     {
       title: 'Create RA-H edge',
-      description: 'Connect two nodes with an edge. Edges are the most valuable part of the graph — they represent understanding, not proximity. Direction matters: reads as sourceId → [explanation] → targetId. The explanation should read as a sentence (e.g. "invented this technique", "contradicts the claim in").',
+      description: 'Connect two nodes with an edge. Edges are the most valuable part of the graph — they represent understanding, not proximity. Direction matters: reads as sourceId → [explanation] → targetId. The explanation should read as a sentence (e.g. "invented this technique", "contradicts the claim in"). Call queryEdge first to check if a connection already exists between the two nodes.',
       inputSchema: createEdgeInputSchema
     },
     async ({ sourceId, targetId, explanation }) => {
@@ -606,8 +653,8 @@ async function main() {
     }
   );
 
-  server.registerTool(
-    'rah_update_edge',
+  registerToolWithAliases(
+    'updateEdge',
     {
       title: 'Update RA-H edge',
       description: 'Update an edge explanation. Use when a connection needs a better or corrected explanation.',
@@ -627,11 +674,11 @@ async function main() {
     }
   );
 
-  server.registerTool(
-    'rah_query_edges',
+  registerToolWithAliases(
+    'queryEdge',
     {
       title: 'Query RA-H edges',
-      description: 'Find edges/connections. Optionally filter by nodeId to see all connections for a specific node. Returns up to 50 edges (default 25) with edge IDs, connected node IDs, and explanations.',
+      description: 'Find edges/connections. Optionally filter by nodeId to see all connections for a specific node. Returns up to 50 edges (default 25) with edge IDs, connected node IDs, and explanations. Use when exploring how nodes relate, checking for existing connections before creating edges, or traversing the graph from a hub node.',
       inputSchema: queryEdgesInputSchema
     },
     async ({ nodeId, limit = 25 }) => {
@@ -658,11 +705,11 @@ async function main() {
 
   // ========== DIMENSION TOOLS ==========
 
-  server.registerTool(
-    'rah_list_dimensions',
+  registerToolWithAliases(
+    'queryDimensions',
     {
       title: 'List RA-H dimensions',
-      description: 'Get all dimensions with node counts.',
+      description: 'Get all dimensions with node counts. Call before creating nodes (to assign existing dimensions) or before creating new dimensions (to avoid duplicates). Shows priority/locked status.',
       inputSchema: listDimensionsInputSchema
     },
     async () => {
@@ -678,8 +725,8 @@ async function main() {
     }
   );
 
-  server.registerTool(
-    'rah_create_dimension',
+  registerToolWithAliases(
+    'createDimension',
     {
       title: 'Create RA-H dimension',
       description: 'Create a new dimension/category. Use lowercase, singular form (e.g. "biology" not "Biology" or "biologies"). Set isPriority=true to lock it for automatic assignment to new nodes. Always include a description.',
@@ -703,8 +750,8 @@ async function main() {
     }
   );
 
-  server.registerTool(
-    'rah_update_dimension',
+  registerToolWithAliases(
+    'updateDimension',
     {
       title: 'Update RA-H dimension',
       description: 'Update or rename a dimension.',
@@ -730,11 +777,11 @@ async function main() {
     }
   );
 
-  server.registerTool(
-    'rah_delete_dimension',
+  registerToolWithAliases(
+    'deleteDimension',
     {
       title: 'Delete RA-H dimension',
-      description: 'Delete a dimension and remove it from all nodes.',
+      description: 'Delete a dimension and remove it from all nodes. WARNING: This is destructive — the dimension will be removed from ALL nodes that use it. Consider checking node counts with queryDimensions first.',
       inputSchema: deleteDimensionInputSchema
     },
     async ({ name }) => {
@@ -750,94 +797,95 @@ async function main() {
     }
   );
 
-  // ========== GUIDE TOOLS ==========
+  // ========== SKILL TOOLS ==========
 
-  server.registerTool(
-    'rah_list_guides',
+  registerToolWithAliases(
+    'listSkills',
     {
-      title: 'List RA-H guides',
-      description: 'List all guides — system guides (immutable reference docs) and user-created guides (custom workflows and preferences). Read "start-here" first for orientation.',
+      title: 'List RA-H skills',
+      description: 'List all skills available in this workspace. Read "db-operations" first for core graph operating policy.',
       inputSchema: {}
     },
     async () => {
-      const guides = guideService.listGuides();
+      const skills = skillService.listSkills();
 
       return {
-        content: [{ type: 'text', text: `Found ${guides.length} guide(s).` }],
+        content: [{ type: 'text', text: `Found ${skills.length} skill(s).` }],
         structuredContent: {
-          count: guides.length,
-          guides
+          count: skills.length,
+          skills,
+          guides: skills
         }
       };
     }
   );
 
-  server.registerTool(
-    'rah_read_guide',
+  registerToolWithAliases(
+    'readSkill',
     {
-      title: 'Read RA-H guide',
-      description: 'Read a guide by name. Returns full markdown with procedural instructions. Read "start-here" for master orientation. Call rah_list_guides to see all available guides.',
-      inputSchema: readGuideInputSchema
+      title: 'Read RA-H skill',
+      description: 'Read a skill by name. Returns full markdown with procedural instructions. Read "db-operations" for core policy. Call listSkills to see all available skills.',
+      inputSchema: readSkillInputSchema
     },
     async ({ name }) => {
-      const guide = guideService.readGuide(name);
+      const skill = skillService.readSkill(name);
 
-      if (!guide) {
-        throw new Error(`Guide "${name}" not found. Call rah_list_guides to see available guides.`);
+      if (!skill) {
+        throw new Error(`Skill "${name}" not found. Call listSkills to see available skills.`);
       }
 
       return {
-        content: [{ type: 'text', text: guide.content }],
-        structuredContent: guide
+        content: [{ type: 'text', text: skill.content }],
+        structuredContent: skill
       };
     }
   );
 
-  server.registerTool(
-    'rah_write_guide',
+  registerToolWithAliases(
+    'writeSkill',
     {
-      title: 'Write RA-H guide',
-      description: 'Create or update a custom guide. System guides cannot be modified. Content should be markdown with YAML frontmatter (name, description).',
-      inputSchema: writeGuideInputSchema
+      title: 'Write RA-H skill',
+      description: 'Create or update a skill. Content should be markdown with YAML frontmatter (name, description).',
+      inputSchema: writeSkillInputSchema
     },
     async ({ name, content }) => {
-      const result = guideService.writeGuide(name, content);
+      const result = skillService.writeSkill(name, content);
 
       if (!result.success) {
         throw new Error(result.error);
       }
 
       return {
-        content: [{ type: 'text', text: `Guide "${name}" saved.` }],
+        content: [{ type: 'text', text: `Skill "${name}" saved.` }],
         structuredContent: {
           success: true,
           name,
-          message: `Guide "${name}" saved.`
+          message: `Skill "${name}" saved.`
         }
       };
     }
   );
 
-  server.registerTool(
-    'rah_delete_guide',
+  registerToolWithAliases(
+    'deleteSkill',
     {
-      title: 'Delete RA-H guide',
-      description: 'Delete a custom guide. System guides cannot be deleted.',
-      inputSchema: deleteGuideInputSchema
+      title: 'Delete RA-H skill',
+      description: 'Delete a skill.',
+      inputSchema: deleteSkillInputSchema
     },
     async ({ name }) => {
-      const result = guideService.deleteGuide(name);
+      const result = skillService.deleteSkill(name);
 
       if (!result.success) {
         throw new Error(result.error);
       }
 
       return {
-        content: [{ type: 'text', text: `Guide "${name}" deleted.` }],
+        content: [{ type: 'text', text: `Skill "${name}" deleted.` }],
         structuredContent: {
           success: true,
           name,
-          message: `Guide "${name}" deleted.`
+          message: `Skill "${name}" deleted.`
         }
       };
     }
@@ -845,11 +893,11 @@ async function main() {
 
   // ========== CONTENT SEARCH TOOL ==========
 
-  server.registerTool(
-    'rah_search_content',
+  registerToolWithAliases(
+    'searchContentEmbeddings',
     {
       title: 'Search RA-H source content',
-      description: 'Search through source content (transcripts, books, articles) stored as chunks. Use when you need to find specific text within a node\'s full source material. For node-level search (titles, descriptions), use rah_search_nodes instead.',
+      description: 'Search through source content (transcripts, books, articles) stored as chunks. Use when you need to find specific text within a node\'s full source material. For node-level search (titles, descriptions), use queryNodes instead.',
       inputSchema: searchContentInputSchema
     },
     async ({ query: searchQuery, node_id, limit = 5 }) => {
@@ -859,7 +907,7 @@ async function main() {
       const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='chunks'").get();
       if (!tableCheck) {
         return {
-          content: [{ type: 'text', text: 'No chunks table found. Source content has not been chunked yet. Use rah_get_nodes to read the raw chunk field instead.' }],
+          content: [{ type: 'text', text: 'No chunks table found. Source content has not been chunked yet. Use getNodesById to read the raw chunk field instead.' }],
           structuredContent: { count: 0, chunks: [], note: 'chunks table does not exist' }
         };
       }
@@ -960,11 +1008,11 @@ async function main() {
 
   // ========== SQL QUERY TOOL ==========
 
-  server.registerTool(
-    'rah_sqlite_query',
+  registerToolWithAliases(
+    'sqliteQuery',
     {
       title: 'Execute read-only SQL',
-      description: 'Execute read-only SQL queries against the knowledge graph database. Tables: nodes, edges, dimensions, node_dimensions, chunks. Use PRAGMA table_info(tablename) for schema. Only SELECT/WITH/PRAGMA allowed.',
+      description: 'Execute read-only SQL queries against the knowledge graph database. Tables: nodes, edges, dimensions, node_dimensions, chunks. Use PRAGMA table_info(tablename) for schema. Only SELECT/WITH/PRAGMA allowed. Use when structured tools are insufficient — e.g., complex JOINs, aggregations, or custom filtering. Read readSkill("db-operations") for table definitions and query patterns.',
       inputSchema: sqliteQueryInputSchema
     },
     async ({ sql: userSql, format = 'json' }) => {

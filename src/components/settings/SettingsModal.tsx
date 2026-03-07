@@ -8,7 +8,7 @@ import ApiKeysViewer from './ApiKeysViewer';
 import DatabaseViewer from './DatabaseViewer';
 import ExternalAgentsPanel from './ExternalAgentsPanel';
 import ContextViewer from './ContextViewer';
-import GuidesViewer from './GuidesViewer';
+import SkillsViewer from './GuidesViewer';
 export type SettingsTab =
   | 'logs'
   | 'tools'
@@ -140,7 +140,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
                 transition: 'all 0.2s'
               }}
             >
-              Guides
+              Skills
             </div>
             <div
               onClick={() => setActiveTab('apikeys')}
@@ -284,7 +284,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             >
               {activeTab === 'logs' && 'System Logs'}
               {activeTab === 'tools' && 'Tools'}
-              {activeTab === 'guides' && 'Guides'}
+              {activeTab === 'guides' && 'Skills'}
               {activeTab === 'apikeys' && 'API Keys'}
               {activeTab === 'database' && 'Knowledge Database'}
               {activeTab === 'context' && 'Auto-Context'}
@@ -318,7 +318,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
           <div style={{ flex: 1, overflow: 'hidden' }}>
             {activeTab === 'logs' && <LogsViewer key={isOpen ? 'open' : 'closed'} />}
             {activeTab === 'tools' && <ToolsViewer />}
-            {activeTab === 'guides' && <GuidesViewer />}
+            {activeTab === 'guides' && <SkillsViewer />}
             {activeTab === 'apikeys' && <ApiKeysViewer />}
             {activeTab === 'database' && <DatabaseViewer />}
             {activeTab === 'context' && <ContextViewer />}

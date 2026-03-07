@@ -36,6 +36,7 @@ const PANE_TYPE_ICONS: Record<string, typeof LayoutList> = {
   wiki: BookOpen,
   library: Library,
   log: ScrollText,
+  skills: BookOpen,
 };
 
 const PANE_TYPE_LABELS: Record<string, string> = {
@@ -46,9 +47,10 @@ const PANE_TYPE_LABELS: Record<string, string> = {
   wiki: 'Wiki',
   library: 'Library',
   log: 'Log',
+  skills: 'Skills',
 };
 
-// Pane types shown in the toolbar (excludes 'node', 'chat', and 'guides' which is in settings)
+// Pane types shown in the toolbar center section (skills is pinned above settings)
 const TOOLBAR_PANE_TYPES: PaneType[] = ['views', 'map', 'dimensions', 'table', 'wiki', 'library', 'log'];
 
 interface ToolbarButtonProps {
@@ -233,8 +235,16 @@ export default function LeftToolbar({
         })}
       </div>
 
-      {/* Bottom section - Settings */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* Bottom section - Skills + Settings */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+        <PaneTypeButton
+          icon={BookOpen}
+          label="Skills"
+          paneType="skills"
+          isOpen={openPaneTypes.has('skills')}
+          isActivePane={activePaneType === 'skills'}
+          onClick={() => onPaneTypeClick('skills')}
+        />
         <ToolbarButton
           icon={Settings}
           label="Settings"

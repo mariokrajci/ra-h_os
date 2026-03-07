@@ -41,39 +41,39 @@ Restart Claude. Done.
 ## What to Expect
 
 Once connected, Claude will:
-- **Call `rah_get_context` first** to orient itself (stats, hub nodes, dimensions, guides)
+- **Call `getContext` first** to orient itself (stats, hub nodes, dimensions, skills)
 - **Proactively capture knowledge** — when a new insight, decision, person, or reference surfaces, it proposes a specific node (title, dimensions, description) so you can approve with minimal friction
-- **Read guides for complex tasks** — system guides (immutable) teach it how your graph works; custom guides teach it your workflows
+- **Read skills for complex tasks** — skills are editable and shared across internal + external agents
 - **Search before creating** to avoid duplicates
 
 ## Available Tools
 
 | Tool | Description |
 |------|-------------|
-| `rah_get_context` | Get graph overview — stats, hub nodes, dimensions, recent activity |
-| `rah_add_node` | Create a new node |
-| `rah_search_nodes` | Search nodes by keyword |
-| `rah_get_nodes` | Load nodes by ID (includes chunk + metadata) |
-| `rah_update_node` | Update an existing node |
-| `rah_create_edge` | Create connection between nodes |
-| `rah_update_edge` | Update an edge explanation |
-| `rah_query_edges` | Find edges for a node |
-| `rah_list_dimensions` | List all dimensions |
-| `rah_create_dimension` | Create a dimension |
-| `rah_update_dimension` | Update/rename a dimension |
-| `rah_delete_dimension` | Delete a dimension |
-| `rah_list_guides` | List available guides (system + custom) |
-| `rah_read_guide` | Read a guide by name |
-| `rah_write_guide` | Create or update a custom guide |
-| `rah_delete_guide` | Delete a custom guide |
-| `rah_search_content` | Search through source content (transcripts, books, articles) |
-| `rah_sqlite_query` | Execute read-only SQL queries (SELECT/WITH/PRAGMA) |
+| `getContext` | Get graph overview — stats, hub nodes, dimensions, recent activity |
+| `createNode` | Create a new node |
+| `queryNodes` | Search nodes by keyword |
+| `getNodesById` | Load nodes by ID (includes chunk + metadata) |
+| `updateNode` | Update an existing node |
+| `createEdge` | Create connection between nodes |
+| `updateEdge` | Update an edge explanation |
+| `queryEdge` | Find edges for a node |
+| `queryDimensions` | List all dimensions |
+| `createDimension` | Create a dimension |
+| `updateDimension` | Update/rename a dimension |
+| `deleteDimension` | Delete a dimension |
+| `listSkills` | List available skills |
+| `readSkill` | Read a skill by name |
+| `writeSkill` | Create or update a skill |
+| `deleteSkill` | Delete a skill |
+| `searchContentEmbeddings` | Search through source content (transcripts, books, articles) |
+| `sqliteQuery` | Execute read-only SQL queries (SELECT/WITH/PRAGMA) |
 
-## Guides
+## Skills
 
-Guides are detailed instruction sets that teach Claude how to work with your knowledge base. System guides (schema, creating-nodes, edges, dimensions, extract) are bundled and immutable. You can create up to 10 custom guides for your own workflows.
+Skills are detailed instruction sets that teach agents how to work with your knowledge base. The default seeded skills are editable and shared by internal + external agents.
 
-Guides are stored at `~/Library/Application Support/RA-H/guides/` and shared with the main app.
+Skills are stored at `~/Library/Application Support/RA-H/skills/` and shared with the main app.
 
 ## What's NOT Included
 

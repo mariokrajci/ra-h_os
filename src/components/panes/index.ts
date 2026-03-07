@@ -6,5 +6,6 @@ export { default as TablePane } from './TablePane';
 export { default as WikiPane } from './WikiPane';
 export { default as LibraryPane } from './LibraryPane';
 export { default as LogPane } from './LogPane';
+export { default as SkillsPane } from './SkillsPane';
 export { default as PaneHeader } from './PaneHeader';
 export * from './types';
