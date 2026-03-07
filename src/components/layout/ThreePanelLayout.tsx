@@ -36,6 +36,7 @@ import SplitHandle from './SplitHandle';
 
 // Pane components (ChatPane removed in rah-light, GuidesPane moved to settings)
 import { NodePane, DimensionsPane, MapPane, ViewsPane, TablePane, WikiPane, LibraryPane, LogPane } from '../panes';
+import { SkillsPane } from '../panes';
 import QuickAddInput from '../agents/QuickAddInput';
 import type { PaneType, SlotState, PaneAction } from '../panes/types';
 
@@ -295,6 +296,7 @@ export default function ThreePanelLayout() {
             case 'GUIDE_UPDATED':
               if (typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('guides:updated', { detail: data.data }));
+                window.dispatchEvent(new CustomEvent('skills:updated', { detail: data.data }));
               }
               break;
 
@@ -985,6 +987,17 @@ export default function ThreePanelLayout() {
               setActivePane(slot);
             }}
             refreshToken={nodesPanelRefresh}
+          />
+        );
+
+      case 'skills':
+        return (
+          <SkillsPane
+            slot={slot}
+            isActive={isActive}
+            onPaneAction={slot === 'A' ? handleSlotAAction : handleSlotBAction}
+            onCollapse={onCollapse}
+            onSwapPanes={slotB ? handleSwapPanes : undefined}
           />
         );
 

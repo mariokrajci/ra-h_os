@@ -2,7 +2,7 @@
 
 > How to navigate and use RA-OS's interface.
 
-**How it works:** RA-OS uses a 2-panel layout: browse nodes on the left, work with focused content on the right. Settings give you access to workflows, database views, a knowledge map, and more.
+**How it works:** RA-OS uses a 2-panel layout: browse nodes on the left, work with focused content on the right. Settings give you access to skills, database views, logs, tools, and MCP setup.
 
 ---
 
@@ -149,11 +149,11 @@ Global search modal with 4-tier relevance:
 | Tab | Purpose |
 |-----|---------|
 | **API Keys** | Configure OpenAI/Tavily keys |
-| **Workflows** | View, edit, create workflows |
+| **Skills** | View, edit, create skills |
 | **Tools** | View available tools |
-| **Map** | Knowledge graph visualization |
 | **Database** | Full node table with filters/sorting |
 | **Logs** | Activity feed (last 100 entries) |
+| **Context** | Context/system information viewer |
 | **Agents** | External agent (MCP) configuration |
 
 ---

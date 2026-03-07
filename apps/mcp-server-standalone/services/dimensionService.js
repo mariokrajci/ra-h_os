@@ -15,6 +15,7 @@ function getDimensions() {
     SELECT
       d.name AS dimension,
       d.description,
+      d.icon,
       d.is_priority AS isPriority,
       COALESCE(dc.count, 0) AS count
     FROM dimensions d
@@ -27,6 +28,7 @@ function getDimensions() {
   return rows.map(row => ({
     dimension: row.dimension,
     description: row.description,
+    icon: row.icon || null,
     isPriority: Boolean(row.isPriority),
     count: Number(row.count)
   }));
@@ -99,7 +101,7 @@ function updateDimension(data) {
       const dimResult = dimStmt.run(newName, currentName);
 
       if (dimResult.changes === 0) {
-        throw new Error('Dimension not found');
+        throw new Error('Dimension not found. Use rah_list_dimensions to see all dimensions.');
       }
 
       // Update node_dimensions
@@ -138,7 +140,7 @@ function updateDimension(data) {
   }
 
   if (updates.length === 0) {
-    throw new Error('At least one update field must be provided');
+    throw new Error('At least one update field must be provided (description, isPriority, or newName).');
   }
 
   updates.push('updated_at = CURRENT_TIMESTAMP');
@@ -153,7 +155,7 @@ function updateDimension(data) {
   const result = stmt.run(...params);
 
   if (result.changes === 0) {
-    throw new Error('Dimension not found');
+    throw new Error('Dimension not found. Use rah_list_dimensions to see all dimensions.');
   }
 
   return {
@@ -184,7 +186,7 @@ function deleteDimension(name) {
   });
 
   if (!removal.removedLinks && !removal.removedRow) {
-    throw new Error('Dimension not found');
+    throw new Error('Dimension not found. Use rah_list_dimensions to see all dimensions.');
   }
 
   return {

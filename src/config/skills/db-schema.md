@@ -1,6 +1,6 @@
 ---
-name: Schema
-description: Full database schema, tables, columns, query patterns.
+name: DB Schema
+description: Full database schema, tables, columns, and query patterns.
 immutable: true
 ---
 
@@ -27,8 +27,8 @@ immutable: true
 | Column | Type | Notes |
 |--------|------|-------|
 | id | INTEGER | Primary key |
-| from_node_id | INTEGER | FK → nodes.id |
-| to_node_id | INTEGER | FK → nodes.id |
+| from_node_id | INTEGER | FK -> nodes.id |
+| to_node_id | INTEGER | FK -> nodes.id |
 | context | TEXT | JSON: `{ explanation, category, type, confidence, created_via }` |
 | source | TEXT | 'user', 'ai_similarity', or helper name |
 | explanation | TEXT | Human-readable reason for connection |
@@ -46,14 +46,14 @@ immutable: true
 ### node_dimensions (junction)
 | Column | Type |
 |--------|------|
-| node_id | INTEGER FK → nodes.id |
+| node_id | INTEGER FK -> nodes.id |
 | dimension | TEXT (dimension name) |
 
 ### chunks (for semantic search)
 | Column | Type | Notes |
 |--------|------|-------|
 | id | INTEGER | Primary key |
-| node_id | INTEGER | FK → nodes.id |
+| node_id | INTEGER | FK -> nodes.id |
 | chunk_idx | INTEGER | Position in sequence |
 | text | TEXT | Chunk content |
 | created_at | TEXT | ISO timestamp |
@@ -69,8 +69,8 @@ immutable: true
 | updated_at | TEXT | ISO timestamp |
 
 ### FTS Tables
-- `chunks_fts` — full-text search on chunk text
-- `nodes_fts` — full-text search on node title + notes
+- `chunks_fts` - full-text search on chunk text
+- `nodes_fts` - full-text search on node title + notes
 
 ## Common Query Patterns
 
@@ -108,4 +108,4 @@ ORDER BY c.chunk_idx ASC
 LIMIT 10
 ```
 
-**Use `rah_search_content` to search chunks by keyword, or `rah_sqlite_query` for any read operation not covered by structured tools.**
+Use `searchContentEmbeddings` to search chunks by keyword, or `sqliteQuery` for read operations not covered by structured tools.

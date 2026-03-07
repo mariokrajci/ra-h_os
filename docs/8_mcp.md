@@ -76,22 +76,24 @@ If you want real-time UI updates when nodes are created:
 
 | Tool | Description |
 |------|-------------|
-| `rah_get_context` | Get graph overview — stats, hub nodes, dimensions, recent activity. Called first automatically. |
-| `rah_add_node` | Create a new node (title/content/dimensions) |
-| `rah_search_nodes` | Search existing nodes by keyword |
-| `rah_update_node` | Update an existing node |
-| `rah_get_nodes` | Get nodes by ID |
-| `rah_create_edge` | Create relationship between nodes |
-| `rah_update_edge` | Update an edge explanation |
-| `rah_query_edges` | Query existing edges |
-| `rah_list_dimensions` | List all dimensions |
-| `rah_create_dimension` | Create a new dimension |
-| `rah_update_dimension` | Update/rename dimension |
-| `rah_delete_dimension` | Delete a dimension |
-| `rah_list_guides` | List available guides (system + custom) |
-| `rah_read_guide` | Read a guide by name |
-| `rah_write_guide` | Create or update a custom guide |
-| `rah_delete_guide` | Delete a custom guide |
+| `getContext` | Get graph overview — stats, hub nodes, dimensions, recent activity. Called first automatically. |
+| `createNode` | Create a new node (title/content/dimensions) |
+| `queryNodes` | Search existing nodes by keyword |
+| `updateNode` | Update an existing node |
+| `getNodesById` | Get nodes by ID |
+| `createEdge` | Create relationship between nodes |
+| `updateEdge` | Update an edge explanation |
+| `queryEdge` | Query existing edges |
+| `queryDimensions` | List all dimensions |
+| `createDimension` | Create a new dimension |
+| `updateDimension` | Update/rename dimension |
+| `deleteDimension` | Delete a dimension |
+| `listSkills` | List available skills |
+| `readSkill` | Read a skill by name |
+| `writeSkill` | Create or update a custom skill |
+| `deleteSkill` | Delete a custom skill |
+| `searchContentEmbeddings` | Search extracted source content |
+| `sqliteQuery` | Run read-only SQL queries |
 
 ---
 
@@ -99,9 +101,9 @@ If you want real-time UI updates when nodes are created:
 
 Once connected, the MCP server instructs Claude to:
 
-1. **Call `rah_get_context` first** to orient itself (hub nodes, dimensions, stats, available guides)
+1. **Call `getContext` first** to orient itself (hub nodes, dimensions, stats, available skills)
 2. **Proactively capture knowledge** — when a new insight, decision, person, or reference surfaces, it proposes a specific node (title, dimensions, description) so you can approve with minimal friction
-3. **Read guides for complex tasks** — system guides (immutable) teach it how your graph works; custom guides teach it your workflows
+3. **Read skills for complex tasks** — skills provide reusable procedural instructions for graph operations and workflows
 4. **Search before creating** to avoid duplicates
 
 You don't need to ask Claude to use your knowledge base — it will offer when it spots something worth saving.

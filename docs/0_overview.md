@@ -26,8 +26,8 @@ RA-OS is a minimal knowledge graph UI with MCP server integration. It provides a
 - 2-panel UI (nodes list + focus panel)
 - Node/Edge/Dimension CRUD
 - Full-text and semantic search
-- MCP server with 14 tools
-- Guides system (context for external agents)
+- MCP server with graph and skill tools
+- Skills system (shared instructions for internal + external agents)
 - PDF extraction
 - Graph visualization (Map view)
 - BYO API keys
@@ -71,14 +71,14 @@ RA-OS is designed to be the knowledge backend for your AI workflows:
 
 Add this to `~/.claude.json` and restart Claude. Works without RA-OS running.
 
-Available tools: `rah_add_node`, `rah_search_nodes`, `rah_update_node`, `rah_get_nodes`, `rah_create_edge`, `rah_query_edges`, `rah_list_dimensions`, `rah_create_dimension`, `rah_update_dimension`, `rah_delete_dimension`
+Core tools include: `createNode`, `queryNodes`, `updateNode`, `getNodesById`, `createEdge`, `queryEdge`, `queryDimensions`, `createDimension`, `updateDimension`, `deleteDimension`, `listSkills`, `readSkill`
 
 ## Documentation
 
 | Doc | Description |
 |-----|-------------|
 | [Schema](./2_schema.md) | Database schema, node/edge structure |
-| [Tools & Guides](./4_tools-and-guides.md) | Available MCP tools, guide system |
+| [Tools & Skills](./4_tools-and-guides.md) | Available MCP tools, skill system |
 | [UI](./6_ui.md) | Component structure, panels, views |
 | [MCP](./8_mcp.md) | External agent connector setup |
 | [Troubleshooting](./TROUBLESHOOTING.md) | Common issues and fixes |
