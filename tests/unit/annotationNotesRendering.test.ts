@@ -2,6 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
+import { AppThemeProvider } from '@/components/theme/AppThemeProvider';
 
 describe('annotation notes rendering', () => {
   it('renders commentless annotations as compact highlight blocks', () => {
@@ -55,5 +56,22 @@ describe('annotation notes rendering', () => {
     expect(html).toContain('This matters');
     expect(html).toContain('data-annotation-block="full"');
     expect(html).not.toContain('data-highlight-block="compact"');
+  });
+
+  it('renders fenced code blocks without a fixed vertical max-height', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(
+        AppThemeProvider,
+        null,
+        React.createElement(MarkdownWithNodeTokens, {
+          content: '```ts\nconst alpha = 1;\nconst beta = 2;\n```',
+        })
+      )
+    );
+
+    expect(html).toContain('Copy code');
+    expect(html).not.toContain('max-height:360px');
+    expect(html).toContain('overflow-x:auto');
+    expect(html).toContain('overflow-y:visible');
   });
 });

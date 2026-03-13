@@ -130,7 +130,27 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = code;
+        textarea.setAttribute('readonly', 'true');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        const copiedViaExecCommand = typeof document.execCommand === 'function' && document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        if (!copiedViaExecCommand) {
+          throw new Error('Fallback copy failed');
+        }
+      }
+
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
     } catch {
@@ -175,8 +195,8 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
           fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace',
           fontSize: '13px',
           lineHeight: 1.45,
-          maxHeight: '360px',
-          overflow: 'auto',
+          overflowX: 'auto',
+          overflowY: 'visible',
         }}
         wrapLongLines={false}
       >
