@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import SettingsModal, { SettingsTab } from '../settings/SettingsModal';
 import SearchModal from '../nodes/SearchModal';
+import DocsModal from '../docs/DocsModal';
 import { Node } from '@/types/database';
 import { DatabaseEvent } from '@/services/events';
 import { usePersistentState } from '@/hooks/usePersistentState';
@@ -36,7 +37,6 @@ import SplitHandle from './SplitHandle';
 
 // Pane components (ChatPane removed in rah-light, GuidesPane moved to settings)
 import { NodePane, DimensionsPane, MapPane, ViewsPane, TablePane, WikiPane, LibraryPane, LogPane } from '../panes';
-import { SkillsPane } from '../panes';
 import QuickAddInput from '../agents/QuickAddInput';
 import type { PaneType, SlotState, PaneAction } from '../panes/types';
 
@@ -57,12 +57,12 @@ export default function ThreePanelLayout() {
   // SlotB width as percentage (when open)
   const [slotBWidth, setSlotBWidth] = usePersistentState<number>('ui.slotBWidth', 50);
 
-  // Migration: if a slot was persisted with type 'guides' (now moved to settings), reset it
+  // Migration: if a slot was persisted with type 'guides' or 'skills', reset it
   useEffect(() => {
-    if (slotA && (slotA.type as string) === 'guides') {
+    if (slotA && (((slotA.type as string) === 'guides') || ((slotA.type as string) === 'skills'))) {
       setSlotA({ type: 'views' });
     }
-    if (slotB && (slotB.type as string) === 'guides') {
+    if (slotB && (((slotB.type as string) === 'guides') || ((slotB.type as string) === 'skills'))) {
       setSlotB(null);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -73,6 +73,7 @@ export default function ThreePanelLayout() {
   // Settings modal state
   const [showSettings, setShowSettings] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>();
+  const [showDocs, setShowDocs] = useState(false);
   const handleCloseSettings = useCallback(() => {
     setShowSettings(false);
     setSettingsInitialTab(undefined);
@@ -990,17 +991,6 @@ export default function ThreePanelLayout() {
           />
         );
 
-      case 'skills':
-        return (
-          <SkillsPane
-            slot={slot}
-            isActive={isActive}
-            onPaneAction={slot === 'A' ? handleSlotAAction : handleSlotBAction}
-            onCollapse={onCollapse}
-            onSwapPanes={slotB ? handleSwapPanes : undefined}
-          />
-        );
-
       case 'wiki':
         return (
           <WikiPane
@@ -1061,6 +1051,7 @@ export default function ThreePanelLayout() {
       <LeftToolbar
         onSearchClick={() => setShowSearchModal(true)}
         onAddStuffClick={() => setShowAddStuff(true)}
+        onDocsClick={() => setShowDocs(true)}
         onSettingsClick={() => {
           setSettingsInitialTab(undefined);
           setShowSettings(true);
@@ -1172,6 +1163,11 @@ export default function ThreePanelLayout() {
         isOpen={showSettings}
         onClose={handleCloseSettings}
         initialTab={settingsInitialTab}
+      />
+
+      <DocsModal
+        isOpen={showDocs}
+        onClose={() => setShowDocs(false)}
       />
 
       {/* Add Stuff Modal */}

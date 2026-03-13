@@ -22,8 +22,7 @@ export type PaneType =
   | 'table'
   | 'wiki'
   | 'library'
-  | 'log'
-  | 'skills';
+  | 'log';
 
 // State for each slot
 export interface SlotState {
@@ -135,7 +134,6 @@ export const PANE_LABELS: Record<PaneType, string> = {
   wiki: 'Wiki',
   library: 'Library',
   log: 'Log',
-  skills: 'Skills',
 };
 
 // Default slot states

@@ -184,6 +184,9 @@ A tree view of all your tags (dimensions). Shows how many nodes have each tag. C
 ### Table
 A sortable spreadsheet showing all nodes at once. Columns: Title, Dimensions, Link, Event Date, Created, Updated, Edges. Click any column header to sort. Click a row to open the node. Best for bulk scanning or auditing your knowledge base.
 
+### Docs
+Opens the in-app documentation browser. It automatically lists the numbered docs from the top-level `docs/` folder, such as Overview, Schema, UI, MCP, and Open Source notes. Use this when you want to understand how RA-H works without leaving the app.
+
 ---
 
 ## 5. Focus Panel — Tab Reference

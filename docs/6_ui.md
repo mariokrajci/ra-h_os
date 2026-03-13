@@ -16,6 +16,7 @@
 │ • Search    │ • Tabbed workspace      │
 │ • Filters   │ • Node content          │
 │ • Folders   │ • Connections           │
+│ • Docs      │                         │
 │             │                         │
 └─────────────┴─────────────────────────┘
 ```
@@ -32,6 +33,7 @@ Browse and manage your knowledge base.
 - **Dimension filters** — Multi-select dimension tags
 - **Node list** — Scrollable list of filtered nodes
 - **Folder view toggle** — Switch between list and folder views
+- **Docs button** — Opens the built-in docs modal from top-level numbered `docs/*.md` files
 
 ### Node Display
 
@@ -150,7 +152,7 @@ Global search modal with 4-tier relevance:
 
 ## Settings Panel
 
-**Access:** Settings cog icon (top-right)
+**Access:** Settings cog icon in the left toolbar
 
 ### Tabs
 

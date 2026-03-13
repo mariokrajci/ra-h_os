@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   Search,
   Plus,
@@ -12,6 +12,7 @@ import {
   BookOpen,
   Library,
   ScrollText,
+  FileText,
   Settings,
 } from 'lucide-react';
 import type { PaneType } from '../panes/types';
@@ -20,6 +21,7 @@ interface LeftToolbarProps {
   onSearchClick: () => void;
   onAddStuffClick: () => void;
   onRefreshClick: () => void;
+  onDocsClick: () => void;
   onSettingsClick: () => void;
   onPaneTypeClick: (paneType: PaneType) => void;
   activePane: 'A' | 'B';
@@ -95,13 +97,12 @@ function ToolbarButton({ icon: Icon, label, shortcut, onClick, disabled, isActiv
 interface PaneTypeButtonProps {
   icon: typeof LayoutList;
   label: string;
-  paneType: PaneType;
   isOpen: boolean;
   isActivePane: boolean;
   onClick: () => void;
 }
 
-function PaneTypeButton({ icon: Icon, label, paneType, isOpen, isActivePane, onClick }: PaneTypeButtonProps) {
+function PaneTypeButton({ icon: Icon, label, isOpen, isActivePane, onClick }: PaneTypeButtonProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   // Determine color: green if open, brighter if it's the active pane
@@ -157,6 +158,7 @@ export default function LeftToolbar({
   onSearchClick,
   onAddStuffClick,
   onRefreshClick,
+  onDocsClick,
   onSettingsClick,
   onPaneTypeClick,
   activePane,
@@ -226,7 +228,6 @@ export default function LeftToolbar({
               key={paneType}
               icon={Icon}
               label={label}
-              paneType={paneType}
               isOpen={isOpen}
               isActivePane={isActivePane}
               onClick={() => onPaneTypeClick(paneType)}
@@ -235,15 +236,12 @@ export default function LeftToolbar({
         })}
       </div>
 
-      {/* Bottom section - Skills + Settings */}
+      {/* Bottom section - Docs + Settings */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-        <PaneTypeButton
-          icon={BookOpen}
-          label="Skills"
-          paneType="skills"
-          isOpen={openPaneTypes.has('skills')}
-          isActivePane={activePaneType === 'skills'}
-          onClick={() => onPaneTypeClick('skills')}
+        <ToolbarButton
+          icon={FileText}
+          label="Docs"
+          onClick={onDocsClick}
         />
         <ToolbarButton
           icon={Settings}
