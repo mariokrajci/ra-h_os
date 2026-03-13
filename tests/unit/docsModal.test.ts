@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DocsModal from '@/components/docs/DocsModal';
+import { AppThemeProvider } from '@/components/theme/AppThemeProvider';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -83,10 +84,16 @@ describe('DocsModal', () => {
 
   it('loads numbered docs and renders the selected document', async () => {
     await act(async () => {
-      root.render(React.createElement(DocsModal, {
-        isOpen: true,
-        onClose: vi.fn(),
-      }));
+      root.render(
+        React.createElement(
+          AppThemeProvider,
+          null,
+          React.createElement(DocsModal, {
+            isOpen: true,
+            onClose: vi.fn(),
+          }),
+        ),
+      );
     });
 
     await act(async () => {

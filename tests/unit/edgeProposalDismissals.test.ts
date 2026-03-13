@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { runMock, allMock, getSQLiteClientMock } = vi.hoisted(() => ({
+const { runMock, allMock, queryMock, getSQLiteClientMock } = vi.hoisted(() => ({
   runMock: vi.fn(),
   allMock: vi.fn(),
+  queryMock: vi.fn(),
   getSQLiteClientMock: vi.fn(),
 }));
 
@@ -16,6 +17,7 @@ describe('proposal dismissal service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSQLiteClientMock.mockReturnValue({
+      query: queryMock,
       prepare: vi.fn((sql: string) => {
         if (sql.includes('SELECT target_node_id')) {
           return { all: allMock };
@@ -30,6 +32,8 @@ describe('proposal dismissal service', () => {
 
     await proposalDismissalService.dismissProposal(3, 9);
 
+    expect(queryMock).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS edge_proposal_dismissals'));
+    expect(queryMock).toHaveBeenCalledWith(expect.stringContaining('CREATE UNIQUE INDEX IF NOT EXISTS idx_edge_proposal_dismissals_source_target'));
     expect(runMock).toHaveBeenCalledWith(3, 9);
   });
 

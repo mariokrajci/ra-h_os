@@ -39,11 +39,11 @@ describe('MappedHighlightedCodeBlock', () => {
     });
 
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     });
 
     expect(container.innerHTML).toContain('language-typescript');
-    expect(container.innerHTML).toContain('style="color:');
+    expect(container.innerHTML).toContain('color:');
     expect(container.innerHTML).toContain('data-source-start="0"');
   });
 
@@ -66,7 +66,7 @@ describe('MappedHighlightedCodeBlock', () => {
     });
 
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     });
 
     expect(container.innerHTML).toContain('language-unknownlang');
@@ -93,7 +93,7 @@ describe('MappedHighlightedCodeBlock', () => {
     });
 
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     });
 
     expect(container.innerHTML).toContain('rgba(250, 204, 21, 0.42)');

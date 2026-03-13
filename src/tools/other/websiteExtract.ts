@@ -109,7 +109,7 @@ export const websiteExtractTool = tool({
       }
 
       setImmediate(() => {
-        finalizeWebsiteNode({ nodeId, title: nodeTitle, url }).catch(err =>
+        Promise.resolve(finalizeWebsiteNode({ nodeId, title: nodeTitle, url })).catch(err =>
           console.error(`[website] background finalization failed for node ${nodeId}:`, err)
         );
       });
