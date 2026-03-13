@@ -140,17 +140,11 @@ When you add a connection, you're always on the **dependent** node, pointing tow
 
 1. Open a node in the Focus Panel
 2. Click the **Edges** tab (or the connections button with a number badge next to the title)
-3. In the **"Add connection"** input at the bottom, start typing the title of the node you want to connect to
-4. Select it from the dropdown (arrow keys + Enter, or click)
-5. A second input appears: type the relationship in plain English:
-   - _"created by"_ → `created_by` (this node was created by the target)
-   - _"part of"_ → `part_of` (this node is a part of the target)
-   - _"source of"_ → `source_of` (this node was derived from the target)
-   - _"related to"_ → `related_to` (no directional meaning)
-   - Anything else → AI infers the type
-6. Press **Enter**
+3. Review the **Suggested connections** section at the top
+4. Click **Approve** to create a suggested edge immediately, or **Dismiss** to hide that suggestion for this node
+5. If the connection you want is not suggested, use the manual **Create** flow as a fallback
 
-The connection appears immediately. Green arrows = outgoing (this node → other). Orange arrows = incoming (other → this node). Click any connected node title to jump to it.
+Approved connections appear immediately. Green arrows = outgoing (this node → other). Orange arrows = incoming (other → this node). Click any connected node title to jump to it.
 
 To remove a connection: click the **×** next to it.
 
@@ -215,13 +209,16 @@ AI-seeded editable synthesis. Supports full Markdown.
 ### Edges tab
 All connections this node has.
 
+- **Suggested connections:** Proposed edges based on explicit mentions in the node description
+- **Approve:** Creates the edge immediately using the normal edge inference flow
+- **Dismiss:** Hides that suggestion for this node so it does not keep reappearing
 - **Green arrow (→):** This node points _to_ another node (outgoing)
 - **Orange arrow (←):** Another node points _to_ this node (incoming)
 - Click any connected node's title to open it
 - Click the **×** to delete a connection
 - To edit a relationship explanation: click on the explanation text, edit, press Enter
 
-Adding connections: see Workflow 4 above.
+Suggested connections are the default path. Manual creation is still available as a fallback via the **Create** button. Adding connections manually: see Workflow 4 above.
 
 ### Source tab
 Raw content extracted from the source URL — YouTube transcript segments, PDF page text, website paragraphs. This is what gets chunked and embedded for semantic search.

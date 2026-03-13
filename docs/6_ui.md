@@ -113,7 +113,7 @@ Active workspace for the node(s) you're working with.
 | **Content** | Full markdown content with syntax highlighting |
 | **Metadata** | Created, updated, type, link |
 | **Dimensions** | Editable dimension tags |
-| **Connections** | Incoming/outgoing edges |
+| **Connections** | Suggested connections plus incoming/outgoing edges |
 
 ### Content Rendering
 
@@ -121,6 +121,14 @@ Active workspace for the node(s) you're working with.
 - `[NODE:id:"title"]` renders as clickable links
 - Syntax highlighting for code blocks
 - YouTube embeds (if link is YouTube URL)
+
+### Edges Tab
+
+- Edge proposals are preloaded when a note becomes active.
+- Suggestions appear only inside the `Edges` tab under **Suggested connections**.
+- `Approve` creates the edge immediately through the existing edge-creation flow.
+- `Dismiss` hides the proposal for that source note so it does not keep reappearing.
+- Manual creation still exists as a fallback, but suggestions are the default workflow.
 
 ---
 

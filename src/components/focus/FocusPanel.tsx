@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, type DragEvent } from 'react';
+import React, { useState, useEffect, useMemo, useRef, type DragEvent } from 'react';
 import { Eye, Trash2, Link, Loader, Database, RefreshCw, Pencil, X, Save, Plus, BookOpen } from 'lucide-react';
 import { parseAndRenderContent } from '@/components/helpers/NodeLabelRenderer';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
@@ -35,6 +35,14 @@ interface NodeSearchResult {
   id: number;
   title: string;
   dimensions?: string[];
+}
+
+interface EdgeProposalResult {
+  sourceNodeId: number;
+  targetNodeId: number;
+  targetNodeTitle: string;
+  reason: string;
+  matchedText: string;
 }
 
 interface FocusPanelProps {
@@ -130,6 +138,9 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   // Edges state management (following same patterns as nodes)
   const [edgesData, setEdgesData] = useState<{ [key: number]: NodeConnection[] }>({});
   const [loadingEdges, setLoadingEdges] = useState<Set<number>>(new Set());
+  const [edgeProposalsData, setEdgeProposalsData] = useState<Record<number, EdgeProposalResult[]>>({});
+  const [loadingEdgeProposals, setLoadingEdgeProposals] = useState<Set<number>>(new Set());
+  const [edgeProposalActionKey, setEdgeProposalActionKey] = useState<string | null>(null);
   const [addingEdge, setAddingEdge] = useState<number | null>(null);
   const [nodeSearchQuery, setNodeSearchQuery] = useState('');
   const [nodeSearchSuggestions, setNodeSearchSuggestions] = useState<NodeSearchResult[]>([]);
@@ -336,6 +347,13 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNodeId]);
 
+  useEffect(() => {
+    if (activeNodeId === null) return;
+    if (edgeProposalsData[activeNodeId] || loadingEdgeProposals.has(activeNodeId)) return;
+    fetchEdgeProposalsData(activeNodeId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNodeId, edgeProposalsData, loadingEdgeProposals]);
+
   // Clear editing state when switching nodes
   useEffect(() => {
     // Clear all edit modes when switching to a different node
@@ -423,6 +441,97 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
         newSet.delete(nodeId);
         return newSet;
       });
+    }
+  };
+
+  const fetchEdgeProposalsData = async (nodeId: number) => {
+    setLoadingEdgeProposals(prev => new Set(prev).add(nodeId));
+    try {
+      const response = await fetch(`/api/nodes/${nodeId}/edge-proposals`);
+      const data = await response.json();
+      if (response.ok && data.success && Array.isArray(data.data)) {
+        setEdgeProposalsData(prev => ({ ...prev, [nodeId]: data.data }));
+      }
+    } catch (error) {
+      console.error(`Error fetching edge proposals for node ${nodeId}:`, error);
+    } finally {
+      setLoadingEdgeProposals(prev => {
+        const next = new Set(prev);
+        next.delete(nodeId);
+        return next;
+      });
+    }
+  };
+
+  const updateProposalsForNode = (nodeId: number, updater: (current: EdgeProposalResult[]) => EdgeProposalResult[]) => {
+    setEdgeProposalsData(prev => ({
+      ...prev,
+      [nodeId]: updater(prev[nodeId] || []),
+    }));
+  };
+
+  const approveEdgeProposal = async (proposal: EdgeProposalResult) => {
+    const actionKey = `${proposal.sourceNodeId}:${proposal.targetNodeId}:approve`;
+    const previous = edgeProposalsData[proposal.sourceNodeId] || [];
+    updateProposalsForNode(proposal.sourceNodeId, current =>
+      current.filter(item => item.targetNodeId !== proposal.targetNodeId)
+    );
+    setEdgeProposalActionKey(actionKey);
+
+    try {
+      const response = await fetch('/api/edges', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from_node_id: proposal.sourceNodeId,
+          to_node_id: proposal.targetNodeId,
+          source: 'user',
+          explanation: '',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create edge from proposal');
+      }
+
+      await fetchEdgesData(proposal.sourceNodeId);
+    } catch (error) {
+      console.error('Error approving edge proposal:', error);
+      setEdgeProposalsData(prev => ({ ...prev, [proposal.sourceNodeId]: previous }));
+    } finally {
+      setEdgeProposalActionKey(current => current === actionKey ? null : current);
+    }
+  };
+
+  const dismissEdgeProposal = async (proposal: EdgeProposalResult) => {
+    const actionKey = `${proposal.sourceNodeId}:${proposal.targetNodeId}:dismiss`;
+    const previous = edgeProposalsData[proposal.sourceNodeId] || [];
+    updateProposalsForNode(proposal.sourceNodeId, current =>
+      current.filter(item => item.targetNodeId !== proposal.targetNodeId)
+    );
+    setEdgeProposalActionKey(actionKey);
+
+    try {
+      const response = await fetch(`/api/nodes/${proposal.sourceNodeId}/edge-proposals/dismiss`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          target_node_id: proposal.targetNodeId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to dismiss edge proposal');
+      }
+    } catch (error) {
+      console.error('Error dismissing edge proposal:', error);
+      setEdgeProposalsData(prev => ({ ...prev, [proposal.sourceNodeId]: previous }));
+    } finally {
+      setEdgeProposalActionKey(current => current === actionKey ? null : current);
     }
   };
 
@@ -1641,6 +1750,84 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {loadingEdgeProposals.has(activeTab) && !edgeProposalsData[activeTab] && (
+          <div style={{ marginBottom: '12px', fontSize: '11px', color: '#666' }}>
+            Loading suggestions...
+          </div>
+        )}
+
+        {(edgeProposalsData[activeTab] || []).length > 0 && (
+          <div style={{
+            marginBottom: '16px',
+            padding: '12px',
+            background: '#101511',
+            border: '1px solid #1f3a27',
+            borderRadius: '8px',
+          }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#22c55e', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Suggested connections
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {(edgeProposalsData[activeTab] || []).map((proposal) => {
+                const approveKey = `${proposal.sourceNodeId}:${proposal.targetNodeId}:approve`;
+                const dismissKey = `${proposal.sourceNodeId}:${proposal.targetNodeId}:dismiss`;
+                const isBusy = edgeProposalActionKey === approveKey || edgeProposalActionKey === dismissKey;
+
+                return (
+                  <div
+                    key={`${proposal.sourceNodeId}-${proposal.targetNodeId}`}
+                    style={{
+                      border: '1px solid #1d2a20',
+                      borderRadius: '6px',
+                      padding: '10px',
+                      background: '#0c110d',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '6px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#e5e5e5' }}>{proposal.targetNodeTitle}</div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => approveEdgeProposal(proposal)}
+                          disabled={isBusy}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            border: 'none',
+                            background: '#22c55e',
+                            color: '#041106',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            cursor: isBusy ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => dismissEdgeProposal(proposal)}
+                          disabled={isBusy}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            border: '1px solid #2f3a31',
+                            background: 'transparent',
+                            color: '#9ca3af',
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            cursor: isBusy ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#8b8b8b' }}>{proposal.reason}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Search Section — only visible when toggled */}
         {edgeSearchOpen && (
           <div style={{ marginBottom: '12px', position: 'relative' }}>
