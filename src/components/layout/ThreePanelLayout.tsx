@@ -1043,7 +1043,7 @@ export default function ThreePanelLayout() {
         display: 'flex',
         height: '100vh',
         width: '100vw',
-        background: '#0a0a0a',
+        background: 'var(--app-bg)',
         overflow: 'hidden'
       }}
     >
@@ -1105,7 +1105,8 @@ export default function ThreePanelLayout() {
                 margin: '0 auto',
                 width: '100%',
               } : {}),
-              background: '#111111',
+              background: 'var(--app-panel)',
+              border: '1px solid var(--app-border)',
               borderRadius: '10px',
               outline: dragOverSlot === 'A' ? '2px dashed #22c55e' : 'none',
               outlineOffset: '-4px',
@@ -1138,7 +1139,8 @@ export default function ThreePanelLayout() {
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
-              background: '#111111',
+              background: 'var(--app-panel)',
+              border: '1px solid var(--app-border)',
               borderRadius: '10px',
               outline: dragOverSlot === 'B' ? '2px dashed #22c55e' : 'none',
               outlineOffset: '-4px',

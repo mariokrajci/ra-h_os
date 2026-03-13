@@ -1,4 +1,5 @@
 import './globals.css';
+import { AppThemeProvider } from '@/components/theme/AppThemeProvider';
 import { DimensionIconsProvider } from '@/context/DimensionIconsContext';
 
 export const metadata = {
@@ -14,9 +15,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <DimensionIconsProvider>
-          {children}
-        </DimensionIconsProvider>
+        <AppThemeProvider>
+          <DimensionIconsProvider>
+            {children}
+          </DimensionIconsProvider>
+        </AppThemeProvider>
       </body>
     </html>
   );

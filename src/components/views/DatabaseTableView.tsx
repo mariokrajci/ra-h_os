@@ -166,7 +166,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
       {/* Compact toolbar */}
       <div style={{
         padding: '8px 12px',
-        borderBottom: '1px solid #1a1a1a',
+        borderBottom: '1px solid var(--app-border)',
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
@@ -176,13 +176,13 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            background: '#0d0d0d',
-            border: '1px solid #222',
+            background: 'var(--app-input)',
+            border: '1px solid var(--app-border)',
             borderRadius: '6px',
             padding: '0 8px',
             gap: '6px',
           }}>
-            <Search size={12} style={{ color: '#555', flexShrink: 0 }} />
+            <Search size={12} style={{ color: 'var(--app-text-subtle)', flexShrink: 0 }} />
             <input
               type="text"
               value={searchQuery}
@@ -191,7 +191,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#f0f0f0',
+                color: 'var(--app-text)',
                 fontSize: '12px',
                 padding: '5px 0',
                 outline: 'none',
@@ -202,7 +202,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
               <button
                 type="button"
                 onClick={() => { setSearchQuery(''); setActiveSearch(''); }}
-                style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', padding: 0, display: 'flex' }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--app-text-subtle)', cursor: 'pointer', padding: 0, display: 'flex' }}
               >
                 <X size={11} />
               </button>
@@ -216,16 +216,16 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
             <div key={f} style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               padding: '2px 7px',
-              background: 'rgba(34, 197, 94, 0.06)',
-              border: '1px solid rgba(34, 197, 94, 0.12)',
-              borderRadius: '4px', fontSize: '11px', color: '#5a9'
+              background: 'var(--app-accent-soft)',
+              border: '1px solid var(--app-accent-border)',
+              borderRadius: '4px', fontSize: '11px', color: 'var(--toolbar-accent)'
             }}>
               {f}
               <button
                 onClick={() => setSelectedFilters(selectedFilters.filter(x => x !== f))}
-                style={{ background: 'transparent', border: 'none', color: '#5a9', cursor: 'pointer', padding: 0, display: 'flex' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#5a9'; }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--toolbar-accent)', cursor: 'pointer', padding: 0, display: 'flex' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-danger-text)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--toolbar-accent)'; }}
               >
                 <X size={10} />
               </button>
@@ -237,10 +237,10 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
               style={{
                 display: 'flex', alignItems: 'center', gap: '4px',
                 padding: '4px 7px', background: 'transparent',
-                border: '1px solid #222', borderRadius: '5px',
-                color: '#888', fontSize: '11px', cursor: 'pointer',
+                border: '1px solid var(--app-border)', borderRadius: '5px',
+                color: 'var(--app-text-muted)', fontSize: '11px', cursor: 'pointer',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--app-hover)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
               <Filter size={11} />
@@ -250,7 +250,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
             {showFilterPicker && (
               <div style={{
                 position: 'absolute', top: '100%', left: 0, marginTop: '4px',
-                background: '#141414', border: '1px solid #222', borderRadius: '10px',
+                background: 'var(--app-panel-elevated)', border: '1px solid var(--app-border)', borderRadius: '10px',
                 padding: '6px', minWidth: '220px', maxHeight: '320px', overflowY: 'auto',
                 zIndex: 1000, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
               }}>
@@ -261,13 +261,13 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                   placeholder="Search dimensions..."
                   autoFocus
                   style={{
-                    width: '100%', padding: '7px 10px', background: '#0d0d0d',
-                    border: '1px solid transparent', borderRadius: '6px',
-                    color: '#f0f0f0', fontSize: '12px', marginBottom: '4px', outline: 'none',
+                    width: '100%', padding: '7px 10px', background: 'var(--app-input)',
+                    border: '1px solid var(--app-input)', borderRadius: '6px',
+                    color: 'var(--app-text)', fontSize: '12px', marginBottom: '4px', outline: 'none',
                   }}
                 />
                 {filterPickerDimensions.length === 0 ? (
-                  <div style={{ padding: '12px', color: '#666', fontSize: '12px', textAlign: 'center' }}>
+                  <div style={{ padding: '12px', color: 'var(--app-text-muted)', fontSize: '12px', textAlign: 'center' }}>
                     No matching dimensions
                   </div>
                 ) : (
@@ -284,14 +284,14 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         width: '100%', padding: '7px 10px', background: 'transparent',
-                        border: 'none', borderRadius: '5px', color: '#ccc',
+                        border: 'none', borderRadius: '5px', color: 'var(--app-text)',
                         fontSize: '12px', cursor: 'pointer', textAlign: 'left',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--app-hover)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       <span>{d.dimension}</span>
-                      <span style={{ color: '#555', fontSize: '10px', background: '#1a1a1a', padding: '1px 6px', borderRadius: '10px' }}>
+                      <span style={{ color: 'var(--app-text-subtle)', fontSize: '10px', background: 'var(--app-surface-subtle)', padding: '1px 6px', borderRadius: '10px' }}>
                         {d.count}
                       </span>
                     </button>
@@ -304,9 +304,9 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
           {selectedFilters.length > 0 && (
             <button
               onClick={() => setSelectedFilters([])}
-              style={{ padding: '4px 6px', background: 'transparent', border: 'none', color: '#666', fontSize: '11px', cursor: 'pointer' }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#666'; }}
+              style={{ padding: '4px 6px', background: 'transparent', border: 'none', color: 'var(--app-text-muted)', fontSize: '11px', cursor: 'pointer' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-danger-text)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--app-text-muted)'; }}
             >
               Clear
             </button>
@@ -320,10 +320,10 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
             style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               padding: '4px 7px', background: 'transparent',
-              border: '1px solid #222', borderRadius: '5px',
-              color: '#888', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap',
+              border: '1px solid var(--app-border)', borderRadius: '5px',
+              color: 'var(--app-text-muted)', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--app-hover)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
             <ArrowUpDown size={11} />
@@ -334,7 +334,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
           {showSortDropdown && (
             <div style={{
               position: 'absolute', top: '100%', right: 0, marginTop: '4px',
-              background: '#141414', border: '1px solid #222', borderRadius: '10px',
+              background: 'var(--app-panel-elevated)', border: '1px solid var(--app-border)', borderRadius: '10px',
               padding: '4px', minWidth: '160px', zIndex: 1000,
               boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
             }}>
@@ -345,15 +345,15 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                   style={{
                     display: 'flex', alignItems: 'center', gap: '8px',
                     width: '100%', padding: '7px 10px',
-                    background: sortOrder === key ? 'rgba(255,255,255,0.04)' : 'transparent',
+                    background: sortOrder === key ? 'var(--app-selected)' : 'transparent',
                     border: 'none', borderRadius: '5px',
-                    color: sortOrder === key ? '#f0f0f0' : '#999',
+                    color: sortOrder === key ? 'var(--app-text)' : 'var(--app-text-muted)',
                     fontSize: '12px', cursor: 'pointer', textAlign: 'left',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = sortOrder === key ? 'rgba(255,255,255,0.04)' : 'transparent'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = sortOrder === key ? 'var(--app-selected)' : 'var(--app-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = sortOrder === key ? 'var(--app-selected)' : 'transparent'; }}
                 >
-                  {sortOrder === key && <span style={{ color: '#22c55e', fontSize: '12px' }}>✓</span>}
+                  {sortOrder === key && <span style={{ color: 'var(--toolbar-accent)', fontSize: '12px' }}>✓</span>}
                   {SORT_LABELS[key]}
                 </button>
               ))}
@@ -364,15 +364,15 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
         {/* Pagination */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: '6px',
-          fontSize: '11px', color: '#666', whiteSpace: 'nowrap',
+          fontSize: '11px', color: 'var(--app-text-muted)', whiteSpace: 'nowrap',
         }}>
           <span>{total > 0 ? `${startItem}-${endItem} of ${total}` : '0 nodes'}</span>
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page <= 1}
             style={{
-              background: 'transparent', border: '1px solid #222', borderRadius: '4px',
-              color: page <= 1 ? '#333' : '#888', cursor: page <= 1 ? 'default' : 'pointer',
+              background: 'transparent', border: '1px solid var(--app-border)', borderRadius: '4px',
+              color: page <= 1 ? 'var(--app-text-subtle)' : 'var(--app-text-muted)', cursor: page <= 1 ? 'default' : 'pointer',
               padding: '2px 4px', display: 'flex',
             }}
           >
@@ -382,8 +382,8 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
             style={{
-              background: 'transparent', border: '1px solid #222', borderRadius: '4px',
-              color: page >= totalPages ? '#333' : '#888',
+              background: 'transparent', border: '1px solid var(--app-border)', borderRadius: '4px',
+              color: page >= totalPages ? 'var(--app-text-subtle)' : 'var(--app-text-muted)',
               cursor: page >= totalPages ? 'default' : 'pointer',
               padding: '2px 4px', display: 'flex',
             }}
@@ -396,15 +396,15 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
       {/* Table */}
       <div style={{ flex: 1, overflow: 'auto' }}>
         {loading ? (
-          <div style={{ padding: '40px', color: '#666', textAlign: 'center', fontSize: '13px' }}>Loading...</div>
+          <div style={{ padding: '40px', color: 'var(--app-text-muted)', textAlign: 'center', fontSize: '13px' }}>Loading...</div>
         ) : nodes.length === 0 ? (
-          <div style={{ padding: '40px', color: '#666', textAlign: 'center', fontSize: '13px' }}>
+          <div style={{ padding: '40px', color: 'var(--app-text-muted)', textAlign: 'center', fontSize: '13px' }}>
             {activeSearch || selectedFilters.length > 0 ? 'No nodes match your filters.' : 'No nodes yet.'}
           </div>
         ) : (
           <table style={{ minWidth: '1600px', width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <tr style={{ borderBottom: '1px solid var(--app-hairline)' }}>
                 <th style={thStyle({ width: '240px' })}>TITLE</th>
                 <th style={thStyle({ width: '55px', textAlign: 'right' })}>ID</th>
                 <th style={thStyle({ width: '200px' })}>DESCRIPTION</th>
@@ -436,15 +436,15 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                       height: '44px',
                       cursor: 'pointer',
                       background: hoveredRow === node.id
-                        ? '#141414'
-                        : i % 2 === 0 ? '#080808' : '#0d0d0d',
+                        ? 'var(--app-hover)'
+                        : i % 2 === 0 ? 'var(--app-panel)' : 'var(--app-table-stripe)',
                       transition: 'background 0.1s ease',
                     }}
                   >
                     {/* Title */}
                     <td style={tdStyle()}>
                       <div style={truncCell}>
-                        <span style={{ fontSize: '13px', color: '#e0e0e0', fontWeight: 400 }}>
+                        <span style={{ fontSize: '13px', color: 'var(--app-text)', fontWeight: 400 }}>
                           {node.title || 'Untitled'}
                         </span>
                       </div>
@@ -454,7 +454,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                     <td style={tdStyle({ textAlign: 'right' })}>
                       <span style={{
                         fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
-                        fontSize: '11px', color: '#555',
+                        fontSize: '11px', color: 'var(--app-text-subtle)',
                       }}>
                         {node.id}
                       </span>
@@ -463,7 +463,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                     {/* Description */}
                     <td style={tdStyle()}>
                       <div style={truncCell}>
-                        <span style={{ fontSize: '11px', color: '#888' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--app-text-muted)' }}>
                           {node.description || '\u2014'}
                         </span>
                       </div>
@@ -472,7 +472,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                     {/* Notes */}
                     <td style={tdStyle()}>
                       <div style={truncCell}>
-                        <span style={{ fontSize: '11px', color: '#888' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--app-text-muted)' }}>
                           {node.notes ? node.notes.slice(0, 120) : '\u2014'}
                         </span>
                       </div>
@@ -482,14 +482,14 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                     <td style={tdStyle()}>
                       <div style={truncCell}>
                         {node.link ? (
-                          <span style={{ fontSize: '11px', color: '#6a9fd8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--app-info-text)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <ExternalLink size={10} style={{ flexShrink: 0 }} />
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {node.link.replace(/^https?:\/\/(www\.)?/, '')}
                             </span>
                           </span>
                         ) : (
-                          <span style={{ fontSize: '11px', color: '#333' }}>{'\u2014'}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--app-text-subtle)' }}>{'\u2014'}</span>
                         )}
                       </div>
                     </td>
@@ -502,49 +502,49 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                             {node.dimensions.slice(0, 3).map(d => (
                               <span key={d} style={{
                                 fontSize: '9px', padding: '1px 5px',
-                                background: '#111914', border: '1px solid #1f2f24',
-                                color: '#bbf7d0', borderRadius: '3px',
+                                background: 'var(--app-accent-soft)', border: '1px solid var(--app-accent-border)',
+                                color: 'var(--toolbar-accent)', borderRadius: '3px',
                                 whiteSpace: 'nowrap',
                               }}>
                                 {d}
                               </span>
                             ))}
                             {node.dimensions.length > 3 && (
-                              <span style={{ fontSize: '9px', color: '#555' }}>
+                              <span style={{ fontSize: '9px', color: 'var(--app-text-subtle)' }}>
                                 +{node.dimensions.length - 3}
                               </span>
                             )}
                           </>
                         ) : (
-                          <span style={{ fontSize: '10px', color: '#333' }}>{'\u2014'}</span>
+                          <span style={{ fontSize: '10px', color: 'var(--app-text-subtle)' }}>{'\u2014'}</span>
                         )}
                       </div>
                     </td>
 
                     {/* Edges */}
                     <td style={tdStyle({ textAlign: 'right' })}>
-                      <span style={{ fontSize: '12px', color: node.edge_count ? '#888' : '#333' }}>
+                      <span style={{ fontSize: '12px', color: node.edge_count ? 'var(--app-text-muted)' : 'var(--app-text-subtle)' }}>
                         {node.edge_count ?? 0}
                       </span>
                     </td>
 
                     {/* Event Date */}
                     <td style={tdStyle()}>
-                      <span style={{ fontSize: '11px', color: node.event_date ? '#888' : '#333' }}>
+                      <span style={{ fontSize: '11px', color: node.event_date ? 'var(--app-text-muted)' : 'var(--app-text-subtle)' }}>
                         {formatDate(node.event_date)}
                       </span>
                     </td>
 
                     {/* Updated */}
                     <td style={tdStyle()}>
-                      <span style={{ fontSize: '11px', color: '#666' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--app-text-muted)' }}>
                         {formatRelativeTime(node.updated_at)}
                       </span>
                     </td>
 
                     {/* Created */}
                     <td style={tdStyle()}>
-                      <span style={{ fontSize: '11px', color: '#666' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--app-text-muted)' }}>
                         {formatRelativeTime(node.created_at)}
                       </span>
                     </td>
@@ -552,7 +552,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                     {/* Metadata */}
                     <td style={tdStyle()}>
                       <div style={truncCell}>
-                        <span style={{ fontSize: '10px', color: '#555', fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace' }}>
+                        <span style={{ fontSize: '10px', color: 'var(--app-text-subtle)', fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace' }}>
                           {metaStr || '\u2014'}
                         </span>
                       </div>
@@ -561,7 +561,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                     {/* Chunk */}
                     <td style={tdStyle()}>
                       <div style={truncCell}>
-                        <span style={{ fontSize: '10px', color: '#555' }}>
+                        <span style={{ fontSize: '10px', color: 'var(--app-text-subtle)' }}>
                           {node.chunk ? node.chunk.slice(0, 100) : '\u2014'}
                         </span>
                       </div>
@@ -571,7 +571,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                     <td style={tdStyle()}>
                       <span style={{
                         fontSize: '10px',
-                        color: node.chunk_status === 'chunked' ? '#4a9' : node.chunk_status === 'error' ? '#e55' : '#555',
+                        color: node.chunk_status === 'chunked' ? 'var(--toolbar-accent)' : node.chunk_status === 'error' ? 'var(--app-danger-text)' : 'var(--app-text-subtle)',
                       }}>
                         {node.chunk_status || '\u2014'}
                       </span>
@@ -579,7 +579,7 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
 
                     {/* Embedding Updated */}
                     <td style={tdStyle()}>
-                      <span style={{ fontSize: '11px', color: '#666' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--app-text-muted)' }}>
                         {node.embedding_updated_at ? formatRelativeTime(node.embedding_updated_at) : '\u2014'}
                       </span>
                     </td>
@@ -598,15 +598,15 @@ function thStyle(extra: React.CSSProperties = {}): React.CSSProperties {
   return {
     position: 'sticky' as const,
     top: 0,
-    background: '#0a0a0a',
+    background: 'var(--app-surface-strong)',
     padding: '8px 12px',
     fontSize: '10px',
     fontWeight: 500,
-    color: '#555',
+    color: 'var(--app-text-subtle)',
     textAlign: 'left',
     letterSpacing: '0.05em',
     whiteSpace: 'nowrap',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    borderBottom: '1px solid var(--app-hairline)',
     zIndex: 1,
     ...extra,
   };
@@ -616,7 +616,7 @@ function tdStyle(extra: React.CSSProperties = {}): React.CSSProperties {
   return {
     padding: '0 12px',
     verticalAlign: 'middle',
-    borderBottom: '1px solid #111',
+    borderBottom: '1px solid var(--app-hairline)',
     overflow: 'hidden',
     ...extra,
   };

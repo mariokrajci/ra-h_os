@@ -98,8 +98,8 @@ export default function SourceSearchBar({
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      background: '#141414',
-      border: '1px solid #262626',
+      background: 'var(--app-panel-elevated)',
+      border: '1px solid var(--app-border)',
       borderRadius: '12px',
       padding: '10px 16px',
       margin: '8px 12px',
@@ -109,7 +109,7 @@ export default function SourceSearchBar({
         width="16"
         height="16"
         viewBox="0 0 20 20"
-        fill="#525252"
+        fill="var(--app-text-subtle)"
         style={{ flexShrink: 0 }}
       >
         <path
@@ -132,7 +132,7 @@ export default function SourceSearchBar({
           background: 'none',
           border: 'none',
           outline: 'none',
-          color: '#fafafa',
+          color: 'var(--app-text)',
           fontSize: '14px',
           fontFamily: 'inherit',
         }}
@@ -142,7 +142,7 @@ export default function SourceSearchBar({
       {query && (
         <span style={{
           fontSize: '12px',
-          color: matches.length > 0 ? '#737373' : '#ef4444',
+          color: matches.length > 0 ? 'var(--app-text-muted)' : 'var(--app-danger-text)',
           whiteSpace: 'nowrap',
         }}>
           {matches.length > 0
@@ -159,12 +159,12 @@ export default function SourceSearchBar({
             onClick={goToPrev}
             title="Previous (Shift+Enter)"
             style={{
-              background: '#262626',
+              background: 'var(--app-surface-subtle)',
               border: 'none',
               borderRadius: '4px',
               padding: '4px 6px',
               cursor: 'pointer',
-              color: '#a3a3a3',
+              color: 'var(--app-text-muted)',
               display: 'flex',
               alignItems: 'center',
             }}
@@ -177,12 +177,12 @@ export default function SourceSearchBar({
             onClick={goToNext}
             title="Next (Enter)"
             style={{
-              background: '#262626',
+              background: 'var(--app-surface-subtle)',
               border: 'none',
               borderRadius: '4px',
               padding: '4px 6px',
               cursor: 'pointer',
-              color: '#a3a3a3',
+              color: 'var(--app-text-muted)',
               display: 'flex',
               alignItems: 'center',
             }}
@@ -203,7 +203,7 @@ export default function SourceSearchBar({
           border: 'none',
           padding: '4px',
           cursor: 'pointer',
-          color: '#525252',
+          color: 'var(--app-text-subtle)',
           display: 'flex',
           alignItems: 'center',
         }}
@@ -219,12 +219,12 @@ export default function SourceSearchBar({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '2px 6px',
-        background: '#262626',
+        background: 'var(--app-surface-subtle)',
         borderRadius: '4px',
         fontSize: '10px',
         fontFamily: 'inherit',
-        color: '#525252',
-        border: '1px solid #333',
+        color: 'var(--app-text-subtle)',
+        border: '1px solid var(--app-border)',
       }}>
         esc
       </kbd>

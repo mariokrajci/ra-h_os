@@ -177,6 +177,7 @@ function renderNode(
           codeStartOffset={getLiteralOffsets(node, content, node.value ?? '').start}
           annotationRanges={annotationRanges}
           activeRange={activeRange}
+          theme={themeFromPalette(palette)}
         />
       );
     case 'list':
@@ -249,6 +250,12 @@ function renderNode(
         ? <React.Fragment key={key}>{renderChildren(node.children, content, annotationRanges, activeRange, palette)}</React.Fragment>
         : null;
   }
+}
+
+function themeFromPalette(
+  palette: ReturnType<typeof getTextFallbackPalette>
+): ReaderTheme {
+  return palette.body === '#d4d4d4' ? 'dark' : 'warm';
 }
 
 function renderPartNode(

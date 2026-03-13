@@ -5,10 +5,12 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { Check, Copy } from 'lucide-react';
 import AnnotationBlock from '@/components/annotations/AnnotationBlock';
 import HighlightBlock from '@/components/annotations/HighlightBlock';
 import { Annotation } from '@/types/database';
+import { useAppTheme } from '@/components/theme/AppThemeProvider';
 
 interface NodeLabelInlineProps {
   id: string;
@@ -44,8 +46,8 @@ function NodeLabelInline({ id, title, onNodeClick }: NodeLabelInlineProps) {
         style={{
           display: 'inline',
           padding: '2px 6px',
-          background: '#22c55e',
-          color: '#000',
+          background: 'var(--toolbar-accent)',
+          color: 'var(--app-accent-contrast)',
           borderRadius: '3px',
           fontSize: '11px',
           fontWeight: '600',
@@ -59,7 +61,7 @@ function NodeLabelInline({ id, title, onNodeClick }: NodeLabelInlineProps) {
       <span style={{
         fontWeight: 'bold',
         textDecoration: 'underline',
-        color: '#e5e5e5'
+        color: 'var(--app-text)'
       }}>
         {truncatedTitle}
       </span>
@@ -118,6 +120,8 @@ function flattenCodeChildren(children: React.ReactNode): string {
 
 function CodeBlock({ code, language }: { code: string; language: string }) {
   const [copied, setCopied] = React.useState(false);
+  const { resolvedTheme } = useAppTheme();
+  const syntaxTheme = resolvedTheme === 'light' ? github : atomOneDark;
 
   const handleCopy = async () => {
     try {
@@ -139,9 +143,9 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
           position: 'absolute',
           top: 8,
           right: 8,
-          border: '1px solid #30363d',
-          background: copied ? '#1f6feb22' : '#0d1117cc',
-          color: copied ? '#58a6ff' : '#8b949e',
+          border: '1px solid var(--app-border)',
+          background: copied ? 'var(--app-selected)' : 'color-mix(in srgb, var(--app-surface-strong) 88%, transparent)',
+          color: copied ? 'var(--app-info-text)' : 'var(--app-text-muted)',
           borderRadius: 6,
           width: 28,
           height: 28,
@@ -156,13 +160,13 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
       </button>
       <SyntaxHighlighter
         language={language}
-        style={atomOneDark}
+        style={syntaxTheme}
         customStyle={{
           margin: 0,
           padding: '14px 16px',
           borderRadius: 6,
-          border: '1px solid #30363d',
-          background: '#161b22',
+          border: '1px solid var(--app-border)',
+          background: 'var(--app-surface-strong)',
           fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace',
           fontSize: '13px',
           lineHeight: 1.45,
@@ -266,17 +270,17 @@ export default function MarkdownWithNodeTokens({
   // Shared ReactMarkdown components object (extracted to avoid duplication across sections)
   const markdownComponents = {
     h1: ({ children }: any) => (
-      <h1 style={{ fontSize: '1.5em', fontWeight: 'bold', marginTop: '16px', marginBottom: '8px', color: '#e5e5e5' }}>
+      <h1 style={{ fontSize: '1.5em', fontWeight: 'bold', marginTop: '16px', marginBottom: '8px', color: 'var(--app-text)' }}>
         {processChildren(children, 'h1')}
       </h1>
     ),
     h2: ({ children }: any) => (
-      <h2 style={{ fontSize: '1.3em', fontWeight: 'bold', marginTop: '14px', marginBottom: '6px', color: '#e5e5e5' }}>
+      <h2 style={{ fontSize: '1.3em', fontWeight: 'bold', marginTop: '14px', marginBottom: '6px', color: 'var(--app-text)' }}>
         {processChildren(children, 'h2')}
       </h2>
     ),
     h3: ({ children }: any) => (
-      <h3 style={{ fontSize: '1.1em', fontWeight: 'bold', marginTop: '12px', marginBottom: '4px', color: '#e5e5e5' }}>
+      <h3 style={{ fontSize: '1.1em', fontWeight: 'bold', marginTop: '12px', marginBottom: '4px', color: 'var(--app-text)' }}>
         {processChildren(children, 'h3')}
       </h3>
     ),
@@ -286,7 +290,7 @@ export default function MarkdownWithNodeTokens({
       </p>
     ),
     strong: ({ children }: any) => (
-      <strong style={{ fontWeight: 'bold', color: '#f5f5f5' }}>
+      <strong style={{ fontWeight: 'bold', color: 'var(--app-text)' }}>
         {processChildren(children, 'strong')}
       </strong>
     ),
@@ -318,7 +322,7 @@ export default function MarkdownWithNodeTokens({
             width: '100%',
             borderCollapse: 'collapse',
             borderSpacing: 0,
-            border: '1px solid #3d444d',
+            border: '1px solid var(--app-border)',
             fontSize: 'inherit',
           }}
         >
@@ -328,19 +332,19 @@ export default function MarkdownWithNodeTokens({
     ),
     thead: ({ children }: any) => <thead>{children}</thead>,
     tbody: ({ children }: any) => <tbody>{children}</tbody>,
-    tr: ({ children }: any) => <tr style={{ borderBottom: '1px solid #3d444d' }}>{children}</tr>,
+    tr: ({ children }: any) => <tr style={{ borderBottom: '1px solid var(--app-border)' }}>{children}</tr>,
     th: ({ children }: any) => (
-      <th style={{ padding: '6px 13px', borderRight: '1px solid #3d444d', textAlign: 'left', fontWeight: 700, color: '#e6edf3', verticalAlign: 'top' }}>
+      <th style={{ padding: '6px 13px', borderRight: '1px solid var(--app-border)', textAlign: 'left', fontWeight: 700, color: 'var(--app-text)', verticalAlign: 'top' }}>
         {processChildren(children, 'th')}
       </th>
     ),
     td: ({ children }: any) => (
-      <td style={{ padding: '6px 13px', borderRight: '1px solid #3d444d', verticalAlign: 'top', color: '#d0d7de', lineHeight: 1.45 }}>
+      <td style={{ padding: '6px 13px', borderRight: '1px solid var(--app-border)', verticalAlign: 'top', color: 'var(--app-text)', lineHeight: 1.45 }}>
         {processChildren(children, 'td')}
       </td>
     ),
     a: ({ href, children }: any) => (
-      <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: '#22c55e', textDecoration: 'underline' }}>
+      <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--toolbar-accent)', textDecoration: 'underline' }}>
         {processChildren(children, 'a')}
       </a>
     ),
@@ -352,10 +356,11 @@ export default function MarkdownWithNodeTokens({
       if (isInline) {
         return (
           <code style={{
-            background: 'rgba(110, 118, 129, 0.4)',
+            background: 'var(--app-surface-subtle)',
             padding: '0.2em 0.4em',
             borderRadius: '6px',
             fontSize: '85%',
+            color: 'var(--app-text)',
             fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace'
           }}>
             {processChildren(children, 'code')}
@@ -366,7 +371,7 @@ export default function MarkdownWithNodeTokens({
     },
     pre: ({ children }: any) => <>{children}</>,
     blockquote: ({ children }: any) => (
-      <blockquote style={{ borderLeft: '3px solid #333', paddingLeft: '12px', marginLeft: '0', marginTop: '8px', marginBottom: '8px', color: '#999' }}>
+      <blockquote style={{ borderLeft: '3px solid var(--app-border)', paddingLeft: '12px', marginLeft: '0', marginTop: '8px', marginBottom: '8px', color: 'var(--app-text-muted)' }}>
         {processChildren(children, 'blockquote')}
       </blockquote>
     ),
@@ -380,7 +385,7 @@ export default function MarkdownWithNodeTokens({
     <>
       <style>{`
         .markdown-table tbody tr:nth-child(even) {
-          background: #0f1621;
+          background: var(--app-table-stripe);
         }
       `}</style>
       {sections.map((section, sectionIdx) => (

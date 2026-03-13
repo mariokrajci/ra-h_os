@@ -35,7 +35,8 @@ export function normalizeHighlightLanguage(language?: string | null): string | n
 
 export async function highlightCodeTokens(
   code: string,
-  language?: string | null
+  language?: string | null,
+  themeName: 'horizon' | 'github-light' = 'horizon'
 ): Promise<HighlightResult> {
   const normalizedLanguage = normalizeHighlightLanguage(language);
 
@@ -46,7 +47,7 @@ export async function highlightCodeTokens(
     };
   }
 
-  const cacheKey = `${normalizedLanguage}\u0000${code}`;
+  const cacheKey = `${themeName}\u0000${normalizedLanguage}\u0000${code}`;
   const cached = highlightCache.get(cacheKey);
   if (cached) {
     return cached;
@@ -54,7 +55,7 @@ export async function highlightCodeTokens(
 
   const pending = codeToTokens(code, {
     lang: normalizedLanguage as BundledLanguage,
-    theme: 'horizon',
+    theme: themeName,
   }).then((result) => ({
     normalizedLanguage,
     lines: result.tokens.map((line) =>

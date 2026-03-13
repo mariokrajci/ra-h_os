@@ -15,7 +15,7 @@ export default function MarkdownFormatter({
   content,
   annotationRanges = [],
   activeRange,
-  theme = 'dark',
+  theme = 'warm',
 }: MarkdownFormatterProps) {
   return (
     <MappedMarkdownRenderer

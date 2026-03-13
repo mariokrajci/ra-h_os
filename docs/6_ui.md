@@ -165,6 +165,14 @@ Global search modal with 4-tier relevance:
 | **Logs** | Activity feed (last 100 entries) |
 | **Context** | Context/system information viewer |
 | **Agents** | External agent (MCP) configuration |
+| **Preferences** | Theme selection and appearance settings |
+
+### Appearance
+
+- Theme preference supports **System**, **Light**, and **Dark**
+- The app defaults to your OS color scheme until you override it
+- The left toolbar uses stronger contrast in dark mode so actions and active panes are easier to distinguish
+- Settings content panels now inherit the active theme, including Logs, Database, Skills, API keys, Context, and External Agents
 
 ---
 
@@ -235,9 +243,9 @@ Each dimension can have a custom Lucide icon.
 
 ### Colors
 
-- **Background:** `#0a0a0a` (near black)
-- **Accent:** Green (`#22c55e`) for actions, selections
-- **Text:** White (primary), neutral-400 (secondary)
+- **Theme-aware shell:** Automatically follows system light/dark preference by default
+- **Accent:** Green for actions and selections
+- **Contrast:** Navigation and shell surfaces use stronger separation in dark mode
 
 ### Typography
 

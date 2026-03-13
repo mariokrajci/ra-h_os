@@ -65,9 +65,9 @@ export default function ToolsViewer() {
   );
 }
 
-const containerStyle: CSSProperties = { padding: 24, height: '100%', overflow: 'auto' };
-const loadingStyle: CSSProperties = { padding: 24, color: '#6b7280' };
-const descStyle: CSSProperties = { fontSize: 13, color: '#6b7280', marginBottom: 20 };
+const containerStyle: CSSProperties = { padding: 24, height: '100%', overflow: 'auto', color: 'var(--app-text)' };
+const loadingStyle: CSSProperties = { padding: 24, color: 'var(--app-text-muted)' };
+const descStyle: CSSProperties = { fontSize: 13, color: 'var(--app-text-muted)', marginBottom: 20 };
 
 const groupHeaderStyle: CSSProperties = {
   display: 'flex',
@@ -75,28 +75,28 @@ const groupHeaderStyle: CSSProperties = {
   gap: 8,
   marginBottom: 10,
   paddingBottom: 8,
-  borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+  borderBottom: '1px solid var(--app-hairline)',
 };
 
-const groupTitleStyle: CSSProperties = { fontSize: 13, fontWeight: 500, color: '#e5e7eb' };
-const countStyle: CSSProperties = { fontSize: 11, color: '#6b7280' };
+const groupTitleStyle: CSSProperties = { fontSize: 13, fontWeight: 500, color: 'var(--app-text)' };
+const countStyle: CSSProperties = { fontSize: 11, color: 'var(--app-text-muted)' };
 
 const toolStyle: CSSProperties = {
   padding: '10px 14px',
-  background: 'rgba(255, 255, 255, 0.02)',
-  border: '1px solid rgba(255, 255, 255, 0.06)',
+  background: 'var(--app-panel-elevated)',
+  border: '1px solid var(--app-border)',
   borderRadius: 6,
 };
 
 const toolNameStyle: CSSProperties = {
   fontSize: 12,
   fontFamily: 'monospace',
-  color: '#22c55e',
+  color: 'var(--toolbar-accent)',
   marginBottom: 4,
 };
 
 const toolDescStyle: CSSProperties = {
   fontSize: 12,
-  color: '#9ca3af',
+  color: 'var(--app-text-muted)',
   lineHeight: 1.4,
 };

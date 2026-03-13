@@ -30,7 +30,8 @@ When you open the app you see three regions:
 | Map | — | Interactive graph of connections |
 | Dimensions | — | Browse nodes grouped by tag |
 | Table | — | Spreadsheet view of all nodes |
-| Settings | — | API keys, logs, database, guides |
+| Docs | — | Built-in product and system documentation |
+| Settings | — | API keys, logs, database, guides, theme |
 
 **Slot A** is always open. It shows whichever view you picked in the toolbar (Feed by default).
 
@@ -238,6 +239,9 @@ For large PDFs, the app may generate initial Notes from detected high-signal sec
 ## 6. Settings
 
 Click the **Settings** icon (bottom of the left toolbar) to open the settings modal. It has these tabs:
+
+**Theme**
+Choose **System**, **Light**, or **Dark** in the Appearance section near the top of Settings. The default is **System**, which follows your operating system preference automatically.
 
 **API Keys**
 Enter your OpenAI API key (`sk-...`) and your Anthropic API key (`sk-ant-...`). A Tavily key is optional and enables web search. Keys are stored in `.env.local` on your machine only. Without these keys the app works manually — no auto-descriptions, no semantic search, no auto-tags.
