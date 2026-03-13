@@ -73,6 +73,17 @@ Skills are markdown instructions stored locally and shared across internal + ext
 
 ---
 
+## Embedding Maintenance
+
+- `npm run vectors:reindex`
+  Rebuilds node and chunk embeddings for all nodes through the current vector-store adapter.
+- `npm run vectors:reindex -- --node-id 123`
+  Rebuilds embeddings only for the specified node. Repeat `--node-id` to target multiple nodes.
+
+Use this after changing embedding/vector backend code or when you need to repair stale vector state after a migration.
+
+---
+
 ## Key Files
 
 | File | Purpose |

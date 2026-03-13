@@ -20,11 +20,13 @@ class SQLiteClient {
   private config: SQLiteConfig;
   private readonly readOnly: boolean;
   private readonly embeddingsDisabled: boolean;
+  private vectorExtensionLoaded: boolean;
 
   private constructor() {
     this.config = this.getSQLiteConfig();
     this.readOnly = process.env.SQLITE_READONLY === 'true';
     this.embeddingsDisabled = process.env.DISABLE_EMBEDDINGS === 'true';
+    this.vectorExtensionLoaded = false;
     
     // Initialize database connection
     const dbDirectory = path.dirname(this.config.dbPath);
@@ -39,10 +41,11 @@ class SQLiteClient {
     if (!this.embeddingsDisabled) {
       try {
         this.db.loadExtension(this.config.vecExtensionPath);
+        this.vectorExtensionLoaded = true;
         console.log('SQLite vector extension loaded successfully');
       } catch (error) {
         // Do not fail hard — allow the app to run without vector features
-        console.error('Warning: Failed to load vector extension:', error);
+        console.warn('SQLite vector extension unavailable:', error);
       }
     }
 
@@ -62,7 +65,7 @@ class SQLiteClient {
       this.db.pragma('busy_timeout = 5000');
 
       // Ensure vector virtual tables are present and healthy (skip if disabled)
-      if (!this.embeddingsDisabled) {
+      if (!this.embeddingsDisabled && this.vectorExtensionLoaded) {
         this.ensureVectorTables();
         this.healVectorTablesIfCorrupt();
       }
@@ -140,7 +143,7 @@ class SQLiteClient {
       } as DatabaseError;
     }
     // Proactively validate/repair vec vtables before any write transaction
-    if (!this.embeddingsDisabled) {
+    if (!this.embeddingsDisabled && this.vectorExtensionLoaded) {
       this.healVectorTablesIfCorrupt();
     }
     const txn = this.db.transaction(callback);
@@ -162,7 +165,7 @@ class SQLiteClient {
   }
 
   public async checkVectorExtension(): Promise<boolean> {
-    if (this.embeddingsDisabled) {
+    if (this.embeddingsDisabled || !this.vectorExtensionLoaded) {
       return false;
     }
     try {
@@ -216,7 +219,7 @@ class SQLiteClient {
   }
 
   private ensureVectorTables(): void {
-    if (this.readOnly) {
+    if (this.readOnly || !this.vectorExtensionLoaded) {
       return;
     }
     // Wrapper to keep existing public API stable
@@ -228,6 +231,8 @@ class SQLiteClient {
       return;
     }
     try {
+      this.ensureCoreTables();
+
       // 1) If logs table missing but legacy memory table exists, migrate
       const hasLogs = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='logs'").get();
       const hasLegacyMemory = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='memory'").get();
@@ -675,6 +680,7 @@ class SQLiteClient {
           CREATE TABLE dimensions (
             name TEXT PRIMARY KEY,
             description TEXT,
+            icon TEXT,
             is_priority INTEGER DEFAULT 0,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           );
@@ -919,6 +925,62 @@ class SQLiteClient {
     } catch (error) {
       console.error('Failed to ensure logging/memory schema:', error);
     }
+  }
+
+  private ensureCoreTables(): void {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS nodes (
+        id INTEGER PRIMARY KEY,
+        title TEXT,
+        description TEXT,
+        notes TEXT,
+        link TEXT,
+        event_date TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        metadata TEXT,
+        chunk TEXT,
+        embedding BLOB,
+        embedding_updated_at TEXT,
+        embedding_text TEXT,
+        chunk_status TEXT DEFAULT 'not_chunked'
+      );
+
+      CREATE TABLE IF NOT EXISTS chunks (
+        id INTEGER PRIMARY KEY,
+        node_id INTEGER NOT NULL,
+        chunk_idx INTEGER,
+        text TEXT,
+        created_at TEXT,
+        embedding_type TEXT DEFAULT 'text-embedding-3-small',
+        metadata TEXT,
+        FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_chunks_by_node ON chunks(node_id);
+      CREATE INDEX IF NOT EXISTS idx_chunks_by_node_idx ON chunks(node_id, chunk_idx);
+
+      CREATE TABLE IF NOT EXISTS edges (
+        id INTEGER PRIMARY KEY,
+        from_node_id INTEGER NOT NULL,
+        to_node_id INTEGER NOT NULL,
+        source TEXT,
+        created_at TEXT,
+        context TEXT,
+        FOREIGN KEY (from_node_id) REFERENCES nodes(id) ON DELETE CASCADE,
+        FOREIGN KEY (to_node_id) REFERENCES nodes(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_node_id);
+      CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_node_id);
+
+      CREATE TABLE IF NOT EXISTS node_dimensions (
+        node_id INTEGER NOT NULL,
+        dimension TEXT NOT NULL,
+        PRIMARY KEY (node_id, dimension),
+        FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+      ) WITHOUT ROWID;
+      CREATE INDEX IF NOT EXISTS idx_dim_by_dimension ON node_dimensions(dimension, node_id);
+      CREATE INDEX IF NOT EXISTS idx_dim_by_node ON node_dimensions(node_id, dimension);
+    `);
   }
 
   private healVectorTablesIfCorrupt(): void {

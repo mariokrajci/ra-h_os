@@ -11,22 +11,18 @@ function getOpenAiClient(): OpenAI {
 }
 
 export class EmbeddingService {
-  /**
-   * Generate embedding for a search query using OpenAI's text-embedding-3-small model
-   * This matches the same model used in embed_universal.py for consistency
-   */
-  static async generateQueryEmbedding(query: string): Promise<number[]> {
+  private static async generateEmbedding(input: string, feature: 'query_embedding' | 'node_embedding' | 'chunk_embedding'): Promise<number[]> {
     try {
       const openai = getOpenAiClient();
       const response = await openai.embeddings.create({
         model: getOpenAIEmbeddingModel(),
-        input: query.trim(),
+        input: input.trim(),
         encoding_format: "float"
       });
       const usage = normalizeUsageFromOpenAI(response.usage);
       if (usage) {
         logAiUsage({
-          feature: 'query_embedding',
+          feature,
           provider: 'openai',
           modelId: getOpenAIEmbeddingModel(),
           usage,
@@ -39,9 +35,21 @@ export class EmbeddingService {
 
       return response.data[0].embedding;
     } catch (error) {
-      console.error('Failed to generate query embedding:', error);
+      console.error('Failed to generate embedding:', error);
       throw new Error(`Embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Generate embedding for a search query using OpenAI's text-embedding-3-small model
+   * This matches the same model used in embed_universal.py for consistency
+   */
+  static async generateQueryEmbedding(query: string): Promise<number[]> {
+    return this.generateEmbedding(query, 'query_embedding');
+  }
+
+  static async generateContentEmbedding(input: string, feature: 'node_embedding' | 'chunk_embedding' = 'chunk_embedding'): Promise<number[]> {
+    return this.generateEmbedding(input, feature);
   }
 
   /**
