@@ -293,7 +293,12 @@ export async function buildEdgeProposalsForNode(
   const proposals: Array<{ proposal: EdgeProposal; score: number }> = [];
   for (const { proposal, score } of proposalCandidates.values()) {
     if (options.dismissedTargetIds.has(proposal.targetNodeId)) continue;
-    if (await options.edgeExists(sourceNode.id, proposal.targetNodeId)) continue;
+    if (
+      await options.edgeExists(sourceNode.id, proposal.targetNodeId) ||
+      await options.edgeExists(proposal.targetNodeId, sourceNode.id)
+    ) {
+      continue;
+    }
     proposals.push({ proposal, score });
   }
 
@@ -315,6 +320,6 @@ export async function generateEdgeProposals(sourceNodeId: number): Promise<EdgeP
 
   return buildEdgeProposalsForNode(sourceNode, candidateNodes, {
     dismissedTargetIds,
-    edgeExists: (fromId, toId) => edgeService.edgeExists(fromId, toId),
+    edgeExists: (fromId, toId) => edgeService.connectionExists(fromId, toId),
   });
 }

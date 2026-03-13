@@ -590,6 +590,15 @@ export class EdgeService {
     return result.rows.length > 0;
   }
 
+  async connectionExists(fromId: number, toId: number): Promise<boolean> {
+    const sqlite = getSQLiteClient();
+    const result = sqlite.query(
+      'SELECT 1 FROM edges WHERE (from_node_id = ? AND to_node_id = ?) OR (from_node_id = ? AND to_node_id = ?)',
+      [fromId, toId, toId, fromId]
+    );
+    return result.rows.length > 0;
+  }
+
   async getEdgeCount(): Promise<number> {
     const sqlite = getSQLiteClient();
     const result = sqlite.query('SELECT COUNT(*) as count FROM edges');

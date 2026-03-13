@@ -166,7 +166,7 @@ async function createAutoEdges(
     if (entityNode.id === newNodeId) continue;
 
     // Check if edge already exists
-    const exists = await edgeService.edgeExists(newNodeId, entityNode.id);
+    const exists = await edgeService.connectionExists(newNodeId, entityNode.id);
     if (exists) continue;
 
     try {

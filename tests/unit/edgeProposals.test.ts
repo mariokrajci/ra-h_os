@@ -154,4 +154,25 @@ describe('edge proposals', () => {
       }),
     ]);
   });
+
+  it('excludes proposals when a connection already exists in the reverse stored direction', async () => {
+    const sourceNode = makeNode({
+      id: 60,
+      title: 'RA-H OS Server Install Manual (Ubuntu, non-Docker)',
+      description: 'This deployment guide compares the RA H OS workflow.',
+      notes: 'ra h os compatibility notes',
+    });
+    const targetNode = makeNode({
+      id: 61,
+      title: 'ra-h_os',
+      dimensions: ['projects'],
+    });
+
+    const proposals = await buildEdgeProposalsForNode(sourceNode, [sourceNode, targetNode], {
+      dismissedTargetIds: new Set(),
+      edgeExists: vi.fn().mockImplementation(async (fromId: number, toId: number) => fromId === 61 && toId === 60),
+    });
+
+    expect(proposals).toEqual([]);
+  });
 });
