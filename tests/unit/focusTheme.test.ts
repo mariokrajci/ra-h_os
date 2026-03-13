@@ -13,14 +13,20 @@ const shikiHighlighting = fs.readFileSync(path.join(process.cwd(), 'src/componen
 const docsModal = fs.readFileSync(path.join(process.cwd(), 'src/components/docs/DocsModal.tsx'), 'utf8');
 
 describe('focus theming', () => {
-  it('uses theme tokens for the tab bar and markdown text rendering', () => {
+  it('uses theme tokens and primitives for focus chrome, edges, and markdown rendering', () => {
     expect(focusPanel).toContain('var(--app-text)');
     expect(focusPanel).toContain('var(--app-text-muted)');
     expect(focusPanel).toContain('var(--app-border)');
     expect(focusPanel).toContain('var(--app-accent-contrast)');
     expect(focusPanel).toContain('var(--app-text-subtle)');
+    expect(focusPanel).toContain('app-panel-elevated');
+    expect(focusPanel).toContain('app-button');
+    expect(focusPanel).toContain('app-input');
+    expect(focusPanel).toContain('app-toolbar-surface');
     expect(markdownWithNodeTokens).toContain('var(--app-text)');
     expect(markdownWithNodeTokens).toContain('var(--toolbar-accent)');
+    expect(markdownWithNodeTokens).toContain('app-code-inline');
+    expect(markdownWithNodeTokens).toContain('app-prose');
     expect(markdownWithNodeTokens).toContain('useAppTheme');
     expect(markdownWithNodeTokens).toContain('github');
     expect(readerStyles).toContain("var(--app-text)");

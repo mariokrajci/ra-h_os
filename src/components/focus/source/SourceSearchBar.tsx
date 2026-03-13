@@ -94,12 +94,10 @@ export default function SourceSearchBar({
   };
 
   return (
-    <div style={{
+    <div className="app-panel-elevated" style={{
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      background: 'var(--app-panel-elevated)',
-      border: '1px solid var(--app-border)',
       borderRadius: '12px',
       padding: '10px 16px',
       margin: '8px 12px',
@@ -122,20 +120,13 @@ export default function SourceSearchBar({
       {/* Input */}
       <input
         ref={inputRef}
+        className="app-input app-input--bare"
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Search in source..."
-        style={{
-          flex: 1,
-          background: 'none',
-          border: 'none',
-          outline: 'none',
-          color: 'var(--app-text)',
-          fontSize: '14px',
-          fontFamily: 'inherit',
-        }}
+        style={{ flex: 1, fontSize: '14px', fontFamily: 'inherit' }}
       />
 
       {/* Match count */}
@@ -158,13 +149,10 @@ export default function SourceSearchBar({
           <button
             onClick={goToPrev}
             title="Previous (Shift+Enter)"
+            className="app-button app-button--ghost app-button--compact app-button--icon"
             style={{
-              background: 'var(--app-surface-subtle)',
-              border: 'none',
               borderRadius: '4px',
               padding: '4px 6px',
-              cursor: 'pointer',
-              color: 'var(--app-text-muted)',
               display: 'flex',
               alignItems: 'center',
             }}
@@ -176,13 +164,10 @@ export default function SourceSearchBar({
           <button
             onClick={goToNext}
             title="Next (Enter)"
+            className="app-button app-button--ghost app-button--compact app-button--icon"
             style={{
-              background: 'var(--app-surface-subtle)',
-              border: 'none',
               borderRadius: '4px',
               padding: '4px 6px',
-              cursor: 'pointer',
-              color: 'var(--app-text-muted)',
               display: 'flex',
               alignItems: 'center',
             }}
@@ -198,12 +183,9 @@ export default function SourceSearchBar({
       <button
         onClick={onClose}
         title="Close (Esc)"
+        className="app-button app-button--ghost app-button--compact app-button--icon"
         style={{
-          background: 'none',
-          border: 'none',
           padding: '4px',
-          cursor: 'pointer',
-          color: 'var(--app-text-subtle)',
           display: 'flex',
           alignItems: 'center',
         }}
@@ -214,17 +196,14 @@ export default function SourceSearchBar({
       </button>
 
       {/* Keyboard hint */}
-      <kbd style={{
+      <kbd className="app-button app-button--ghost app-button--compact" style={{
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '2px 6px',
-        background: 'var(--app-surface-subtle)',
         borderRadius: '4px',
         fontSize: '10px',
         fontFamily: 'inherit',
-        color: 'var(--app-text-subtle)',
-        border: '1px solid var(--app-border)',
+        padding: '2px 6px',
       }}>
         esc
       </kbd>

@@ -23,11 +23,13 @@ describe('settings viewer theming', () => {
     expect(toolsViewer).toContain('var(--app-hairline)');
     expect(guidesViewer).toContain('var(--app-panel-elevated)');
     expect(guidesViewer).toContain('var(--app-danger-text)');
-    expect(logsViewer).toContain('var(--app-surface-subtle)');
+    expect(logsViewer).toContain('app-button');
+    expect(logsViewer).toContain('app-input');
     expect(logsViewer).toContain('var(--app-danger-text)');
     expect(logsRow).toContain('var(--app-input)');
     expect(logsRow).toContain('var(--app-text)');
-    expect(databaseViewer).toContain('var(--app-surface-strong)');
+    expect(databaseViewer).toContain('app-button');
+    expect(databaseViewer).toContain('app-input');
     expect(databaseViewer).toContain('var(--app-danger-text)');
   });
 });

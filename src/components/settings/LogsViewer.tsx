@@ -137,70 +137,58 @@ export default function LogsViewer() {
           <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: 'var(--app-text-subtle)', gap: '4px' }}>
             Thread ID
             <input
+              className="app-input"
               value={inputThreadId}
               onChange={(e) => setInputThreadId(e.target.value)}
               placeholder="ra-h-node-..."
               style={{
-                background: 'var(--app-input)',
-                border: '1px solid var(--app-border)',
-                color: 'var(--app-text)',
                 padding: '8px 10px',
                 borderRadius: '6px',
                 fontFamily: 'monospace',
                 fontSize: '12px',
                 minWidth: '200px',
-                outline: 'none',
               }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: 'var(--app-text-subtle)', gap: '4px' }}>
             Trace ID
             <input
+              className="app-input"
               value={inputTraceId}
               onChange={(e) => setInputTraceId(e.target.value)}
               placeholder="uuid"
               style={{
-                background: 'var(--app-input)',
-                border: '1px solid var(--app-border)',
-                color: 'var(--app-text)',
                 padding: '8px 10px',
                 borderRadius: '6px',
                 fontFamily: 'monospace',
                 fontSize: '12px',
                 minWidth: '160px',
-                outline: 'none',
               }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: 'var(--app-text-subtle)', gap: '4px' }}>
             Table
             <input
+              className="app-input"
               value={inputTable}
               onChange={(e) => setInputTable(e.target.value)}
               placeholder="nodes | edges"
               style={{
-                background: 'var(--app-input)',
-                border: '1px solid var(--app-border)',
-                color: 'var(--app-text)',
                 padding: '8px 10px',
                 borderRadius: '6px',
                 fontFamily: 'monospace',
                 fontSize: '12px',
                 minWidth: '120px',
-                outline: 'none',
               }}
             />
           </label>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
             <button
               onClick={handleApplyFilters}
+              className="app-button app-button--accent"
               style={{
                 padding: '8px 14px',
-                background: 'var(--toolbar-accent)',
-                border: 'none',
                 borderRadius: '6px',
-                color: 'var(--app-accent-contrast)',
-                cursor: 'pointer',
                 fontSize: '12px',
                 fontWeight: 500,
               }}
@@ -209,13 +197,10 @@ export default function LogsViewer() {
             </button>
             <button
               onClick={handleClearFilters}
+              className="app-button app-button--secondary"
               style={{
                 padding: '8px 14px',
-                background: 'var(--app-surface-subtle)',
-                border: 'none',
                 borderRadius: '6px',
-                color: 'var(--app-text-muted)',
-                cursor: 'pointer',
                 fontSize: '12px',
               }}
             >
@@ -229,10 +214,9 @@ export default function LogsViewer() {
             <button
               onClick={handlePrevious}
               disabled={isFirstPage || filtersActive}
+              className="app-button app-button--secondary"
               style={{
                 padding: '8px 14px',
-                background: 'var(--app-surface-subtle)',
-                border: 'none',
                 borderRadius: '6px',
                 color: isFirstPage || filtersActive ? 'var(--app-text-subtle)' : 'var(--app-text-muted)',
                 cursor: isFirstPage || filtersActive ? 'not-allowed' : 'pointer',
@@ -245,10 +229,9 @@ export default function LogsViewer() {
             <button
               onClick={handleNext}
               disabled={isLastPage || filtersActive}
+              className="app-button app-button--secondary"
               style={{
                 padding: '8px 14px',
-                background: 'var(--app-surface-subtle)',
-                border: 'none',
                 borderRadius: '6px',
                 color: isLastPage || filtersActive ? 'var(--app-text-subtle)' : 'var(--app-text-muted)',
                 cursor: isLastPage || filtersActive ? 'not-allowed' : 'pointer',

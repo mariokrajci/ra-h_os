@@ -49,7 +49,6 @@ function applySort(nodes: Node[], sort: LibrarySort): Node[] {
 export default function LibraryPane({
   slot,
   isActive,
-  onPaneAction,
   onCollapse,
   onSwapPanes,
   refreshToken,
@@ -112,14 +111,14 @@ export default function LibraryPane({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <PaneHeader slot={slot} onCollapse={onCollapse} onSwapPanes={onSwapPanes}>
-        <div style={{ fontSize: '13px', fontWeight: 600, color: isActive ? '#e5e5e5' : '#888' }}>
+        <div style={{ fontSize: '13px', fontWeight: 600, color: isActive ? 'var(--app-text)' : 'var(--app-text-muted)' }}>
           Library
         </div>
       </PaneHeader>
       <LibraryFilters filter={filter} sort={sort} onFilterChange={setFilter} onSortChange={setSort} />
       <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
         {visibleNodes.length === 0 ? (
-          <div style={{ color: '#666', fontSize: '13px' }}>No readable PDFs or EPUBs yet.</div>
+          <div style={{ color: 'var(--app-text-muted)', fontSize: '13px' }}>No readable PDFs or EPUBs yet.</div>
         ) : (
           <div
             style={{

@@ -92,18 +92,13 @@ function PendingNodeCard({ pending, onDismiss }: { pending: PendingNode; onDismi
         {isError && onDismiss && (
           <button
             onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+            className="app-button app-button--ghost app-button--compact app-button--icon app-button--danger"
             style={{
               padding: '4px',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--app-text-subtle)',
-              cursor: 'pointer',
               borderRadius: '4px',
               display: 'flex',
               flexShrink: 0,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-danger-text)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--app-text-subtle)'; }}
           >
             <X size={14} />
           </button>

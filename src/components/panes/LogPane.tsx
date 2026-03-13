@@ -165,10 +165,10 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
   }, []);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0d0d0d' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--app-panel)' }}>
       <PaneHeader slot={slot} onCollapse={onCollapse} onSwapPanes={onSwapPanes}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0 12px' }}>
-          <span style={{ fontSize: '13px', color: '#888', fontWeight: 500 }}>Log</span>
+          <span style={{ fontSize: '13px', color: 'var(--app-text-muted)', fontWeight: 500 }}>Log</span>
         </div>
       </PaneHeader>
 
@@ -191,7 +191,8 @@ export default function LogPane({ slot, isActive, onPaneAction, onCollapse, onSw
         {hasMore && (
           <button
             onClick={loadMore}
-            style={{ background: 'none', border: '1px solid #222', borderRadius: '6px', color: '#555', cursor: 'pointer', padding: '8px 16px', fontSize: '12px', width: '100%', marginTop: '8px' }}
+            className="app-button app-button--secondary"
+            style={{ borderRadius: '6px', padding: '8px 16px', fontSize: '12px', width: '100%', marginTop: '8px' }}
           >
             Load older entries
           </button>

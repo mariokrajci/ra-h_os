@@ -1,0 +1,68 @@
+import fs from 'fs';
+import path from 'path';
+import { describe, expect, it } from 'vitest';
+
+const globalsCss = fs.readFileSync(path.join(process.cwd(), 'app/globals.css'), 'utf8');
+const settingsModal = fs.readFileSync(path.join(process.cwd(), 'src/components/settings/SettingsModal.tsx'), 'utf8');
+const sourceReader = fs.readFileSync(path.join(process.cwd(), 'src/components/focus/source/SourceReader.tsx'), 'utf8');
+const sourceSearchBar = fs.readFileSync(path.join(process.cwd(), 'src/components/focus/source/SourceSearchBar.tsx'), 'utf8');
+const viewsOverlay = fs.readFileSync(path.join(process.cwd(), 'src/components/views/ViewsOverlay.tsx'), 'utf8');
+const databaseTableView = fs.readFileSync(path.join(process.cwd(), 'src/components/views/DatabaseTableView.tsx'), 'utf8');
+const focusPanel = fs.readFileSync(path.join(process.cwd(), 'src/components/focus/FocusPanel.tsx'), 'utf8');
+const logsViewer = fs.readFileSync(path.join(process.cwd(), 'src/components/settings/LogsViewer.tsx'), 'utf8');
+const databaseViewer = fs.readFileSync(path.join(process.cwd(), 'src/components/settings/DatabaseViewer.tsx'), 'utf8');
+const apiKeysViewer = fs.readFileSync(path.join(process.cwd(), 'src/components/settings/ApiKeysViewer.tsx'), 'utf8');
+const markdownWithNodeTokens = fs.readFileSync(path.join(process.cwd(), 'src/components/helpers/MarkdownWithNodeTokens.tsx'), 'utf8');
+const mappedMarkdownRenderer = fs.readFileSync(path.join(process.cwd(), 'src/components/focus/source/MappedMarkdownRenderer.tsx'), 'utf8');
+const guidesPane = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/GuidesPane.tsx'), 'utf8');
+const skillsPane = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/SkillsPane.tsx'), 'utf8');
+const logPane = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/LogPane.tsx'), 'utf8');
+const libraryPane = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/LibraryPane.tsx'), 'utf8');
+const bookCard = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/library/BookCard.tsx'), 'utf8');
+const quickAddStatus = fs.readFileSync(path.join(process.cwd(), 'src/components/agents/QuickAddStatus.tsx'), 'utf8');
+
+describe('theme primitives', () => {
+  it('defines shared semantic classes and reuses them in key components', () => {
+    expect(globalsCss).toContain('.app-panel');
+    expect(globalsCss).toContain('.app-panel-elevated');
+    expect(globalsCss).toContain('.app-button');
+    expect(globalsCss).toContain('.app-button--secondary');
+    expect(globalsCss).toContain('.app-button--ghost');
+    expect(globalsCss).toContain('.app-input');
+    expect(globalsCss).toContain('.app-tab');
+    expect(globalsCss).toContain('.app-badge');
+    expect(globalsCss).toContain('.app-prose');
+    expect(globalsCss).toContain('.app-code-inline');
+
+    expect(settingsModal).toContain('app-button');
+    expect(sourceReader).toContain('app-panel');
+    expect(sourceReader).toContain('app-button');
+    expect(sourceSearchBar).toContain('app-input');
+    expect(sourceSearchBar).toContain('app-button');
+    expect(viewsOverlay).toContain('app-button');
+    expect(databaseTableView).toContain('app-button');
+    expect(databaseTableView).toContain('app-input');
+    expect(focusPanel).toContain('app-tab');
+    expect(focusPanel).toContain('app-button');
+    expect(logsViewer).toContain('app-button');
+    expect(logsViewer).toContain('app-input');
+    expect(databaseViewer).toContain('app-button');
+    expect(databaseViewer).toContain('app-input');
+    expect(apiKeysViewer).toContain('app-button');
+    expect(apiKeysViewer).toContain('app-code-inline');
+    expect(markdownWithNodeTokens).toContain('app-prose');
+    expect(markdownWithNodeTokens).toContain('app-code-inline');
+    expect(mappedMarkdownRenderer).toContain('app-prose');
+    expect(mappedMarkdownRenderer).toContain('app-code-inline');
+    expect(guidesPane).toContain('app-prose');
+    expect(guidesPane).toContain('app-button');
+    expect(skillsPane).toContain('app-prose');
+    expect(skillsPane).toContain('app-panel-elevated');
+    expect(logPane).toContain('app-button');
+    expect(logPane).toContain('var(--app-panel)');
+    expect(libraryPane).toContain('var(--app-text)');
+    expect(bookCard).toContain('app-button');
+    expect(quickAddStatus).toContain('app-button');
+    expect(quickAddStatus).toContain('var(--app-panel)');
+  });
+});

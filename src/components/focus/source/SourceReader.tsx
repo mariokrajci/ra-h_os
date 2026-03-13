@@ -136,12 +136,10 @@ export default function SourceReader({
   };
 
   return (
-    <div style={{
+    <div className="app-panel-strong" style={{
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      background: 'var(--app-surface-strong)',
-      border: '1px solid var(--app-border)',
       borderRadius: '4px',
       overflow: 'hidden',
     }}>
@@ -165,18 +163,13 @@ export default function SourceReader({
           <button
             onClick={() => setShowSearch(!showSearch)}
             title="Search content (⌘F)"
+            className={`app-button app-button--ghost app-button--compact app-button--icon${showSearch ? ' is-active' : ''}`}
             style={{
-              background: showSearch ? 'var(--app-surface-subtle)' : 'transparent',
-              border: 'none',
               borderRadius: '4px',
-              padding: '4px 8px',
-              cursor: 'pointer',
-              color: showSearch ? 'var(--app-text)' : 'var(--app-text-subtle)',
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
               fontSize: '10px',
-              transition: 'all 150ms ease',
             }}
           >
             <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">

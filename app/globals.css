@@ -49,6 +49,9 @@
   --app-surface-strong: #0c1510;
   --app-input: #15201a;
   --app-table-stripe: #0e1812;
+  --app-inline-code-bg: #13231a;
+  --app-inline-code-border: rgba(107, 154, 127, 0.24);
+  --app-inline-code-text: #f2fbf5;
   --app-info-bg: rgba(18, 39, 74, 0.44);
   --app-info-border: rgba(96, 165, 250, 0.24);
   --app-info-text: #c7ddff;
@@ -83,6 +86,9 @@
   --app-surface-strong: #e4eee6;
   --app-input: #f8fbf8;
   --app-table-stripe: #f4f8f4;
+  --app-inline-code-bg: #dfe8e1;
+  --app-inline-code-border: rgba(79, 99, 86, 0.12);
+  --app-inline-code-text: #223127;
   --app-info-bg: rgba(219, 234, 254, 0.72);
   --app-info-border: rgba(96, 165, 250, 0.3);
   --app-info-text: #1e3a8a;
@@ -170,6 +176,249 @@ html, body {
 
 .bg-hover:hover {
   background-color: var(--app-hover);
+}
+
+/* Semantic theme primitives */
+.app-panel,
+.app-panel-elevated,
+.app-panel-strong {
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+}
+
+.app-panel {
+  background: var(--app-panel);
+}
+
+.app-panel-elevated {
+  background: var(--app-panel-elevated);
+}
+
+.app-panel-strong {
+  background: var(--app-surface-strong);
+}
+
+.app-toolbar-surface {
+  background: var(--app-toolbar);
+  border-color: var(--app-border);
+}
+
+.app-button {
+  appearance: none;
+  border: 1px solid var(--app-border);
+  background: var(--app-panel-elevated);
+  color: var(--app-text);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.app-button:hover {
+  background: var(--app-hover);
+}
+
+.app-button:focus-visible,
+.app-input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--toolbar-accent) 22%, transparent);
+  border-color: var(--app-accent-border);
+}
+
+.app-button--secondary {
+  background: transparent;
+  color: var(--app-text-muted);
+}
+
+.app-button--secondary:hover,
+.app-button--secondary.is-active {
+  background: var(--app-selected);
+  color: var(--app-text);
+  border-color: var(--app-accent-border);
+}
+
+.app-button--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--app-text-subtle);
+}
+
+.app-button--ghost:hover,
+.app-button--ghost.is-active {
+  background: var(--app-hover);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+
+.app-button--accent {
+  background: var(--app-accent-soft);
+  border-color: var(--app-accent-border);
+  color: var(--toolbar-accent);
+}
+
+.app-button--accent:hover,
+.app-button--accent.is-active {
+  background: var(--app-selected);
+  color: var(--app-text);
+}
+
+.app-button--danger:hover {
+  color: var(--app-danger-text);
+}
+
+.app-button--pill {
+  border-radius: 999px;
+}
+
+.app-button--compact {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.app-button--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.app-input {
+  width: 100%;
+  background: var(--app-input);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  color: var(--app-text);
+  font: inherit;
+}
+
+.app-input::placeholder {
+  color: var(--app-text-subtle);
+}
+
+.app-input--bare {
+  background: transparent;
+  border-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.app-tab {
+  color: var(--app-text-muted);
+  border-bottom: 2px solid transparent;
+}
+
+.app-tab.is-active {
+  color: var(--app-text);
+  border-bottom-color: var(--toolbar-accent);
+}
+
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--app-accent-soft);
+  border: 1px solid var(--app-accent-border);
+  color: var(--toolbar-accent);
+  font-size: 11px;
+}
+
+.app-nav-item {
+  padding: 12px 24px;
+  font-size: 14px;
+  color: var(--app-text-muted);
+  background: transparent;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.app-nav-item:hover,
+.app-nav-item.is-active {
+  color: var(--app-text);
+  background: var(--app-selected);
+}
+
+.app-nav-item.is-active {
+  border-left-color: var(--toolbar-accent);
+}
+
+.app-code-inline {
+  display: inline;
+  background: var(--app-inline-code-bg);
+  border: 1px solid var(--app-inline-code-border);
+  color: var(--app-inline-code-text);
+  padding: 0.2em 0.45em;
+  border-radius: 6px;
+  font-size: 85%;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+}
+
+.app-prose {
+  color: var(--app-text);
+}
+
+.app-prose h1,
+.app-prose h2,
+.app-prose h3,
+.app-prose h4,
+.app-prose h5,
+.app-prose h6,
+.app-prose strong {
+  color: var(--app-text);
+}
+
+.app-prose a {
+  color: var(--toolbar-accent);
+  text-decoration: underline;
+}
+
+.app-prose table,
+.app-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: 1px solid var(--app-border);
+}
+
+.app-prose tbody tr:nth-child(even),
+.app-table tbody tr:nth-child(even) {
+  background: var(--app-table-stripe);
+}
+
+.app-prose tr,
+.app-table tr {
+  border-bottom: 1px solid var(--app-border);
+}
+
+.app-prose th,
+.app-prose td,
+.app-table th,
+.app-table td {
+  padding: 6px 13px;
+  border-right: 1px solid var(--app-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.app-prose th,
+.app-table th {
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.app-prose td,
+.app-table td {
+  color: var(--app-text);
+  line-height: 1.45;
+}
+
+.app-prose blockquote {
+  border-left: 3px solid var(--app-border);
+  padding-left: 12px;
+  margin-left: 0;
+  color: var(--app-text-muted);
 }
 
 /* Terminal animations */

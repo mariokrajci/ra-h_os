@@ -42,12 +42,14 @@ export default function MappedMarkdownRenderer({
   activeRange,
   theme = 'dark',
 }: MappedMarkdownRendererProps) {
-  const tree = parser.parse(content) as MarkdownNode;
+  const normalizedContent = normalizeEmbeddedHtmlMarkdown(content);
+  const tree = parser.parse(normalizedContent) as MarkdownNode;
   const palette = getTextFallbackPalette(theme);
 
   return (
     <div
       data-mapped-source-root
+      className="app-prose"
       style={{
         ...READER_CONTAINER_STYLE,
         fontFamily: READER_FONT_FAMILY,
@@ -59,9 +61,86 @@ export default function MappedMarkdownRenderer({
         gap: '1.25em',
       }}
     >
-      {renderChildren(tree.children ?? [], content, annotationRanges, activeRange, palette)}
+      {renderChildren(tree.children ?? [], normalizedContent, annotationRanges, activeRange, palette)}
     </div>
   );
+}
+
+function normalizeEmbeddedHtmlMarkdown(content: string): string {
+  if (!content.includes('<')) {
+    return content;
+  }
+
+  let normalized = content.replace(/<table[\s\S]*?<\/table>/gi, convertHtmlTableToMarkdown);
+  normalized = normalizeInlineHtml(normalized);
+  return normalized;
+}
+
+function convertHtmlTableToMarkdown(tableHtml: string): string {
+  const rows = Array.from(tableHtml.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi))
+    .map((match) => extractTableCells(match[1]))
+    .filter((cells) => cells.length > 0);
+
+  if (rows.length === 0) {
+    return normalizeInlineHtml(tableHtml);
+  }
+
+  const columnCount = Math.max(...rows.map((row) => row.length));
+  const normalizedRows = rows.map((row) => Array.from({ length: columnCount }, (_, index) => escapeMarkdownTableCell(row[index] ?? '')));
+  const header = normalizedRows[0];
+  const body = normalizedRows.slice(1);
+  const divider = Array.from({ length: columnCount }, () => '---');
+
+  return [
+    `| ${header.join(' | ')} |`,
+    `| ${divider.join(' | ')} |`,
+    ...body.map((row) => `| ${row.join(' | ')} |`),
+  ].join('\n');
+}
+
+function extractTableCells(rowHtml: string): string[] {
+  return Array.from(rowHtml.matchAll(/<(td|th)\b[^>]*>([\s\S]*?)<\/\1>/gi)).map((match) =>
+    normalizeInlineHtml(match[2])
+      .replace(/\n+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+}
+
+function normalizeInlineHtml(fragment: string): string {
+  return fragment
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<br\s*\/?>/gi, '  \n')
+    .replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_match, inner) => `\`${decodeHtmlEntities(stripTags(inner)).trim()}\``)
+    .replace(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_match, href, inner) => {
+      const label = normalizeInlineHtml(inner).replace(/\s+/g, ' ').trim() || href;
+      return `[${label}](${href})`;
+    })
+    .replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_match, _tag, inner) => `**${normalizeInlineHtml(inner).trim()}**`)
+    .replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_match, _tag, inner) => `*${normalizeInlineHtml(inner).trim()}*`)
+    .replace(/<\/?(p|div|span|center|tbody|thead|tr|td|th|table)[^>]*>/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>');
+}
+
+function stripTags(value: string): string {
+  return value.replace(/<[^>]+>/g, '');
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+}
+
+function escapeMarkdownTableCell(value: string): string {
+  return value.replace(/\|/g, '\\|');
 }
 
 function renderChildren(
@@ -154,10 +233,8 @@ function renderNode(
       return (
         <code
           key={key}
+          className="app-code-inline"
           style={{
-            background: palette.codeBackground,
-            padding: '0.2em 0.4em',
-            borderRadius: '6px',
             fontSize: '85%',
             fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace',
           }}
@@ -200,12 +277,7 @@ function renderNode(
       return (
         <blockquote
           key={key}
-          style={{
-            borderLeft: `3px solid ${palette.blockquoteBorder}`,
-            paddingLeft: '12px',
-            margin: 0,
-            color: palette.blockquote,
-          }}
+          style={{ margin: 0, color: palette.blockquote }}
         >
           {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </blockquote>

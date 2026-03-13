@@ -22,8 +22,8 @@ describe('docs and views theming', () => {
     expect(gridView).toContain('var(--app-text)');
     expect(kanbanView).toContain('var(--app-panel)');
     expect(kanbanView).toContain('var(--app-border)');
-    expect(databaseTableView).toContain('var(--app-panel-elevated)');
-    expect(databaseTableView).toContain('var(--app-surface-subtle)');
+    expect(databaseTableView).toContain('app-button');
+    expect(databaseTableView).toContain('app-input');
     expect(viewFilters).toContain('var(--app-surface-strong)');
     expect(viewFilters).toContain('var(--app-border)');
   });

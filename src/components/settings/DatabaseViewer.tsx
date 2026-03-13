@@ -232,13 +232,11 @@ export default function DatabaseViewer() {
           <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: 'var(--app-text-subtle)', gap: '4px' }}>
             Search
             <input
+              className="app-input"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="title or content"
               style={{
-                background: 'var(--app-input)',
-                border: '1px solid var(--app-border)',
-                color: 'var(--app-text)',
                 padding: '6px 10px',
                 borderRadius: '4px',
                 minWidth: '220px',
@@ -249,14 +247,12 @@ export default function DatabaseViewer() {
             Dimension
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
+                className="app-input"
                 value={dimensionInput}
                 onChange={(e) => setDimensionInput(e.target.value)}
                 onKeyDown={handleDimensionKeyDown}
                 placeholder="e.g. research"
                 style={{
-                  background: 'var(--app-input)',
-                  border: '1px solid var(--app-border)',
-                  color: 'var(--app-text)',
                   padding: '6px 10px',
                   borderRadius: '4px',
                   minWidth: '180px',
@@ -264,14 +260,11 @@ export default function DatabaseViewer() {
               />
               <button
                 onClick={handleAddDimension}
+                className="app-button app-button--secondary"
                 style={{
                   padding: '6px 10px',
-                  background: 'var(--app-selected)',
-                  border: '1px solid var(--app-border)',
                   borderRadius: '4px',
-                  color: 'var(--app-text)',
                   fontSize: '12px',
-                  cursor: 'pointer',
                 }}
               >
                 Add
@@ -281,12 +274,10 @@ export default function DatabaseViewer() {
           <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: 'var(--app-text-subtle)', gap: '4px' }}>
             Sort by
             <select
+              className="app-input"
               value={sortBy}
               onChange={handleSortChange}
               style={{
-                background: 'var(--app-input)',
-                border: '1px solid var(--app-border)',
-                color: 'var(--app-text)',
                 padding: '6px 10px',
                 borderRadius: '4px',
               }}
@@ -302,28 +293,23 @@ export default function DatabaseViewer() {
             {dimensionFilters.map((dimension) => (
               <span
                 key={dimension}
+                className="app-badge"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
                   padding: '3px 10px',
                   borderRadius: '999px',
-                  background: 'var(--app-selected)',
-                  color: 'var(--app-text)',
                   fontSize: '11px',
-                  border: '1px solid var(--app-border)',
                 }}
               >
                 <Folder size={12} />
                 {dimension}
                 <button
                   onClick={() => handleRemoveDimension(dimension)}
+                  className="app-button app-button--ghost app-button--compact app-button--danger"
                   style={{
                     marginLeft: '2px',
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--toolbar-accent)',
-                    cursor: 'pointer',
                     fontSize: '11px',
                   }}
                   aria-label={`Remove ${dimension}`}
@@ -340,13 +326,10 @@ export default function DatabaseViewer() {
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={handleApplyFilters}
+              className="app-button app-button--accent"
               style={{
                 padding: '8px 16px',
-                background: 'var(--app-accent-soft)',
-                border: '1px solid var(--app-accent-border)',
                 borderRadius: '4px',
-                color: 'var(--toolbar-accent)',
-                cursor: 'pointer',
                 fontSize: '12px',
               }}
             >
@@ -354,13 +337,10 @@ export default function DatabaseViewer() {
             </button>
             <button
               onClick={handleClearFilters}
+              className="app-button app-button--secondary"
               style={{
                 padding: '8px 16px',
-                background: 'var(--app-surface-subtle)',
-                border: '1px solid var(--app-border)',
                 borderRadius: '4px',
-                color: 'var(--app-text-muted)',
-                cursor: 'pointer',
                 fontSize: '12px',
               }}
             >
@@ -369,10 +349,9 @@ export default function DatabaseViewer() {
             <button
               onClick={handlePrevious}
               disabled={isFirstPage || filtersActive}
+              className="app-button app-button--secondary"
               style={{
                 padding: '8px 12px',
-                background: isFirstPage || filtersActive ? 'var(--app-surface-subtle)' : 'var(--app-panel-elevated)',
-                border: '1px solid var(--app-border)',
                 borderRadius: '4px',
                 color: isFirstPage || filtersActive ? 'var(--app-text-subtle)' : 'var(--app-text-muted)',
                 cursor: isFirstPage || filtersActive ? 'not-allowed' : 'pointer',
@@ -384,10 +363,9 @@ export default function DatabaseViewer() {
             <button
               onClick={handleNext}
               disabled={isLastPage || filtersActive}
+              className="app-button app-button--secondary"
               style={{
                 padding: '8px 12px',
-                background: isLastPage || filtersActive ? 'var(--app-surface-subtle)' : 'var(--app-panel-elevated)',
-                border: '1px solid var(--app-border)',
                 borderRadius: '4px',
                 color: isLastPage || filtersActive ? 'var(--app-text-subtle)' : 'var(--app-text-muted)',
                 cursor: isLastPage || filtersActive ? 'not-allowed' : 'pointer',

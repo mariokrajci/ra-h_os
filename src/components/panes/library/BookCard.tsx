@@ -45,12 +45,11 @@ export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata
   return (
     <button
       onClick={() => onOpen(node)}
+      className="app-button app-button--ghost"
       style={{
-        background: 'transparent',
-        border: 'none',
-        color: 'inherit',
-        cursor: 'pointer',
         textAlign: 'left',
+        padding: 0,
+        width: '100%',
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -79,11 +78,11 @@ export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#e5e5e5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--app-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {title}
             </div>
             {author ? (
-              <div style={{ fontSize: '11px', color: '#7a7a7a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div style={{ fontSize: '11px', color: 'var(--app-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {author}
               </div>
             ) : null}
@@ -92,7 +91,7 @@ export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata
                 style={{
                   marginTop: '4px',
                   fontSize: '10px',
-                  color: statusHint.tone === 'warning' ? '#d9a441' : '#6a6a6a',
+                  color: statusHint.tone === 'warning' ? 'var(--app-warning-text)' : 'var(--app-text-subtle)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -109,12 +108,10 @@ export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata
                     value={String(selectedCandidateIndex)}
                     onClick={(event) => event.stopPropagation()}
                     onChange={(event) => setSelectedCandidateIndex(Number(event.target.value))}
+                    className="app-input"
                     style={{
                       flex: 1,
                       minWidth: 0,
-                      background: 'rgba(20,20,20,0.75)',
-                      color: '#d5d5d5',
-                      border: '1px solid rgba(217,164,65,0.35)',
                       borderRadius: '6px',
                       fontSize: '10px',
                       padding: '2px 4px',
@@ -132,14 +129,14 @@ export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata
                     event.stopPropagation();
                     onConfirmMatch(node, selectedCandidate);
                   }}
+                  className="app-button app-button--compact"
                   style={{
-                    border: '1px solid rgba(217,164,65,0.45)',
-                    background: 'rgba(217,164,65,0.12)',
-                    color: '#d9a441',
+                    background: 'var(--app-warning-bg)',
+                    borderColor: 'var(--app-warning-border)',
+                    color: 'var(--app-warning-text)',
                     borderRadius: '6px',
                     padding: '2px 6px',
                     fontSize: '10px',
-                    cursor: 'pointer',
                   }}
                 >
                   Confirm
@@ -152,15 +149,15 @@ export default function BookCard({ node, onOpen, onConfirmMatch, onRetryMetadata
                   event.stopPropagation();
                   onRetryMetadata(node);
                 }}
+                className="app-button app-button--compact"
                 style={{
                   marginTop: '6px',
-                  border: '1px solid rgba(106,106,106,0.45)',
-                  background: 'rgba(106,106,106,0.12)',
-                  color: '#b8b8b8',
+                  background: 'var(--app-surface-subtle)',
+                  borderColor: 'var(--app-border)',
+                  color: 'var(--app-text-muted)',
                   borderRadius: '6px',
                   padding: '2px 6px',
                   fontSize: '10px',
-                  cursor: 'pointer',
                 }}
               >
                 Retry

@@ -109,4 +109,29 @@ describe('MappedMarkdownRenderer', () => {
     expect(html).toContain('box-shadow:inset 0 -1px 0 rgba(180, 83, 9, 0.38)');
   });
 
+  it('renders github-style html tables without leaking raw tags', () => {
+    const markdown = [
+      '<table>',
+      '  <tr>',
+      '    <td>[<code>gemini/</code>](gemini/)</td>',
+      '    <td>Discover Gemini through starter notebooks.</td>',
+      '  </tr>',
+      '</table>',
+    ].join('\n');
+
+    const html = renderToStaticMarkup(
+      React.createElement(MappedMarkdownRenderer, {
+        content: markdown,
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).toContain('<table');
+    expect(html).toContain('<a href="gemini/"');
+    expect(html).toContain('<code');
+    expect(html).not.toContain('&lt;td&gt;');
+    expect(html).not.toContain('&lt;/td&gt;');
+  });
+
 });

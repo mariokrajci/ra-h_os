@@ -173,28 +173,23 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
       }}>
         {/* Search */}
         <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
-          <div style={{
+          <div className="app-input" style={{
             display: 'flex',
             alignItems: 'center',
-            background: 'var(--app-input)',
-            border: '1px solid var(--app-border)',
             borderRadius: '6px',
             padding: '0 8px',
             gap: '6px',
           }}>
             <Search size={12} style={{ color: 'var(--app-text-subtle)', flexShrink: 0 }} />
             <input
+              className="app-input app-input--bare"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search nodes..."
               style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--app-text)',
                 fontSize: '12px',
                 padding: '5px 0',
-                outline: 'none',
                 width: '140px',
               }}
             />
@@ -202,7 +197,8 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
               <button
                 type="button"
                 onClick={() => { setSearchQuery(''); setActiveSearch(''); }}
-                style={{ background: 'transparent', border: 'none', color: 'var(--app-text-subtle)', cursor: 'pointer', padding: 0, display: 'flex' }}
+                className="app-button app-button--ghost app-button--compact app-button--icon"
+                style={{ padding: 0, display: 'flex' }}
               >
                 <X size={11} />
               </button>
@@ -216,16 +212,13 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
             <div key={f} style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               padding: '2px 7px',
-              background: 'var(--app-accent-soft)',
-              border: '1px solid var(--app-accent-border)',
               borderRadius: '4px', fontSize: '11px', color: 'var(--toolbar-accent)'
-            }}>
+            }} className="app-badge">
               {f}
               <button
                 onClick={() => setSelectedFilters(selectedFilters.filter(x => x !== f))}
-                style={{ background: 'transparent', border: 'none', color: 'var(--toolbar-accent)', cursor: 'pointer', padding: 0, display: 'flex' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-danger-text)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--toolbar-accent)'; }}
+                className="app-button app-button--ghost app-button--compact app-button--icon app-button--danger"
+                style={{ padding: 0, display: 'flex', color: 'var(--toolbar-accent)' }}
               >
                 <X size={10} />
               </button>
@@ -234,36 +227,30 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
           <div style={{ position: 'relative' }} ref={filterPickerRef}>
             <button
               onClick={() => setShowFilterPicker(!showFilterPicker)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '4px',
-                padding: '4px 7px', background: 'transparent',
-                border: '1px solid var(--app-border)', borderRadius: '5px',
-                color: 'var(--app-text-muted)', fontSize: '11px', cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--app-hover)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              className="app-button app-button--secondary app-button--compact app-button--icon"
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 7px', fontSize: '11px' }}
             >
               <Filter size={11} />
               Filter
             </button>
 
             {showFilterPicker && (
-              <div style={{
+              <div className="app-panel-elevated" style={{
                 position: 'absolute', top: '100%', left: 0, marginTop: '4px',
-                background: 'var(--app-panel-elevated)', border: '1px solid var(--app-border)', borderRadius: '10px',
+                borderRadius: '10px',
                 padding: '6px', minWidth: '220px', maxHeight: '320px', overflowY: 'auto',
                 zIndex: 1000, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
               }}>
                 <input
+                  className="app-input"
                   type="text"
                   value={filterSearchQuery}
                   onChange={(e) => setFilterSearchQuery(e.target.value)}
                   placeholder="Search dimensions..."
                   autoFocus
                   style={{
-                    width: '100%', padding: '7px 10px', background: 'var(--app-input)',
-                    border: '1px solid var(--app-input)', borderRadius: '6px',
-                    color: 'var(--app-text)', fontSize: '12px', marginBottom: '4px', outline: 'none',
+                    width: '100%', padding: '7px 10px', borderRadius: '6px',
+                    fontSize: '12px', marginBottom: '4px',
                   }}
                 />
                 {filterPickerDimensions.length === 0 ? (
@@ -281,14 +268,12 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                         setShowFilterPicker(false);
                         setFilterSearchQuery('');
                       }}
+                      className="app-button app-button--ghost"
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        width: '100%', padding: '7px 10px', background: 'transparent',
-                        border: 'none', borderRadius: '5px', color: 'var(--app-text)',
-                        fontSize: '12px', cursor: 'pointer', textAlign: 'left',
+                        width: '100%', padding: '7px 10px', borderRadius: '5px',
+                        fontSize: '12px', textAlign: 'left',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--app-hover)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       <span>{d.dimension}</span>
                       <span style={{ color: 'var(--app-text-subtle)', fontSize: '10px', background: 'var(--app-surface-subtle)', padding: '1px 6px', borderRadius: '10px' }}>
@@ -304,9 +289,8 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
           {selectedFilters.length > 0 && (
             <button
               onClick={() => setSelectedFilters([])}
-              style={{ padding: '4px 6px', background: 'transparent', border: 'none', color: 'var(--app-text-muted)', fontSize: '11px', cursor: 'pointer' }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-danger-text)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--app-text-muted)'; }}
+              className="app-button app-button--ghost app-button--compact app-button--danger"
+              style={{ padding: '4px 6px', fontSize: '11px' }}
             >
               Clear
             </button>
@@ -317,14 +301,11 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
         <div style={{ position: 'relative' }} ref={sortDropdownRef}>
           <button
             onClick={() => setShowSortDropdown(!showSortDropdown)}
+            className="app-button app-button--secondary app-button--compact app-button--icon"
             style={{
               display: 'flex', alignItems: 'center', gap: '4px',
-              padding: '4px 7px', background: 'transparent',
-              border: '1px solid var(--app-border)', borderRadius: '5px',
-              color: 'var(--app-text-muted)', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap',
+              padding: '4px 7px', fontSize: '11px', whiteSpace: 'nowrap',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--app-hover)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
             <ArrowUpDown size={11} />
             {SORT_LABELS[sortOrder]}
@@ -332,9 +313,9 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
           </button>
 
           {showSortDropdown && (
-            <div style={{
+            <div className="app-panel-elevated" style={{
               position: 'absolute', top: '100%', right: 0, marginTop: '4px',
-              background: 'var(--app-panel-elevated)', border: '1px solid var(--app-border)', borderRadius: '10px',
+              borderRadius: '10px',
               padding: '4px', minWidth: '160px', zIndex: 1000,
               boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
             }}>
@@ -342,16 +323,12 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
                 <button
                   key={key}
                   onClick={() => { setSortOrder(key); setShowSortDropdown(false); }}
+                  className={`app-button app-button--ghost${sortOrder === key ? ' is-active' : ''}`}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '8px',
                     width: '100%', padding: '7px 10px',
-                    background: sortOrder === key ? 'var(--app-selected)' : 'transparent',
-                    border: 'none', borderRadius: '5px',
-                    color: sortOrder === key ? 'var(--app-text)' : 'var(--app-text-muted)',
-                    fontSize: '12px', cursor: 'pointer', textAlign: 'left',
+                    fontSize: '12px', textAlign: 'left',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = sortOrder === key ? 'var(--app-selected)' : 'var(--app-hover)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = sortOrder === key ? 'var(--app-selected)' : 'transparent'; }}
                 >
                   {sortOrder === key && <span style={{ color: 'var(--toolbar-accent)', fontSize: '12px' }}>✓</span>}
                   {SORT_LABELS[key]}
@@ -370,9 +347,10 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page <= 1}
+            className="app-button app-button--secondary app-button--compact app-button--icon"
             style={{
-              background: 'transparent', border: '1px solid var(--app-border)', borderRadius: '4px',
-              color: page <= 1 ? 'var(--app-text-subtle)' : 'var(--app-text-muted)', cursor: page <= 1 ? 'default' : 'pointer',
+              borderRadius: '4px',
+              color: page <= 1 ? 'var(--app-text-subtle)' : undefined, cursor: page <= 1 ? 'default' : 'pointer',
               padding: '2px 4px', display: 'flex',
             }}
           >
@@ -381,9 +359,10 @@ export default function DatabaseTableView({ onNodeClick, refreshToken = 0 }: Dat
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
+            className="app-button app-button--secondary app-button--compact app-button--icon"
             style={{
-              background: 'transparent', border: '1px solid var(--app-border)', borderRadius: '4px',
-              color: page >= totalPages ? 'var(--app-text-subtle)' : 'var(--app-text-muted)',
+              borderRadius: '4px',
+              color: page >= totalPages ? 'var(--app-text-subtle)' : undefined,
               cursor: page >= totalPages ? 'default' : 'pointer',
               padding: '2px 4px', display: 'flex',
             }}

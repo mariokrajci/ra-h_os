@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Lock, Trash2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
 import PaneHeader from './PaneHeader';
 import type { BasePaneProps } from './types';
 
@@ -19,8 +18,6 @@ interface Guide extends GuideMeta {
 
 export default function GuidesPane({
   slot,
-  isActive,
-  onPaneAction,
   onCollapse,
   onSwapPanes,
   tabBar,
@@ -105,28 +102,22 @@ export default function GuidesPane({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={handleBack}
+              className="app-button app-button--ghost app-button--compact app-button--icon"
               style={{
-                background: 'none',
-                border: 'none',
-                color: '#888',
-                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 padding: '4px',
-                borderRadius: '4px',
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#ccc'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#888'; }}
             >
               <ArrowLeft size={16} />
             </button>
-            <span style={{ color: '#ccc', fontSize: '13px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ color: 'var(--app-text)', fontSize: '13px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
               {selectedGuide.immutable && <Lock size={12} style={{ color: '#22c55e' }} />}
               {selectedGuide.name}
             </span>
           </div>
         ) : (
-          <span style={{ color: '#666', fontSize: '11px' }}>
+          <span style={{ color: 'var(--app-text-muted)', fontSize: '11px' }}>
             {userGuides.length} of 10 custom guides
           </span>
         )}
@@ -134,94 +125,23 @@ export default function GuidesPane({
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '12px' }}>
         {loading ? (
-          <div style={{ color: '#555', fontSize: '13px', textAlign: 'center', paddingTop: '24px' }}>
+          <div style={{ color: 'var(--app-text-muted)', fontSize: '13px', textAlign: 'center', paddingTop: '24px' }}>
             Loading...
           </div>
         ) : selectedGuide ? (
-          <div className="guide-content" style={{ color: '#ccc', fontSize: '13px', lineHeight: '1.6' }}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                h1: ({ children }) => (
-                  <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#eee', margin: '0 0 16px 0' }}>{children}</h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#ddd', margin: '20px 0 8px 0' }}>{children}</h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#ccc', margin: '16px 0 6px 0' }}>{children}</h3>
-                ),
-                p: ({ children }) => (
-                  <p style={{ margin: '0 0 12px 0' }}>{children}</p>
-                ),
-                ul: ({ children }) => (
-                  <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px' }}>{children}</ul>
-                ),
-                ol: ({ children }) => (
-                  <ol style={{ margin: '0 0 12px 0', paddingLeft: '20px' }}>{children}</ol>
-                ),
-                li: ({ children }) => (
-                  <li style={{ margin: '0 0 4px 0' }}>{children}</li>
-                ),
-                code: ({ className, children, ...props }) => {
-                  const isInline = !className;
-                  if (isInline) {
-                    return (
-                      <code style={{
-                        background: '#1a1a1a',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        color: '#22c55e',
-                      }} {...props}>{children}</code>
-                    );
-                  }
-                  return (
-                    <code style={{
-                      display: 'block',
-                      background: '#0d0d0d',
-                      padding: '12px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      overflowX: 'auto',
-                      margin: '0 0 12px 0',
-                      color: '#aaa',
-                      whiteSpace: 'pre-wrap',
-                    }} {...props}>{children}</code>
-                  );
-                },
-                pre: ({ children }) => (
-                  <pre style={{ margin: '0 0 12px 0' }}>{children}</pre>
-                ),
-                strong: ({ children }) => (
-                  <strong style={{ color: '#eee', fontWeight: 600 }}>{children}</strong>
-                ),
-                hr: () => (
-                  <hr style={{ border: 'none', borderTop: '1px solid #2a2a2a', margin: '16px 0' }} />
-                ),
-                blockquote: ({ children }) => (
-                  <blockquote style={{
-                    borderLeft: '3px solid #333',
-                    paddingLeft: '12px',
-                    margin: '0 0 12px 0',
-                    color: '#999',
-                  }}>{children}</blockquote>
-                ),
-              }}
-            >
-              {selectedGuide.content}
-            </ReactMarkdown>
+          <div className="guide-content app-prose" style={{ fontSize: '13px', lineHeight: '1.6' }}>
+            <MarkdownWithNodeTokens content={selectedGuide.content} />
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {guides.length === 0 ? (
-              <div style={{ color: '#555', fontSize: '13px', textAlign: 'center', paddingTop: '24px' }}>
+              <div style={{ color: 'var(--app-text-muted)', fontSize: '13px', textAlign: 'center', paddingTop: '24px' }}>
                 No guides found
               </div>
             ) : (
               <>
                 {systemGuides.length > 0 && (
-                  <div style={{ color: '#555', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '4px 0' }}>
+                  <div style={{ color: 'var(--app-text-subtle)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '4px 0' }}>
                     System Guides
                   </div>
                 )}
@@ -235,7 +155,7 @@ export default function GuidesPane({
                   />
                 ))}
                 {userGuides.length > 0 && (
-                  <div style={{ color: '#555', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '8px 0 4px 0' }}>
+                  <div style={{ color: 'var(--app-text-subtle)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '8px 0 4px 0' }}>
                     Custom Guides
                   </div>
                 )}
@@ -271,35 +191,24 @@ function GuideCard({
   return (
     <button
       onClick={() => onSelect(guide.name)}
+      className="app-button app-panel-elevated"
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
         padding: '12px',
-        background: '#161616',
-        border: '1px solid #222',
         borderRadius: '8px',
-        cursor: 'pointer',
         textAlign: 'left',
-        transition: 'all 0.15s ease',
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background = '#1a1a1a';
-        e.currentTarget.style.borderColor = '#333';
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background = '#161616';
-        e.currentTarget.style.borderColor = '#222';
       }}
     >
       {guide.immutable && (
         <Lock size={12} style={{ color: '#22c55e', flexShrink: 0 }} />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ color: '#ddd', fontSize: '13px', fontWeight: 500 }}>
+        <span style={{ color: 'var(--app-text)', fontSize: '13px', fontWeight: 500 }}>
           {guide.name}
         </span>
-        <span style={{ color: '#777', fontSize: '12px', lineHeight: '1.4', display: 'block', marginTop: '2px' }}>
+        <span style={{ color: 'var(--app-text-muted)', fontSize: '12px', lineHeight: '1.4', display: 'block', marginTop: '2px' }}>
           {guide.description}
         </span>
       </div>
@@ -307,20 +216,14 @@ function GuideCard({
         <button
           onClick={(e) => onDelete(guide.name, e)}
           disabled={deleting === guide.name}
+          className="app-button app-button--ghost app-button--compact app-button--icon app-button--danger"
           style={{
-            background: 'none',
-            border: 'none',
-            color: '#555',
-            cursor: 'pointer',
             padding: '4px',
-            borderRadius: '4px',
             display: 'flex',
             alignItems: 'center',
             flexShrink: 0,
             opacity: deleting === guide.name ? 0.3 : 1,
           }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#555'; }}
         >
           <Trash2 size={14} />
         </button>

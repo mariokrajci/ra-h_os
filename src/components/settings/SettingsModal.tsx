@@ -60,15 +60,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
 
   if (!isOpen) return null;
 
-  const navItemStyle = (tab: TabType): CSSProperties => ({
-    padding: '12px 24px',
-    fontSize: '14px',
-    color: activeTab === tab ? 'var(--app-text)' : 'var(--app-text-muted)',
-    background: activeTab === tab ? 'var(--app-selected)' : 'transparent',
-    borderLeft: activeTab === tab ? '3px solid var(--toolbar-accent)' : '3px solid transparent',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  });
+  const navItemClassName = (tab: TabType) => `app-nav-item${activeTab === tab ? ' is-active' : ''}`;
 
   const preferencesContent = (
     <div
@@ -105,12 +97,11 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
         style={{
           padding: '20px',
           borderRadius: '16px',
-          background: 'var(--app-panel-elevated)',
-          border: '1px solid var(--app-border)',
           display: 'flex',
           flexDirection: 'column',
           gap: '14px',
         }}
+        className="app-panel-elevated"
       >
         <div style={{ fontSize: '14px', color: 'var(--app-text)' }}>
           Current: {formatThemeLabel(mode)} ({resolvedTheme})
@@ -123,15 +114,11 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
               <button
                 key={option}
                 onClick={() => setMode(option)}
+                className={`app-button app-button--pill app-button--secondary${isSelected ? ' is-active' : ''}`}
                 style={{
-                  borderRadius: '999px',
-                  border: isSelected ? '1px solid var(--toolbar-accent)' : '1px solid var(--app-border)',
-                  background: isSelected ? 'var(--app-selected)' : 'transparent',
-                  color: isSelected ? 'var(--app-text)' : 'var(--app-text-muted)',
                   padding: '10px 16px',
                   fontSize: '14px',
                   fontWeight: 500,
-                  cursor: 'pointer',
                 }}
               >
                 {formatThemeLabel(option)}
@@ -145,6 +132,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
 
   const modalContent = (
     <div
+      className="modal-backdrop"
       style={{
         position: 'fixed',
         top: 0,
@@ -160,11 +148,10 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
       onClick={onClose}
     >
       <div
+        className="app-panel modal-content"
         style={{
           width: '80vw',
           height: '85vh',
-          background: 'var(--app-panel)',
-          border: '1px solid var(--app-border)',
           borderRadius: '8px',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.28)',
           display: 'flex',
@@ -173,9 +160,9 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
         onClick={(e) => e.stopPropagation()}
       >
         <div
+          className="app-toolbar-surface"
           style={{
             width: '20%',
-            background: 'var(--app-toolbar)',
             borderRight: '1px solid var(--app-border)',
             display: 'flex',
             flexDirection: 'column',
@@ -195,28 +182,28 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
           </div>
 
           <nav>
-            <div onClick={() => setActiveTab('logs')} style={navItemStyle('logs')}>
+            <div onClick={() => setActiveTab('logs')} className={navItemClassName('logs')}>
               Logs
             </div>
-            <div onClick={() => setActiveTab('tools')} style={navItemStyle('tools')}>
+            <div onClick={() => setActiveTab('tools')} className={navItemClassName('tools')}>
               Tools
             </div>
-            <div onClick={() => setActiveTab('guides')} style={navItemStyle('guides')}>
+            <div onClick={() => setActiveTab('guides')} className={navItemClassName('guides')}>
               Skills
             </div>
-            <div onClick={() => setActiveTab('apikeys')} style={navItemStyle('apikeys')}>
+            <div onClick={() => setActiveTab('apikeys')} className={navItemClassName('apikeys')}>
               API Keys
             </div>
-            <div onClick={() => setActiveTab('database')} style={navItemStyle('database')}>
+            <div onClick={() => setActiveTab('database')} className={navItemClassName('database')}>
               Database
             </div>
-            <div onClick={() => setActiveTab('context')} style={navItemStyle('context')}>
+            <div onClick={() => setActiveTab('context')} className={navItemClassName('context')}>
               Context
             </div>
-            <div onClick={() => setActiveTab('agents')} style={navItemStyle('agents')}>
+            <div onClick={() => setActiveTab('agents')} className={navItemClassName('agents')}>
               External Agents
             </div>
-            <div onClick={() => setActiveTab('preferences')} style={navItemStyle('preferences')}>
+            <div onClick={() => setActiveTab('preferences')} className={navItemClassName('preferences')}>
               Preferences
             </div>
             <div

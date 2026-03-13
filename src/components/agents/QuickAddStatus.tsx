@@ -41,24 +41,23 @@ export default function QuickAddStatus({ delegations, onDelegationClick }: Quick
       gap: '8px',
       overflowY: 'auto',
       height: '100%',
-      background: '#0a0a0a'
+      background: 'var(--app-panel)'
     }}>
       {/* Header */}
       {delegations.length > 0 && (
-        <div style={{
+        <div className="app-panel-elevated" style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 12px',
-          background: '#151515',
           borderRadius: '6px',
-          color: '#a8a8a8',
+          color: 'var(--app-text-muted)',
           fontSize: '11px',
           fontFamily: "'JetBrains Mono', ui-monospace",
           fontWeight: 600,
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
-          borderLeft: activeDelegations.length > 0 ? '3px solid #22c55e' : '3px solid #6b6b6b'
+          borderLeft: activeDelegations.length > 0 ? '3px solid var(--toolbar-accent)' : '3px solid var(--app-border)'
         }}>
           <span>
             {activeDelegations.length > 0 
@@ -69,26 +68,14 @@ export default function QuickAddStatus({ delegations, onDelegationClick }: Quick
           {completedDelegations.length > 0 && (
             <button
               onClick={handleClearCompleted}
+              className="app-button app-button--secondary app-button--compact"
               style={{
                 padding: '4px 8px',
-                background: '#1a1a1a',
-                border: '1px solid #2a2a2a',
                 borderRadius: '4px',
-                color: '#6b6b6b',
                 fontSize: '10px',
                 fontFamily: "'JetBrains Mono', ui-monospace",
-                cursor: 'pointer',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#222';
-                e.currentTarget.style.color = '#a8a8a8';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#1a1a1a';
-                e.currentTarget.style.color = '#6b6b6b';
               }}
             >
               Clear Completed
@@ -110,25 +97,14 @@ export default function QuickAddStatus({ delegations, onDelegationClick }: Quick
           <button
             key={delegation.sessionId}
             onClick={() => onDelegationClick(delegation.sessionId)}
+            className="app-button app-panel-elevated"
             style={{
               padding: '12px',
-              background: '#151515',
-              border: '1px solid #2a2a2a',
               borderRadius: '6px',
               textAlign: 'left',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
               display: 'flex',
               flexDirection: 'column',
               gap: '6px'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#1a1a1a';
-              e.currentTarget.style.borderColor = '#3a3a3a';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#151515';
-              e.currentTarget.style.borderColor = '#2a2a2a';
             }}
           >
             <div style={{
@@ -150,7 +126,7 @@ export default function QuickAddStatus({ delegations, onDelegationClick }: Quick
                   flexShrink: 0
                 }} />
                 <span style={{
-                  color: '#e5e5e5',
+                  color: 'var(--app-text)',
                   fontSize: '12px',
                   fontWeight: 600,
                   fontFamily: "'JetBrains Mono', ui-monospace",
@@ -161,7 +137,7 @@ export default function QuickAddStatus({ delegations, onDelegationClick }: Quick
                 </span>
               </div>
               <span style={{
-                color: '#6b6b6b',
+                color: 'var(--app-text-subtle)',
                 fontSize: '11px',
                 fontFamily: "'JetBrains Mono', ui-monospace"
               }}>
@@ -170,7 +146,7 @@ export default function QuickAddStatus({ delegations, onDelegationClick }: Quick
             </div>
 
             <div style={{
-              color: '#a8a8a8',
+              color: 'var(--app-text-muted)',
               fontSize: '12px',
               fontFamily: "'JetBrains Mono', ui-monospace",
               lineHeight: '1.5',
@@ -183,7 +159,7 @@ export default function QuickAddStatus({ delegations, onDelegationClick }: Quick
 
             {delegation.summary && delegation.status === 'completed' && (
               <div style={{
-                color: '#6b6b6b',
+                color: 'var(--app-text-subtle)',
                 fontSize: '11px',
                 fontFamily: "'JetBrains Mono', ui-monospace",
                 lineHeight: '1.4',
@@ -197,7 +173,7 @@ export default function QuickAddStatus({ delegations, onDelegationClick }: Quick
 
             {delegation.summary && delegation.status === 'failed' && (
               <div style={{
-                color: '#ff6b6b',
+                color: 'var(--app-danger-text)',
                 fontSize: '11px',
                 fontFamily: "'JetBrains Mono', ui-monospace",
                 lineHeight: '1.4'

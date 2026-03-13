@@ -94,7 +94,7 @@ export default function ApiKeysViewer() {
 
         <div style={instructionsStyle}>
           <p style={{ margin: 0, marginBottom: 8 }}>
-            Add your key to <code style={codeInlineStyle}>.env.local</code> in the project root:
+            Add your key to <code className="app-code-inline">.env.local</code> in the project root:
           </p>
           <div style={codeBlockStyle}>
             <code>OPENAI_API_KEY=sk-your-key-here</code>
@@ -125,6 +125,7 @@ export default function ApiKeysViewer() {
               <button
                 key={range}
                 onClick={() => setUsageRange(range)}
+                className={`app-button app-button--secondary app-button--compact${usageRange === range ? ' is-active' : ''}`}
                 style={{
                   ...rangeButtonStyle,
                   ...(usageRange === range ? activeRangeButtonStyle : null),
