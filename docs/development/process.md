@@ -36,6 +36,12 @@ npm run lint
 npm run build
 ```
 
+## Production Build Behavior
+
+- `npm run build` prepares the standalone runtime under `.next/standalone`.
+- After the build finishes, `postbuild` copies `.next/static` and `public/` into the standalone runtime.
+- If `rah.service` is currently serving this checkout, `postbuild` stops its current PID so `Restart=always` brings it back on the new build automatically.
+
 ## PR Checklist
 
 - Clear description of the change and why it matters.

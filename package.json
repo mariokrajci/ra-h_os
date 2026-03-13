@@ -10,6 +10,7 @@
     "clean:local": "bash ./scripts/dev/clean-local-artifacts.sh",
     "audit:repo": "bash ./scripts/dev/audit-repo.sh",
     "build": "NEXT_PUBLIC_DEPLOYMENT_MODE=local NEXT_PUBLIC_ENABLE_SUBSCRIPTION_BACKEND=false NODE_OPTIONS=\"--dns-result-order=ipv4first\" next build",
+    "postbuild": "bash ./scripts/postbuild-standalone-runtime.sh",
     "start": "NEXT_PUBLIC_DEPLOYMENT_MODE=local NEXT_PUBLIC_ENABLE_SUBSCRIPTION_BACKEND=false NODE_OPTIONS=\"--dns-result-order=ipv4first\" next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
