@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { LogEntry as LogEntryType } from '@/types/database';
 import { ArrowUpRight, Trash2 } from 'lucide-react';
+import { getLogMarkdownIndentStyle } from './logMarkdownIndent';
 
 interface LogEntryProps {
   entry: LogEntryType;
@@ -25,11 +26,13 @@ export default function LogEntry({
 }: LogEntryProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
+  const [currentContent, setCurrentContent] = useState(entry.content);
 
   useEffect(() => {
     if (divRef.current && divRef.current !== document.activeElement) {
       divRef.current.textContent = entry.content;
     }
+    setCurrentContent(entry.content);
   }, [entry.content]);
 
   useEffect(() => {
@@ -43,6 +46,10 @@ export default function LogEntry({
     if (current !== entry.content) {
       onSave(entry.id, current);
     }
+  };
+
+  const handleInput = () => {
+    setCurrentContent(divRef.current?.textContent ?? '');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -69,7 +76,7 @@ export default function LogEntry({
       <div
         style={{
           padding: '4px 0',
-          color: '#555',
+          color: 'var(--app-text-subtle)',
           fontSize: '13px',
           display: 'flex',
           alignItems: 'center',
@@ -83,7 +90,7 @@ export default function LogEntry({
           onClick={() => onNodeOpen?.(entry.promoted_node_id!)}
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            color: '#22c55e', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '2px',
+            color: 'var(--toolbar-accent)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '2px',
           }}
         >
           <ArrowUpRight size={12} /> promoted
@@ -102,18 +109,23 @@ export default function LogEntry({
         ref={divRef}
         contentEditable
         suppressContentEditableWarning
+        onInput={handleInput}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         style={{
           flex: 1,
+          display: 'block',
+          width: '100%',
+          boxSizing: 'border-box',
           outline: 'none',
           fontSize: '13px',
           lineHeight: '1.6',
-          color: '#ccc',
+          color: 'var(--app-text)',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           padding: '2px 0',
           minHeight: '20px',
+          ...getLogMarkdownIndentStyle(currentContent),
         }}
       />
       <div
@@ -129,18 +141,18 @@ export default function LogEntry({
         <button
           onClick={() => onPromote(entry.id)}
           title="Promote to node"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '2px' }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#22c55e')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#555')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--app-text-subtle)', padding: '2px' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--toolbar-accent)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--app-text-subtle)')}
         >
           <ArrowUpRight size={14} />
         </button>
         <button
           onClick={() => onDelete(entry.id)}
           title="Delete"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: '2px' }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#555')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--app-text-subtle)', padding: '2px' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--app-danger-text)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--app-text-subtle)')}
         >
           <Trash2 size={14} />
         </button>

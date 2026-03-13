@@ -27,10 +27,16 @@ export default function LogDateSection({
   return (
     <div style={{ marginBottom: '24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-        <span style={{ fontSize: '12px', color: '#555', fontWeight: 500, whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: '12px', color: 'var(--app-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
           {formatDateHeader(date)}
         </span>
-        <div style={{ flex: 1, height: '1px', background: '#1a1a1a' }} />
+        <div
+          style={{
+            flex: 1,
+            height: '1px',
+            background: 'color-mix(in srgb, var(--app-border) 88%, transparent)',
+          }}
+        />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {entries.map(entry => (

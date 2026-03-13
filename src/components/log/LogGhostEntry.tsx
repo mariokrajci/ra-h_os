@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from 'react';
+import { getLogMarkdownIndentStyle } from './logMarkdownIndent';
 
 interface LogGhostEntryProps {
   onCommit: (content: string) => void;
@@ -10,6 +11,7 @@ interface LogGhostEntryProps {
 export default function LogGhostEntry({ onCommit, autoFocus }: LogGhostEntryProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [currentContent, setCurrentContent] = useState('');
 
   useEffect(() => {
     if (autoFocus && divRef.current) {
@@ -18,7 +20,9 @@ export default function LogGhostEntry({ onCommit, autoFocus }: LogGhostEntryProp
   }, []); // only on mount
 
   const handleInput = () => {
-    setIsEmpty((divRef.current?.textContent ?? '').trim() === '');
+    const content = divRef.current?.textContent ?? '';
+    setCurrentContent(content);
+    setIsEmpty(content.trim() === '');
   };
 
   const commit = () => {
@@ -27,6 +31,7 @@ export default function LogGhostEntry({ onCommit, autoFocus }: LogGhostEntryProp
     onCommit(content);
     // Reset
     if (divRef.current) divRef.current.textContent = '';
+    setCurrentContent('');
     setIsEmpty(true);
   };
 
@@ -51,7 +56,7 @@ export default function LogGhostEntry({ onCommit, autoFocus }: LogGhostEntryProp
             position: 'absolute',
             top: 0,
             left: 0,
-            color: '#333',
+            color: 'var(--app-text-subtle)',
             fontSize: '13px',
             lineHeight: '1.6',
             pointerEvents: 'none',
@@ -69,13 +74,17 @@ export default function LogGhostEntry({ onCommit, autoFocus }: LogGhostEntryProp
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         style={{
+          display: 'block',
+          width: '100%',
+          boxSizing: 'border-box',
           outline: 'none',
           fontSize: '13px',
           lineHeight: '1.6',
-          color: '#ccc',
+          color: 'var(--app-text)',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           minHeight: '22px',
+          ...getLogMarkdownIndentStyle(currentContent),
         }}
       />
     </div>

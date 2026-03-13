@@ -34,6 +34,7 @@ export interface PendingNode {
 // Layout components
 import LeftToolbar from './LeftToolbar';
 import SplitHandle from './SplitHandle';
+import { getSplitPaneBasis } from './splitPaneLayout';
 
 // Pane components (ChatPane removed in rah-light, GuidesPane moved to settings)
 import { NodePane, DimensionsPane, MapPane, ViewsPane, TablePane, WikiPane, LibraryPane, LogPane } from '../panes';
@@ -1064,7 +1065,15 @@ export default function ThreePanelLayout() {
       />
 
       {/* Main content area */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '8px', gap: '8px' }}>
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          overflow: 'hidden',
+          padding: '8px',
+          gap: slotB ? '0' : '8px',
+        }}
+      >
         {/* Empty state - no panes open */}
         {!slotA && !slotB && (
           <div
@@ -1095,7 +1104,7 @@ export default function ThreePanelLayout() {
             onDragLeave={handleSlotDragLeave}
             onDrop={(e) => handleSlotDrop(e, 'A')}
             style={{
-              flex: slotB ? `0 0 calc(${100 - slotBWidth}% - 4px)` : 1,
+              flex: slotB ? `0 0 ${getSplitPaneBasis(100 - slotBWidth)}` : 1,
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
@@ -1135,7 +1144,7 @@ export default function ThreePanelLayout() {
             onDragLeave={handleSlotDragLeave}
             onDrop={(e) => handleSlotDrop(e, 'B')}
             style={{
-              flex: `0 0 calc(${slotBWidth}% - 4px)`,
+              flex: `0 0 ${getSplitPaneBasis(slotBWidth)}`,
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',

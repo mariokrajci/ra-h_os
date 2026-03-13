@@ -17,6 +17,9 @@ const mappedMarkdownRenderer = fs.readFileSync(path.join(process.cwd(), 'src/com
 const guidesPane = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/GuidesPane.tsx'), 'utf8');
 const skillsPane = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/SkillsPane.tsx'), 'utf8');
 const logPane = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/LogPane.tsx'), 'utf8');
+const logDateSection = fs.readFileSync(path.join(process.cwd(), 'src/components/log/LogDateSection.tsx'), 'utf8');
+const logEntry = fs.readFileSync(path.join(process.cwd(), 'src/components/log/LogEntry.tsx'), 'utf8');
+const logGhostEntry = fs.readFileSync(path.join(process.cwd(), 'src/components/log/LogGhostEntry.tsx'), 'utf8');
 const libraryPane = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/LibraryPane.tsx'), 'utf8');
 const bookCard = fs.readFileSync(path.join(process.cwd(), 'src/components/panes/library/BookCard.tsx'), 'utf8');
 const quickAddStatus = fs.readFileSync(path.join(process.cwd(), 'src/components/agents/QuickAddStatus.tsx'), 'utf8');
@@ -60,6 +63,13 @@ describe('theme primitives', () => {
     expect(skillsPane).toContain('app-panel-elevated');
     expect(logPane).toContain('app-button');
     expect(logPane).toContain('var(--app-panel)');
+    expect(logDateSection).toContain('var(--app-text-muted)');
+    expect(logDateSection).toContain('var(--app-border)');
+    expect(logEntry).toContain('var(--app-text)');
+    expect(logEntry).toContain('var(--app-text-subtle)');
+    expect(logEntry).toContain('var(--toolbar-accent)');
+    expect(logGhostEntry).toContain('var(--app-text)');
+    expect(logGhostEntry).toContain('var(--app-text-subtle)');
     expect(libraryPane).toContain('var(--app-text)');
     expect(bookCard).toContain('app-button');
     expect(quickAddStatus).toContain('app-button');
