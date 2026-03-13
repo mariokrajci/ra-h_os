@@ -213,7 +213,7 @@ AI-seeded editable synthesis. Supports full Markdown.
 ### Edges tab
 All connections this node has.
 
-- **Suggested connections:** Proposed edges based on explicit mentions in the node description
+- **Suggested connections:** Proposed edges based on note text, normalized title matches, repo-style aliases, strong title overlap, and some high-confidence reciprocal matches from related notes
 - **Approve:** Creates the edge immediately using the normal edge inference flow
 - **Dismiss:** Hides that suggestion for this node so it does not keep reappearing
 - **Green arrow (→):** This node points _to_ another node (outgoing)

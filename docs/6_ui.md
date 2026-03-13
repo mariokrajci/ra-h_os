@@ -128,6 +128,7 @@ Active workspace for the node(s) you're working with.
 
 - Edge proposals are preloaded when a note becomes active.
 - Suggestions appear only inside the `Edges` tab under **Suggested connections**.
+- Suggestions are generated from the note title, description, notes, normalized title mentions, repo-style aliases, strong title overlap, and some high-confidence reciprocal matches from related notes.
 - `Approve` creates the edge immediately through the existing edge-creation flow.
 - `Dismiss` hides the proposal for that source note so it does not keep reappearing.
 - Manual creation still exists as a fallback, but suggestions are the default workflow.

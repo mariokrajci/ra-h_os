@@ -4,6 +4,10 @@ import type { Node } from '@/types/database';
 import { proposalDismissalService } from './proposalDismissals';
 
 const ENTITY_DIMENSIONS = ['people', 'companies', 'organizations', 'books', 'papers', 'articles', 'podcasts', 'creators'];
+const GENERIC_TOKENS = new Set([
+  'a', 'an', 'and', 'as', 'at', 'by', 'for', 'from', 'guide', 'in', 'into', 'manual',
+  'non', 'of', 'on', 'or', 'setup', 'server', 'the', 'to', 'ubuntu', 'with',
+]);
 
 export interface EdgeProposal {
   sourceNodeId: number;
@@ -12,6 +16,13 @@ export interface EdgeProposal {
   reason: string;
   matchedText: string;
 }
+
+interface ScoredProposalCandidate {
+  proposal: EdgeProposal;
+  score: number;
+}
+
+const RECIPROCAL_PROPOSAL_THRESHOLD = 0.82;
 
 function cleanEntityCandidate(candidate: string): string {
   let cleaned = candidate.trim();
@@ -85,6 +96,52 @@ export function extractCandidateEntities(text: string): string[] {
   return Array.from(candidates);
 }
 
+function normalizeForMatch(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tokenizeMeaningful(text: string): string[] {
+  return normalizeForMatch(text)
+    .split(' ')
+    .map(token => token.trim())
+    .filter(token => token.length >= 2 && !GENERIC_TOKENS.has(token));
+}
+
+function textContainsPhrase(text: string, phrase: string): boolean {
+  const normalizedText = ` ${normalizeForMatch(text)} `;
+  const normalizedPhrase = normalizeForMatch(phrase);
+  if (!normalizedPhrase) return false;
+  return normalizedText.includes(` ${normalizedPhrase} `);
+}
+
+function deriveNodeAliases(node: Node): Array<{ value: string; kind: 'title' | 'repo'; tokenCount: number }> {
+  const aliases = new Map<string, { kind: 'title' | 'repo'; tokenCount: number }>();
+  const addAlias = (value: string, kind: 'title' | 'repo') => {
+    const normalized = normalizeForMatch(value);
+    if (!normalized || normalized.length < 3) return;
+    const tokenCount = normalized.split(' ').filter(Boolean).length;
+    const current = aliases.get(normalized);
+    if (!current || current.kind === 'title') {
+      aliases.set(normalized, { kind, tokenCount });
+    }
+  };
+
+  addAlias(node.title || '', 'title');
+
+  if (node.title.includes('/')) {
+    const [owner, repo] = node.title.split('/', 2);
+    addAlias(owner, 'repo');
+    addAlias(repo, 'repo');
+  }
+
+  return Array.from(aliases.entries()).map(([value, metadata]) => ({ value, ...metadata }));
+}
+
 function findMatchingEntityNodes(candidates: string[], allNodes: Node[]): Map<string, Node> {
   const matches = new Map<string, Node>();
 
@@ -110,6 +167,100 @@ function findMatchingEntityNodes(candidates: string[], allNodes: Node[]): Map<st
   return matches;
 }
 
+function scoreTitleOverlap(sourceNode: Node, candidateNode: Node): { score: number; matchedText: string } | null {
+  const sourceTokens = new Set(tokenizeMeaningful(sourceNode.title || ''));
+  const candidateTokens = new Set(tokenizeMeaningful(candidateNode.title || ''));
+
+  if (sourceTokens.size === 0 || candidateTokens.size === 0) {
+    return null;
+  }
+
+  const sharedTokens = Array.from(candidateTokens).filter(token => sourceTokens.has(token));
+  if (sharedTokens.length < 3) {
+    return null;
+  }
+
+  const overlapRatio = sharedTokens.length / Math.min(sourceTokens.size, candidateTokens.size);
+  if (overlapRatio < 0.6) {
+    return null;
+  }
+
+  return {
+    score: 0.7 + Math.min(0.2, overlapRatio / 10),
+    matchedText: sharedTokens.join(', '),
+  };
+}
+
+function collectScoredProposalCandidates(sourceNode: Node, candidateNodes: Node[]): Map<number, ScoredProposalCandidate> {
+  const description = sourceNode.description || '';
+  const searchableText = [sourceNode.title, sourceNode.description, sourceNode.notes]
+    .filter((value): value is string => Boolean(value && value.trim()))
+    .join('\n');
+
+  const proposalCandidates = new Map<number, ScoredProposalCandidate>();
+  const registerProposal = (proposal: EdgeProposal, score: number) => {
+    const existing = proposalCandidates.get(proposal.targetNodeId);
+    if (!existing || score > existing.score) {
+      proposalCandidates.set(proposal.targetNodeId, { proposal, score });
+    }
+  };
+
+  if (!searchableText.trim()) {
+    return proposalCandidates;
+  }
+
+  const candidates = extractCandidateEntities(description);
+  const exactMatches = findMatchingEntityNodes(candidates, candidateNodes);
+
+  for (const [matchedText, entityNode] of exactMatches) {
+    if (entityNode.id === sourceNode.id) continue;
+    registerProposal({
+      sourceNodeId: sourceNode.id,
+      targetNodeId: entityNode.id,
+      targetNodeTitle: entityNode.title,
+      reason: `Explicitly mentioned in description: "${matchedText}"`,
+      matchedText,
+    }, 1);
+  }
+
+  for (const candidateNode of candidateNodes) {
+    if (candidateNode.id === sourceNode.id) continue;
+
+    const aliases = deriveNodeAliases(candidateNode);
+    const exactAlias = aliases.find(alias => {
+      if (alias.kind === 'title' && alias.tokenCount < 2) {
+        return false;
+      }
+      return textContainsPhrase(searchableText, alias.value);
+    });
+    if (exactAlias) {
+      registerProposal({
+        sourceNodeId: sourceNode.id,
+        targetNodeId: candidateNode.id,
+        targetNodeTitle: candidateNode.title,
+        reason: exactAlias.kind === 'repo'
+          ? `Repository alias mentioned in note text: "${exactAlias.value}"`
+          : `Normalized title mentioned in note text: "${exactAlias.value}"`,
+        matchedText: exactAlias.value,
+      }, exactAlias.kind === 'repo' ? 0.82 : 0.92);
+      continue;
+    }
+
+    const overlap = scoreTitleOverlap(sourceNode, candidateNode);
+    if (overlap) {
+      registerProposal({
+        sourceNodeId: sourceNode.id,
+        targetNodeId: candidateNode.id,
+        targetNodeTitle: candidateNode.title,
+        reason: `Strong title overlap with this note: "${overlap.matchedText}"`,
+        matchedText: overlap.matchedText,
+      }, overlap.score);
+    }
+  }
+
+  return proposalCandidates;
+}
+
 export async function buildEdgeProposalsForNode(
   sourceNode: Node,
   candidateNodes: Node[],
@@ -118,34 +269,37 @@ export async function buildEdgeProposalsForNode(
     edgeExists: (fromId: number, toId: number) => Promise<boolean>;
   }
 ): Promise<EdgeProposal[]> {
-  const description = sourceNode.description || '';
-  if (description.length < 10) {
-    return [];
-  }
+  const proposalCandidates = collectScoredProposalCandidates(sourceNode, candidateNodes);
 
-  const candidates = extractCandidateEntities(description);
-  if (candidates.length === 0) {
-    return [];
-  }
+  for (const candidateNode of candidateNodes) {
+    if (candidateNode.id === sourceNode.id) continue;
+    if (proposalCandidates.has(candidateNode.id)) continue;
 
-  const matches = findMatchingEntityNodes(candidates, candidateNodes);
-  const proposals: EdgeProposal[] = [];
+    const reverseMatch = collectScoredProposalCandidates(candidateNode, [candidateNode, sourceNode]).get(sourceNode.id);
+    if (!reverseMatch || reverseMatch.score < RECIPROCAL_PROPOSAL_THRESHOLD) continue;
 
-  for (const [matchedText, entityNode] of matches) {
-    if (entityNode.id === sourceNode.id) continue;
-    if (options.dismissedTargetIds.has(entityNode.id)) continue;
-    if (await options.edgeExists(sourceNode.id, entityNode.id)) continue;
-
-    proposals.push({
-      sourceNodeId: sourceNode.id,
-      targetNodeId: entityNode.id,
-      targetNodeTitle: entityNode.title,
-      reason: `Explicitly mentioned in description: "${matchedText}"`,
-      matchedText,
+    proposalCandidates.set(candidateNode.id, {
+      score: reverseMatch.score - 0.01,
+      proposal: {
+        sourceNodeId: sourceNode.id,
+        targetNodeId: candidateNode.id,
+        targetNodeTitle: candidateNode.title,
+        reason: `Reciprocal suggestion from related note: ${reverseMatch.proposal.reason}`,
+        matchedText: reverseMatch.proposal.matchedText,
+      },
     });
   }
 
-  return proposals;
+  const proposals: Array<{ proposal: EdgeProposal; score: number }> = [];
+  for (const { proposal, score } of proposalCandidates.values()) {
+    if (options.dismissedTargetIds.has(proposal.targetNodeId)) continue;
+    if (await options.edgeExists(sourceNode.id, proposal.targetNodeId)) continue;
+    proposals.push({ proposal, score });
+  }
+
+  return proposals
+    .sort((a, b) => b.score - a.score || a.proposal.targetNodeTitle.localeCompare(b.proposal.targetNodeTitle))
+    .map(entry => entry.proposal);
 }
 
 export async function generateEdgeProposals(sourceNodeId: number): Promise<EdgeProposal[]> {
