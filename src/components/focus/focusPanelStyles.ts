@@ -15,8 +15,8 @@ export const FOCUS_PANEL_BODY_TEXT_STYLE: CSSProperties = {
 
 export const FOCUS_PANEL_BODY_TEXTAREA_STYLE: CSSProperties = {
   ...FOCUS_PANEL_BODY_TEXT_STYLE,
-  background: 'transparent',
-  border: '1px solid #2a2a2a',
+  background: 'var(--app-input)',
+  border: '1px solid var(--app-border)',
   borderRadius: '4px',
   padding: '12px',
   width: '100%',

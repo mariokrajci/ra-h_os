@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   Search,
   Plus,
@@ -12,6 +12,7 @@ import {
   BookOpen,
   Library,
   ScrollText,
+  FileText,
   Settings,
 } from 'lucide-react';
 import type { PaneType } from '../panes/types';
@@ -20,6 +21,7 @@ interface LeftToolbarProps {
   onSearchClick: () => void;
   onAddStuffClick: () => void;
   onRefreshClick: () => void;
+  onDocsClick: () => void;
   onSettingsClick: () => void;
   onPaneTypeClick: (paneType: PaneType) => void;
   activePane: 'A' | 'B';
@@ -76,9 +78,9 @@ function ToolbarButton({ icon: Icon, label, shortcut, onClick, disabled, isActiv
         width: '36px',
         height: '36px',
         borderRadius: '8px',
-        border: 'none',
-        background: isHovered ? '#1a1a1a' : 'transparent',
-        color: isActive ? '#22c55e' : (isHovered ? '#aaa' : '#666'),
+        border: isActive ? '1px solid var(--app-toolbar-border)' : '1px solid transparent',
+        background: isActive ? 'var(--app-selected)' : (isHovered ? 'var(--app-hover)' : 'transparent'),
+        color: isActive ? 'var(--toolbar-accent)' : (isHovered ? 'var(--toolbar-icon)' : 'var(--toolbar-icon-muted)'),
         cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -95,21 +97,20 @@ function ToolbarButton({ icon: Icon, label, shortcut, onClick, disabled, isActiv
 interface PaneTypeButtonProps {
   icon: typeof LayoutList;
   label: string;
-  paneType: PaneType;
   isOpen: boolean;
   isActivePane: boolean;
   onClick: () => void;
 }
 
-function PaneTypeButton({ icon: Icon, label, paneType, isOpen, isActivePane, onClick }: PaneTypeButtonProps) {
+function PaneTypeButton({ icon: Icon, label, isOpen, isActivePane, onClick }: PaneTypeButtonProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   // Determine color: green if open, brighter if it's the active pane
   const getColor = () => {
     if (isOpen) {
-      return isActivePane ? '#4ade80' : '#22c55e'; // Brighter green for active
+      return isActivePane ? 'var(--toolbar-icon-active)' : 'var(--toolbar-accent)';
     }
-    return isHovered ? '#aaa' : '#666';
+    return isHovered ? 'var(--toolbar-icon)' : 'var(--toolbar-icon-muted)';
   };
 
   return (
@@ -122,8 +123,8 @@ function PaneTypeButton({ icon: Icon, label, paneType, isOpen, isActivePane, onC
         width: '36px',
         height: '36px',
         borderRadius: '8px',
-        border: 'none',
-        background: isOpen ? '#1a1a1a' : (isHovered ? '#151515' : 'transparent'),
+        border: isOpen ? '1px solid var(--app-toolbar-border)' : '1px solid transparent',
+        background: isOpen ? 'var(--app-selected)' : (isHovered ? 'var(--app-hover)' : 'transparent'),
         color: getColor(),
         cursor: 'pointer',
         display: 'flex',
@@ -145,7 +146,7 @@ function PaneTypeButton({ icon: Icon, label, paneType, isOpen, isActivePane, onC
             width: '4px',
             height: '4px',
             borderRadius: '50%',
-            background: '#4ade80',
+            background: 'var(--toolbar-accent)',
           }}
         />
       )}
@@ -157,6 +158,7 @@ export default function LeftToolbar({
   onSearchClick,
   onAddStuffClick,
   onRefreshClick,
+  onDocsClick,
   onSettingsClick,
   onPaneTypeClick,
   activePane,
@@ -176,7 +178,8 @@ export default function LeftToolbar({
       style={{
         width: '50px',
         height: '100%',
-        background: '#0a0a0a',
+        background: 'var(--app-toolbar)',
+        borderRight: '1px solid var(--app-toolbar-border)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -226,7 +229,6 @@ export default function LeftToolbar({
               key={paneType}
               icon={Icon}
               label={label}
-              paneType={paneType}
               isOpen={isOpen}
               isActivePane={isActivePane}
               onClick={() => onPaneTypeClick(paneType)}
@@ -235,15 +237,12 @@ export default function LeftToolbar({
         })}
       </div>
 
-      {/* Bottom section - Skills + Settings */}
+      {/* Bottom section - Docs + Settings */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-        <PaneTypeButton
-          icon={BookOpen}
-          label="Skills"
-          paneType="skills"
-          isOpen={openPaneTypes.has('skills')}
-          isActivePane={activePaneType === 'skills'}
-          onClick={() => onPaneTypeClick('skills')}
+        <ToolbarButton
+          icon={FileText}
+          label="Docs"
+          onClick={onDocsClick}
         />
         <ToolbarButton
           icon={Settings}

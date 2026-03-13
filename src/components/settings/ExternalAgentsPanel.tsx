@@ -64,30 +64,30 @@ export default function ExternalAgentsPanel() {
   }, [connectorUrl]);
 
   return (
-    <div style={{ padding: '32px', color: '#e2e8f0', overflowY: 'auto' }}>
-      <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>External Agents</h2>
-      <p style={{ color: '#94a3b8', marginBottom: '24px', lineHeight: 1.5 }}>
+    <div style={{ padding: '32px', color: 'var(--app-text)', overflowY: 'auto' }}>
+      <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '8px', color: 'var(--app-text)' }}>External Agents</h2>
+      <p style={{ color: 'var(--app-text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
         Connect Claude, ChatGPT, Gemini, or any MCP-compatible assistant to your local RA-H database.
         Everything stays on device—tools simply call this connector to add or search nodes.
       </p>
 
       <div
         style={{
-          border: '1px solid #1f2937',
+          border: '1px solid var(--app-border)',
           borderRadius: '10px',
           padding: '20px',
           marginBottom: '24px',
-          background: '#090909'
+          background: 'var(--app-panel-elevated)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '14px', color: '#94a3b8' }}>Connector URL</div>
-            <div style={{ fontSize: '18px', color: connectorUrl ? '#fff' : '#64748b', marginTop: '4px' }}>
+            <div style={{ fontSize: '14px', color: 'var(--app-text-muted)' }}>Connector URL</div>
+            <div style={{ fontSize: '18px', color: connectorUrl ? 'var(--app-text)' : 'var(--app-text-subtle)', marginTop: '4px' }}>
               {loading ? 'Loading…' : connectorUrl ?? 'Unavailable (MCP server not running)'}
             </div>
             {status.last_updated && (
-              <div style={{ fontSize: '12px', color: '#475569', marginTop: '6px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--app-text-subtle)', marginTop: '6px' }}>
                 Updated {new Date(status.last_updated).toLocaleTimeString()}
               </div>
             )}
@@ -97,8 +97,8 @@ export default function ExternalAgentsPanel() {
             onClick={handleCopy}
             disabled={!connectorUrl}
             style={{
-              background: connectorUrl ? '#22c55e' : '#1f2937',
-              color: connectorUrl ? '#000' : '#475569',
+              background: connectorUrl ? 'var(--toolbar-accent)' : 'var(--app-surface-subtle)',
+              color: connectorUrl ? 'var(--app-accent-contrast)' : 'var(--app-text-subtle)',
               border: 'none',
               borderRadius: '6px',
               padding: '10px 16px',
@@ -110,7 +110,7 @@ export default function ExternalAgentsPanel() {
           </button>
         </div>
         {status.last_error && (
-          <div style={{ marginTop: '12px', fontSize: '13px', color: '#fbbf24' }}>
+          <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--app-danger-text)' }}>
             ⚠️ {status.last_error}
           </div>
         )}
@@ -118,15 +118,15 @@ export default function ExternalAgentsPanel() {
 
       <div
         style={{
-          border: '1px solid #1f2937',
+          border: '1px solid var(--app-info-border)',
           borderRadius: '10px',
           padding: '20px',
           marginBottom: '24px',
-          background: '#0c111d'
+          background: 'var(--app-info-bg)'
         }}
       >
-        <h3 style={{ marginBottom: '12px', fontSize: '16px', fontWeight: 600 }}>How to use in Claude or ChatGPT</h3>
-        <ol style={{ paddingLeft: '20px', lineHeight: 1.6, color: '#cbd5f5' }}>
+        <h3 style={{ marginBottom: '12px', fontSize: '16px', fontWeight: 600, color: 'var(--app-text)' }}>How to use in Claude or ChatGPT</h3>
+        <ol style={{ paddingLeft: '20px', lineHeight: 1.6, color: 'var(--app-text)' }}>
           <li>Open the MCP / connectors settings in your assistant.</li>
           <li>Select “Add connector” → choose HTTP → paste the URL above.</li>
           <li>Give the connector a friendly name (e.g., “RA-H”).</li>
@@ -136,11 +136,11 @@ export default function ExternalAgentsPanel() {
 
       <div
         style={{
-          border: '1px solid #3f1d1d',
+          border: '1px solid var(--app-danger-border)',
           borderRadius: '10px',
           padding: '16px',
-          background: '#170e0e',
-          color: '#fca5a5',
+          background: 'var(--app-danger-bg)',
+          color: 'var(--app-danger-text)',
           marginBottom: '24px',
           lineHeight: 1.5
         }}
@@ -150,7 +150,7 @@ export default function ExternalAgentsPanel() {
       </div>
 
       {error && (
-        <div style={{ color: '#f87171', marginBottom: '16px', fontSize: '14px' }}>{error}</div>
+        <div style={{ color: 'var(--app-danger-text)', marginBottom: '16px', fontSize: '14px' }}>{error}</div>
       )}
 
       <div style={{ display: 'grid', gap: '16px' }}>
@@ -175,14 +175,14 @@ function HelperCard({ title, body }: { title: string; body: string }) {
   return (
     <div
       style={{
-        border: '1px solid #1f2937',
+        border: '1px solid var(--app-border)',
         borderRadius: '8px',
         padding: '14px',
-        background: '#0f172a'
+        background: 'var(--app-panel-elevated)'
       }}
     >
-      <div style={{ fontWeight: 600, marginBottom: '6px', color: '#f1f5f9' }}>{title}</div>
-      <div style={{ color: '#cbd5f5', fontSize: '14px', lineHeight: 1.5 }}>{body}</div>
+      <div style={{ fontWeight: 600, marginBottom: '6px', color: 'var(--app-text)' }}>{title}</div>
+      <div style={{ color: 'var(--app-text-muted)', fontSize: '14px', lineHeight: 1.5 }}>{body}</div>
     </div>
   );
 }

@@ -68,6 +68,7 @@ import { POST } from '../../app/api/nodes/route';
 describe('POST /api/nodes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.DISABLE_EMBEDDINGS = 'false';
     hasSufficientContentMock.mockReturnValue(false);
     generateDescriptionMock.mockResolvedValue('Generated description');
     assignDimensionsMock.mockResolvedValue({ locked: [], keywords: [] });

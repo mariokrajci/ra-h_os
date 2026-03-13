@@ -25,10 +25,14 @@ interface EmbeddingResult {
   output?: string;
 }
 
-async function runNodeEmbedding(nodeId: number): Promise<EmbeddingResult> {
+interface EmbedNodeContentOptions {
+  forceReEmbed?: boolean;
+}
+
+async function runNodeEmbedding(nodeId: number, options: EmbedNodeContentOptions = {}): Promise<EmbeddingResult> {
   const embedder = new NodeEmbedder();
   try {
-    const result = await embedder.embedNodes({ nodeId });
+    const result = await embedder.embedNodes({ nodeId, forceReEmbed: options.forceReEmbed });
     if (result.processed > 0) {
       return { success: true, output: `Embedded ${result.processed} nodes` };
     }
@@ -74,7 +78,10 @@ async function runChunkEmbedding(nodeId: number): Promise<EmbeddingResult> {
   }
 }
 
-export async function embedNodeContent(nodeId: number): Promise<EmbeddingPipelineResult> {
+export async function embedNodeContent(
+  nodeId: number,
+  options: EmbedNodeContentOptions = {},
+): Promise<EmbeddingPipelineResult> {
   const node = await nodeService.getNodeById(nodeId);
   if (!node) {
     return {
@@ -92,7 +99,7 @@ export async function embedNodeContent(nodeId: number): Promise<EmbeddingPipelin
     overall_status: 'pending' as EmbeddingPipelineResult['overall_status']
   };
 
-  const nodeResult = await runNodeEmbedding(nodeId);
+  const nodeResult = await runNodeEmbedding(nodeId, options);
   if (nodeResult.success) {
     results.node_embedding = {
       status: 'completed',

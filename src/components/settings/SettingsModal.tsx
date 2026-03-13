@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import LogsViewer from './LogsViewer';
 import ToolsViewer from './ToolsViewer';
@@ -9,6 +9,9 @@ import DatabaseViewer from './DatabaseViewer';
 import ExternalAgentsPanel from './ExternalAgentsPanel';
 import ContextViewer from './ContextViewer';
 import SkillsViewer from './GuidesViewer';
+import { useAppTheme } from '@/components/theme/AppThemeProvider';
+import type { ThemeMode } from '@/components/theme/themeState';
+
 export type SettingsTab =
   | 'logs'
   | 'tools'
@@ -16,7 +19,8 @@ export type SettingsTab =
   | 'apikeys'
   | 'database'
   | 'context'
-  | 'agents';
+  | 'agents'
+  | 'preferences';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -26,8 +30,16 @@ interface SettingsModalProps {
 
 type TabType = SettingsTab;
 
+const THEME_OPTIONS: ThemeMode[] = ['system', 'light', 'dark'];
+
+function formatThemeLabel(mode: ThemeMode): string {
+  return mode.charAt(0).toUpperCase() + mode.slice(1);
+}
+
 export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('logs');
+  const { mode, resolvedTheme, setMode } = useAppTheme();
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -48,6 +60,89 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
 
   if (!isOpen) return null;
 
+  const navItemStyle = (tab: TabType): CSSProperties => ({
+    padding: '12px 24px',
+    fontSize: '14px',
+    color: activeTab === tab ? 'var(--app-text)' : 'var(--app-text-muted)',
+    background: activeTab === tab ? 'var(--app-selected)' : 'transparent',
+    borderLeft: activeTab === tab ? '3px solid var(--toolbar-accent)' : '3px solid transparent',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  });
+
+  const preferencesContent = (
+    <div
+      style={{
+        padding: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
+        maxWidth: '560px',
+      }}
+    >
+      <div>
+        <div
+          style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--app-text-subtle)',
+            marginBottom: '8px',
+          }}
+        >
+          Appearance
+        </div>
+        <div style={{ fontSize: '24px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>
+          Theme
+        </div>
+        <div style={{ fontSize: '14px', color: 'var(--app-text-muted)', lineHeight: 1.6 }}>
+          Choose how the app looks. System follows your operating system preference automatically.
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: '20px',
+          borderRadius: '16px',
+          background: 'var(--app-panel-elevated)',
+          border: '1px solid var(--app-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px',
+        }}
+      >
+        <div style={{ fontSize: '14px', color: 'var(--app-text)' }}>
+          Current: {formatThemeLabel(mode)} ({resolvedTheme})
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          {THEME_OPTIONS.map((option) => {
+            const isSelected = mode === option;
+
+            return (
+              <button
+                key={option}
+                onClick={() => setMode(option)}
+                style={{
+                  borderRadius: '999px',
+                  border: isSelected ? '1px solid var(--toolbar-accent)' : '1px solid var(--app-border)',
+                  background: isSelected ? 'var(--app-selected)' : 'transparent',
+                  color: isSelected ? 'var(--app-text)' : 'var(--app-text-muted)',
+                  padding: '10px 16px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                {formatThemeLabel(option)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
   const modalContent = (
     <div
       style={{
@@ -56,11 +151,11 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.8)',
+        background: 'var(--app-overlay)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1000
+        zIndex: 1000,
       }}
       onClick={onClose}
     >
@@ -68,24 +163,23 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
         style={{
           width: '80vw',
           height: '85vh',
-          background: '#0f0f0f',
-          border: '1px solid #2a2a2a',
+          background: 'var(--app-panel)',
+          border: '1px solid var(--app-border)',
           borderRadius: '8px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.28)',
           display: 'flex',
-          overflow: 'hidden'
+          overflow: 'hidden',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Sidebar */}
         <div
           style={{
             width: '20%',
-            background: '#0a0a0a',
-            borderRight: '1px solid #2a2a2a',
+            background: 'var(--app-toolbar)',
+            borderRight: '1px solid var(--app-border)',
             display: 'flex',
             flexDirection: 'column',
-            padding: '24px 0'
+            padding: '24px 0',
           }}
         >
           <div
@@ -94,131 +188,47 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
               marginBottom: '24px',
               fontSize: '18px',
               fontWeight: '600',
-              color: '#fff'
+              color: 'var(--app-text)',
             }}
           >
             Settings
           </div>
+
           <nav>
-            <div
-              onClick={() => setActiveTab('logs')}
-              style={{
-                padding: '12px 24px',
-                fontSize: '14px',
-                color: activeTab === 'logs' ? '#fff' : '#888',
-                background: activeTab === 'logs' ? '#1a3a2a' : 'transparent',
-                borderLeft: activeTab === 'logs' ? '3px solid #22c55e' : '3px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
+            <div onClick={() => setActiveTab('logs')} style={navItemStyle('logs')}>
               Logs
             </div>
-            <div
-              onClick={() => setActiveTab('tools')}
-              style={{
-                padding: '12px 24px',
-                fontSize: '14px',
-                color: activeTab === 'tools' ? '#fff' : '#888',
-                background: activeTab === 'tools' ? '#1a3a2a' : 'transparent',
-                borderLeft: activeTab === 'tools' ? '3px solid #22c55e' : '3px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
+            <div onClick={() => setActiveTab('tools')} style={navItemStyle('tools')}>
               Tools
             </div>
-            <div
-              onClick={() => setActiveTab('guides')}
-              style={{
-                padding: '12px 24px',
-                fontSize: '14px',
-                color: activeTab === 'guides' ? '#fff' : '#888',
-                background: activeTab === 'guides' ? '#1a3a2a' : 'transparent',
-                borderLeft: activeTab === 'guides' ? '3px solid #22c55e' : '3px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
+            <div onClick={() => setActiveTab('guides')} style={navItemStyle('guides')}>
               Skills
             </div>
-            <div
-              onClick={() => setActiveTab('apikeys')}
-              style={{
-                padding: '12px 24px',
-                fontSize: '14px',
-                color: activeTab === 'apikeys' ? '#fff' : '#888',
-                background: activeTab === 'apikeys' ? '#1a3a2a' : 'transparent',
-                borderLeft: activeTab === 'apikeys' ? '3px solid #22c55e' : '3px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
+            <div onClick={() => setActiveTab('apikeys')} style={navItemStyle('apikeys')}>
               API Keys
             </div>
-            <div
-              onClick={() => setActiveTab('database')}
-              style={{
-                padding: '12px 24px',
-                fontSize: '14px',
-                color: activeTab === 'database' ? '#fff' : '#888',
-                background: activeTab === 'database' ? '#1a3a2a' : 'transparent',
-                borderLeft: activeTab === 'database' ? '3px solid #22c55e' : '3px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
+            <div onClick={() => setActiveTab('database')} style={navItemStyle('database')}>
               Database
             </div>
-            <div
-              onClick={() => setActiveTab('context')}
-              style={{
-                padding: '12px 24px',
-                fontSize: '14px',
-                color: activeTab === 'context' ? '#fff' : '#888',
-                background: activeTab === 'context' ? '#1a3a2a' : 'transparent',
-                borderLeft: activeTab === 'context' ? '3px solid #22c55e' : '3px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
+            <div onClick={() => setActiveTab('context')} style={navItemStyle('context')}>
               Context
             </div>
-            <div
-              onClick={() => setActiveTab('agents')}
-              style={{
-                padding: '12px 24px',
-                fontSize: '14px',
-                color: activeTab === 'agents' ? '#fff' : '#888',
-                background: activeTab === 'agents' ? '#1a3a2a' : 'transparent',
-                borderLeft: activeTab === 'agents' ? '3px solid #22c55e' : '3px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
+            <div onClick={() => setActiveTab('agents')} style={navItemStyle('agents')}>
               External Agents
+            </div>
+            <div onClick={() => setActiveTab('preferences')} style={navItemStyle('preferences')}>
+              Preferences
             </div>
             <div
               style={{
                 padding: '12px 24px',
                 fontSize: '14px',
-                color: '#888',
+                color: 'var(--app-text-muted)',
                 opacity: 0.4,
-                cursor: 'not-allowed'
+                cursor: 'not-allowed',
               }}
             >
               Backups
-            </div>
-            <div
-              style={{
-                padding: '12px 24px',
-                fontSize: '14px',
-                color: '#888',
-                opacity: 0.4,
-                cursor: 'not-allowed'
-              }}
-            >
-              Preferences
             </div>
           </nav>
 
@@ -226,10 +236,10 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             style={{
               marginTop: 'auto',
               padding: '24px',
-              borderTop: '1px solid #1f2937',
+              borderTop: '1px solid var(--app-border)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px'
+              gap: '12px',
             }}
           >
             <div
@@ -238,7 +248,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
                 fontWeight: 600,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                color: '#64748b'
+                color: 'var(--app-text-subtle)',
               }}
             >
               Local Mode
@@ -246,9 +256,9 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             <p
               style={{
                 fontSize: '13px',
-                color: '#94a3b8',
+                color: 'var(--app-text-muted)',
                 margin: 0,
-                lineHeight: 1.5
+                lineHeight: 1.5,
               }}
             >
               This open-source build runs entirely on your machine. Add keys via the API Keys tab to unlock every agent.
@@ -256,22 +266,21 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
           </div>
         </div>
 
-        {/* Content Area */}
         <div
           style={{
             flex: 1,
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            background: 'var(--app-panel)',
           }}
         >
-          {/* Header */}
           <div
             style={{
               padding: '16px 24px',
-              borderBottom: '1px solid #2a2a2a',
+              borderBottom: '1px solid var(--app-border)',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
             }}
           >
             <h2
@@ -279,7 +288,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
                 margin: 0,
                 fontSize: '16px',
                 fontWeight: '600',
-                color: '#fff'
+                color: 'var(--app-text)',
               }}
             >
               {activeTab === 'logs' && 'System Logs'}
@@ -289,24 +298,25 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
               {activeTab === 'database' && 'Knowledge Database'}
               {activeTab === 'context' && 'Auto-Context'}
               {activeTab === 'agents' && 'External Agents'}
+              {activeTab === 'preferences' && 'Preferences'}
             </h2>
             <button
               onClick={onClose}
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#888',
+                color: 'var(--app-text-muted)',
                 cursor: 'pointer',
                 fontSize: '24px',
                 lineHeight: 1,
                 padding: '4px 8px',
-                transition: 'color 0.2s'
+                transition: 'color 0.2s',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#fff';
+                e.currentTarget.style.color = 'var(--app-text)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#888';
+                e.currentTarget.style.color = 'var(--app-text-muted)';
               }}
               title="Close (ESC)"
             >
@@ -314,7 +324,6 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             </button>
           </div>
 
-          {/* Content */}
           <div style={{ flex: 1, overflow: 'hidden' }}>
             {activeTab === 'logs' && <LogsViewer key={isOpen ? 'open' : 'closed'} />}
             {activeTab === 'tools' && <ToolsViewer />}
@@ -323,6 +332,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             {activeTab === 'database' && <DatabaseViewer />}
             {activeTab === 'context' && <ContextViewer />}
             {activeTab === 'agents' && <ExternalAgentsPanel />}
+            {activeTab === 'preferences' && preferencesContent}
           </div>
         </div>
       </div>

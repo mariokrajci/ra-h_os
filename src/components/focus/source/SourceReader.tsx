@@ -8,6 +8,7 @@ import BookFormatter from './formatters/BookFormatter';
 import MarkdownFormatter from './formatters/MarkdownFormatter';
 import SourceSearchBar from './SourceSearchBar';
 import type { Annotation } from '@/types/database';
+import { useAppTheme } from '@/components/theme/AppThemeProvider';
 import {
   extractMappedSelection,
   findOccurrenceRange,
@@ -38,6 +39,7 @@ export default function SourceReader({
   highlightedText,
   highlightMatchIndex,
 }: SourceReaderProps) {
+  const { resolvedTheme } = useAppTheme();
   const [showSearch, setShowSearch] = useState(false);
   const [searchHighlight, setSearchHighlight] = useState<string | null>(null);
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
@@ -47,6 +49,7 @@ export default function SourceReader({
   // Detect content type (memoized for performance)
   const contentType = useMemo(() => detectContentType(content), [content]);
   const contentTypeLabel = getContentTypeLabel(contentType);
+  const readerTheme = resolvedTheme === 'light' ? 'warm' : 'dark';
 
   // Combined highlight: search takes precedence over external highlight
   const activeHighlight = searchHighlight || highlightedText;
@@ -121,14 +124,14 @@ export default function SourceReader({
   const renderContent = () => {
     switch (contentType) {
       case 'transcript':
-        return <TranscriptFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} />;
+        return <TranscriptFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} theme={readerTheme} />;
       case 'book':
       case 'article':
-        return <BookFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} />;
+        return <BookFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} theme={readerTheme} />;
       case 'markdown':
-        return <MarkdownFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} />;
+        return <MarkdownFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} theme={readerTheme} />;
       default:
-        return <RawFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} />;
+        return <RawFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} theme={readerTheme} />;
     }
   };
 
@@ -137,7 +140,8 @@ export default function SourceReader({
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      background: '#0f0f0f',
+      background: 'var(--app-surface-strong)',
+      border: '1px solid var(--app-border)',
       borderRadius: '4px',
       overflow: 'hidden',
     }}>
@@ -148,11 +152,11 @@ export default function SourceReader({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 16px',
-          borderBottom: '1px solid #1a1a1a',
+          borderBottom: '1px solid var(--app-hairline)',
         }}>
           <span style={{
             fontSize: '10px',
-            color: '#555',
+            color: 'var(--app-text-subtle)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
           }}>
@@ -162,12 +166,12 @@ export default function SourceReader({
             onClick={() => setShowSearch(!showSearch)}
             title="Search content (⌘F)"
             style={{
-              background: showSearch ? '#262626' : 'transparent',
+              background: showSearch ? 'var(--app-surface-subtle)' : 'transparent',
               border: 'none',
               borderRadius: '4px',
               padding: '4px 8px',
               cursor: 'pointer',
-              color: showSearch ? '#fafafa' : '#555',
+              color: showSearch ? 'var(--app-text)' : 'var(--app-text-subtle)',
               display: 'flex',
               alignItems: 'center',
               gap: '4px',

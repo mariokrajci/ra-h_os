@@ -1,6 +1,22 @@
 import { NextResponse } from 'next/server';
 import { getSQLiteClient } from '@/services/database/sqlite-client';
 import { chunkService } from '@/services/database/chunks';
+import { getVectorStoreAdapter } from '@/services/vector-store';
+
+interface ChunkStats {
+  total_chunks: number;
+  vectorized_chunks: number;
+  missing_embeddings: number;
+  coverage_percentage: number;
+}
+
+interface VectorStats {
+  provider?: string;
+  vec_chunks_count?: number;
+  matches_chunk_embeddings?: boolean;
+  error?: string;
+  suggestion?: string;
+}
 
 export async function GET() {
   try {
@@ -16,54 +32,60 @@ export async function GET() {
       });
     }
 
-    // Check if vector extension is loaded
+    const adapterHealth = await getVectorStoreAdapter().health();
     const vectorExtensionTest = await sqlite.checkVectorExtension();
     
-    let vectorStats = null;
-    let chunkStats = null;
+    let vectorStats: VectorStats | null = null;
+    let chunkStats: ChunkStats | null = null;
     let vectorHealth = 'unknown';
 
     try {
-      // Get chunk counts
       const totalChunks = await chunkService.getChunkCount();
-      const chunksWithoutEmbeddings = await chunkService.getChunksWithoutEmbeddings();
-      const vectorizedCount = totalChunks - chunksWithoutEmbeddings.length;
-
-      chunkStats = {
-        total_chunks: totalChunks,
-        vectorized_chunks: vectorizedCount,
-        missing_embeddings: chunksWithoutEmbeddings.length,
-        coverage_percentage: totalChunks > 0 ? Math.round((vectorizedCount / totalChunks) * 100) : 0
-      };
-
-      // Test vector table health by attempting a simple query
-      if (vectorExtensionTest) {
+      if (adapterHealth.ok) {
         try {
-          const result = sqlite.query('SELECT COUNT(*) as count FROM vec_chunks');
-          const vecCount = Number(result.rows[0].count);
+          const chunksWithoutEmbeddings = await chunkService.getChunksWithoutEmbeddings();
+          const vectorizedCount = totalChunks - chunksWithoutEmbeddings.length;
+
+          chunkStats = {
+            total_chunks: totalChunks,
+            vectorized_chunks: vectorizedCount,
+            missing_embeddings: chunksWithoutEmbeddings.length,
+            coverage_percentage: totalChunks > 0 ? Math.round((vectorizedCount / totalChunks) * 100) : 0,
+          };
+
+          const vecCount = Number(adapterHealth.details?.vec_chunks_count ?? 0);
           
           vectorStats = {
+            provider: adapterHealth.provider,
             vec_chunks_count: vecCount,
-            matches_chunk_embeddings: vecCount === vectorizedCount
+            matches_chunk_embeddings: vecCount === vectorizedCount,
           };
           
           vectorHealth = vecCount === vectorizedCount ? 'healthy' : 'inconsistent';
-        } catch (vecError: any) {
+        } catch (vecError) {
+          const message = vecError instanceof Error ? vecError.message : 'Unknown vector health error';
           vectorHealth = 'corrupted';
           vectorStats = {
-            error: vecError.message,
-            suggestion: 'Vector table may be corrupted and need recreation'
+            provider: adapterHealth.provider,
+            error: message,
+            suggestion: 'Vector table may be corrupted and need recreation',
           };
         }
       } else {
+        chunkStats = {
+          total_chunks: totalChunks,
+          vectorized_chunks: 0,
+          missing_embeddings: totalChunks,
+          coverage_percentage: 0,
+        };
         vectorHealth = 'extension_unavailable';
       }
 
-    } catch (error: any) {
+    } catch (error) {
       return NextResponse.json({
         status: 'error',
         message: 'Failed to collect vector statistics',
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
 
@@ -71,6 +93,7 @@ export async function GET() {
       status: 'success',
       data: {
         database_connected: connectionTest,
+        vector_provider: adapterHealth.provider,
         vector_extension_loaded: vectorExtensionTest,
         vector_health: vectorHealth,
         chunk_stats: chunkStats,
@@ -79,20 +102,20 @@ export async function GET() {
       }
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Vector health check failed:', error);
     return NextResponse.json({
       status: 'error',
       message: 'Health check failed',
-      details: error.message
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
 
 function generateRecommendations(
   vectorHealth: string, 
-  chunkStats: any, 
-  vectorStats: any
+  chunkStats: ChunkStats | null, 
+  vectorStats: VectorStats | null
 ): string[] {
   const recommendations: string[] = [];
 

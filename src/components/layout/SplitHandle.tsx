@@ -99,7 +99,7 @@ export default function SplitHandle({
         style={{
           width: '12px',
           cursor: 'col-resize',
-          background: isHovered ? '#1a1a1a' : 'transparent',
+          background: isHovered ? 'var(--app-hover)' : 'transparent',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -110,7 +110,7 @@ export default function SplitHandle({
       >
         <GripVertical
           size={12}
-          color={isHovered ? '#888' : '#444'}
+          color={isHovered ? 'var(--app-text-muted)' : 'var(--app-text-subtle)'}
           style={{ transition: 'color 0.15s ease' }}
         />
       </div>
@@ -126,7 +126,7 @@ export default function SplitHandle({
       style={{
         width: '8px',
         cursor: 'col-resize',
-        background: isDragging ? '#22c55e' : (isHovered ? '#1a1a1a' : 'transparent'),
+        background: isDragging ? 'var(--toolbar-accent)' : (isHovered ? 'var(--app-hover)' : 'transparent'),
         transition: isDragging ? 'none' : 'background 0.15s ease',
         flexShrink: 0,
       }}

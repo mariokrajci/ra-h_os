@@ -9,6 +9,7 @@ import {
   normalizeHighlightLanguage,
   type HighlightToken,
 } from './shikiHighlighting';
+import type { ReaderTheme } from '@/components/focus/reader/utils';
 
 interface MappedHighlightedCodeBlockProps {
   code: string;
@@ -16,14 +17,15 @@ interface MappedHighlightedCodeBlockProps {
   codeStartOffset: number;
   annotationRanges: AnnotationHighlightRange[];
   activeRange?: TextRange | null;
+  theme?: ReaderTheme;
 }
 
 const PRE_STYLE: React.CSSProperties = {
   margin: 0,
   padding: '14px 16px',
   borderRadius: 6,
-  border: '1px solid #30363d',
-  background: '#161b22',
+  border: '1px solid var(--app-border)',
+  background: 'var(--app-panel)',
   overflowX: 'auto',
 };
 
@@ -40,14 +42,16 @@ export default function MappedHighlightedCodeBlock({
   codeStartOffset,
   annotationRanges,
   activeRange,
+  theme = 'dark',
 }: MappedHighlightedCodeBlockProps) {
   const normalizedLanguage = useMemo(() => normalizeHighlightLanguage(language), [language]);
   const [highlightedLines, setHighlightedLines] = useState<HighlightToken[][] | null>(null);
+  const themeName = theme === 'dark' ? 'horizon' : 'github-light';
 
   useEffect(() => {
     let cancelled = false;
 
-    highlightCodeTokens(code, normalizedLanguage).then((result) => {
+    highlightCodeTokens(code, normalizedLanguage, themeName).then((result) => {
       if (!cancelled) {
         setHighlightedLines(result.lines);
       }
@@ -56,7 +60,7 @@ export default function MappedHighlightedCodeBlock({
     return () => {
       cancelled = true;
     };
-  }, [code, normalizedLanguage]);
+  }, [code, normalizedLanguage, themeName]);
 
   return (
     <CodeBlockWithCopy code={code}>

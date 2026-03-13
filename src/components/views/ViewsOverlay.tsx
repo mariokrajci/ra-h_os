@@ -43,8 +43,8 @@ function PendingNodeCard({ pending, onDismiss }: { pending: PendingNode; onDismi
     <div style={{
       padding: '10px 12px',
       background: 'transparent',
-      borderBottom: '1px solid #141414',
-      borderLeft: `3px solid ${isError ? '#ef4444' : '#22c55e'}`,
+      borderBottom: '1px solid var(--app-hairline)',
+      borderLeft: `3px solid ${isError ? 'var(--app-danger-border)' : 'var(--toolbar-accent)'}`,
       opacity: 0.8,
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
@@ -52,15 +52,15 @@ function PendingNodeCard({ pending, onDismiss }: { pending: PendingNode; onDismi
           width: '32px',
           height: '32px',
           borderRadius: '8px',
-          background: '#141414',
-          border: `1px solid ${isError ? 'rgba(239,68,68,0.3)' : '#1f1f1f'}`,
+          background: 'var(--app-surface-subtle)',
+          border: `1px solid ${isError ? 'var(--app-danger-border)' : 'var(--app-border)'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
         }}>
           {isError ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--app-danger-text)" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ) : (
@@ -71,7 +71,7 @@ function PendingNodeCard({ pending, onDismiss }: { pending: PendingNode; onDismi
           <div style={{
             fontSize: '13px',
             fontWeight: 500,
-            color: isError ? '#ef4444' : '#888',
+            color: isError ? 'var(--app-danger-text)' : 'var(--app-text-muted)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -80,7 +80,7 @@ function PendingNodeCard({ pending, onDismiss }: { pending: PendingNode; onDismi
           </div>
           <div style={{
             fontSize: '11px',
-            color: '#555',
+            color: 'var(--app-text-subtle)',
             marginTop: '2px',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -96,14 +96,14 @@ function PendingNodeCard({ pending, onDismiss }: { pending: PendingNode; onDismi
               padding: '4px',
               background: 'transparent',
               border: 'none',
-              color: '#555',
+              color: 'var(--app-text-subtle)',
               cursor: 'pointer',
               borderRadius: '4px',
               display: 'flex',
               flexShrink: 0,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = '#555'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-danger-text)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--app-text-subtle)'; }}
           >
             <X size={14} />
           </button>
@@ -113,7 +113,7 @@ function PendingNodeCard({ pending, onDismiss }: { pending: PendingNode; onDismi
         .pending-spinner {
           width: 14px;
           height: 14px;
-          border: 2px solid #22c55e;
+          border: 2px solid var(--toolbar-accent);
           border-top-color: transparent;
           border-radius: 50%;
           animation: pendingSpin 0.8s linear infinite;
@@ -396,13 +396,13 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
           background: 'transparent',
           cursor: 'pointer',
           transition: 'all 0.15s ease',
-          borderBottom: '1px solid #141414',
+          borderBottom: '1px solid var(--app-hairline)',
           borderLeft: '3px solid transparent',
           opacity: isDragSource ? 0.4 : 1,
-          borderTop: isDropTarget ? '2px solid #22c55e' : '2px solid transparent',
+          borderTop: isDropTarget ? '2px solid var(--toolbar-accent)' : '2px solid transparent',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+          e.currentTarget.style.background = 'var(--app-hover)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'transparent';
@@ -435,13 +435,13 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                 justifyContent: 'center',
                 width: '16px',
                 cursor: 'grab',
-                color: '#444',
+                color: 'var(--app-text-subtle)',
                 flexShrink: 0,
                 alignSelf: 'center',
                 transition: 'color 0.15s ease',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#888'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#444'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-text-muted)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--app-text-subtle)'; }}
               onClick={(e) => e.stopPropagation()}
             >
               <GripVertical size={14} />
@@ -451,8 +451,8 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
             width: '32px',
             height: '32px',
             borderRadius: '8px',
-            background: '#141414',
-            border: '1px solid #1f1f1f',
+            background: 'var(--app-surface-subtle)',
+            border: '1px solid var(--app-border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -470,7 +470,7 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
               <span style={{
                 fontSize: '13px',
                 fontWeight: 500,
-                color: '#f0f0f0',
+                color: 'var(--app-text)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -482,7 +482,7 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
               {node.edge_count != null && node.edge_count > 0 && (
                 <span style={{
                   fontSize: '10px',
-                  color: '#555',
+                  color: 'var(--app-text-subtle)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '2px',
@@ -494,8 +494,8 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
               )}
               <span style={{
                 fontSize: '10px',
-                color: '#444',
-                background: '#141414',
+                color: 'var(--app-text-muted)',
+                background: 'var(--app-surface-subtle)',
                 padding: '2px 6px',
                 borderRadius: '4px',
                 fontFamily: 'monospace',
@@ -507,7 +507,7 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
             {descPreview && (
               <div style={{
                 fontSize: '11px',
-                color: '#666',
+                color: 'var(--app-text-muted)',
                 lineHeight: '1.4',
                 marginBottom: '4px',
                 overflow: 'hidden',
@@ -530,8 +530,8 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                       style={{
                         fontSize: '9px',
                         padding: '1px 5px',
-                        background: 'rgba(34, 197, 94, 0.08)',
-                        color: '#4a9',
+                        background: 'var(--app-accent-soft)',
+                        color: 'var(--toolbar-accent)',
                         borderRadius: '3px'
                       }}
                     >
@@ -539,7 +539,7 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                     </span>
                   ))}
                   {node.dimensions.length > 3 && (
-                    <span style={{ fontSize: '9px', color: '#555' }}>
+                    <span style={{ fontSize: '9px', color: 'var(--app-text-subtle)' }}>
                       +{node.dimensions.length - 3}
                     </span>
                   )}
@@ -562,7 +562,7 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
       {/* Header with filters + sort */}
       <div style={{
         padding: '10px 16px',
-        borderBottom: '1px solid #1a1a1a',
+        borderBottom: '1px solid var(--app-border)',
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
@@ -578,11 +578,11 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                 alignItems: 'center',
                 gap: '5px',
                 padding: '3px 8px',
-                background: 'rgba(34, 197, 94, 0.06)',
-                border: '1px solid rgba(34, 197, 94, 0.12)',
+                background: 'var(--app-accent-soft)',
+                border: '1px solid var(--app-accent-border)',
                 borderRadius: '5px',
                 fontSize: '11px',
-                color: '#5a9'
+                color: 'var(--toolbar-accent)'
               }}
             >
               {filter}
@@ -591,14 +591,14 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#5a9',
+                  color: 'var(--toolbar-accent)',
                   cursor: 'pointer',
                   padding: '0',
                   display: 'flex',
                   alignItems: 'center'
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#5a9'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-danger-text)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--toolbar-accent)'; }}
               >
                 <X size={11} />
               </button>
@@ -615,20 +615,20 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                 gap: '4px',
                 padding: '4px 8px',
                 background: 'transparent',
-                border: '1px solid #222',
+                border: '1px solid var(--app-border)',
                 borderRadius: '5px',
-                color: '#888',
+                color: 'var(--app-text-muted)',
                 fontSize: '11px',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                e.currentTarget.style.borderColor = '#333';
+                e.currentTarget.style.background = 'var(--app-hover)';
+                e.currentTarget.style.borderColor = 'var(--app-toolbar-border)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = '#222';
+                e.currentTarget.style.borderColor = 'var(--app-border)';
               }}
             >
               <Filter size={11} />
@@ -642,8 +642,8 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                 top: '100%',
                 left: 0,
                 marginTop: '4px',
-                background: '#141414',
-                border: '1px solid #222',
+                background: 'var(--app-panel-elevated)',
+                border: '1px solid var(--app-border)',
                 borderRadius: '10px',
                 padding: '6px',
                 minWidth: '220px',
@@ -661,23 +661,23 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                   style={{
                     width: '100%',
                     padding: '7px 10px',
-                    background: '#0d0d0d',
-                    border: '1px solid transparent',
+                    background: 'var(--app-input)',
+                    border: '1px solid var(--app-input)',
                     borderRadius: '6px',
-                    color: '#f0f0f0',
+                    color: 'var(--app-text)',
                     fontSize: '12px',
                     marginBottom: '4px',
                     outline: 'none',
                   }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = '#333'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'transparent'; }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--app-toolbar-border)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--app-input)'; }}
                 />
                 {dimensionsLoading ? (
-                  <div style={{ padding: '12px', color: '#666', fontSize: '12px', textAlign: 'center' }}>
+                  <div style={{ padding: '12px', color: 'var(--app-text-muted)', fontSize: '12px', textAlign: 'center' }}>
                     Loading dimensions...
                   </div>
                 ) : filterPickerDimensions.length === 0 ? (
-                  <div style={{ padding: '12px', color: '#666', fontSize: '12px', textAlign: 'center' }}>
+                  <div style={{ padding: '12px', color: 'var(--app-text-muted)', fontSize: '12px', textAlign: 'center' }}>
                     {filterSearchQuery ? 'No matching dimensions' : 'No dimensions available'}
                   </div>
                 ) : (
@@ -694,19 +694,19 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                         background: 'transparent',
                         border: 'none',
                         borderRadius: '5px',
-                        color: '#ccc',
+                        color: 'var(--app-text)',
                         fontSize: '12px',
                         cursor: 'pointer',
                         textAlign: 'left'
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--app-hover)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       <span>{d.dimension}</span>
                       <span style={{
-                        color: '#555',
+                        color: 'var(--app-text-subtle)',
                         fontSize: '10px',
-                        background: '#1a1a1a',
+                        background: 'var(--app-surface-subtle)',
                         padding: '1px 6px',
                         borderRadius: '10px',
                       }}>
@@ -726,12 +726,12 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                 padding: '4px 8px',
                 background: 'transparent',
                 border: 'none',
-                color: '#666',
+                color: 'var(--app-text-muted)',
                 fontSize: '11px',
                 cursor: 'pointer'
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#666'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-danger-text)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--app-text-muted)'; }}
             >
               Clear all
             </button>
@@ -748,21 +748,21 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
               gap: '4px',
               padding: '5px 8px',
               background: 'transparent',
-              border: '1px solid #222',
+              border: '1px solid var(--app-border)',
               borderRadius: '5px',
-              color: '#888',
+              color: 'var(--app-text-muted)',
               fontSize: '11px',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
               whiteSpace: 'nowrap',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-              e.currentTarget.style.borderColor = '#333';
+              e.currentTarget.style.background = 'var(--app-hover)';
+              e.currentTarget.style.borderColor = 'var(--app-toolbar-border)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.borderColor = '#222';
+              e.currentTarget.style.borderColor = 'var(--app-border)';
             }}
           >
             <ArrowUpDown size={11} />
@@ -776,8 +776,8 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
               top: '100%',
               right: 0,
               marginTop: '4px',
-              background: '#141414',
-              border: '1px solid #222',
+              background: 'var(--app-panel-elevated)',
+              border: '1px solid var(--app-border)',
               borderRadius: '10px',
               padding: '4px',
               minWidth: '140px',
@@ -797,18 +797,18 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
                     gap: '8px',
                     width: '100%',
                     padding: '7px 10px',
-                    background: sortOrder === key ? 'rgba(255,255,255,0.04)' : 'transparent',
+                    background: sortOrder === key ? 'var(--app-selected)' : 'transparent',
                     border: 'none',
                     borderRadius: '5px',
-                    color: sortOrder === key ? '#f0f0f0' : '#999',
+                    color: sortOrder === key ? 'var(--app-text)' : 'var(--app-text-muted)',
                     fontSize: '12px',
                     cursor: 'pointer',
                     textAlign: 'left',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = sortOrder === key ? 'rgba(255,255,255,0.04)' : 'transparent'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = sortOrder === key ? 'var(--app-selected)' : 'var(--app-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = sortOrder === key ? 'var(--app-selected)' : 'transparent'; }}
                 >
-                  {sortOrder === key && <span style={{ color: '#22c55e', fontSize: '12px' }}>✓</span>}
+                  {sortOrder === key && <span style={{ color: 'var(--toolbar-accent)', fontSize: '12px' }}>✓</span>}
                   {SORT_LABELS[key]}
                 </button>
               ))}
@@ -819,11 +819,11 @@ export default function ViewsOverlay({ onNodeClick, onNodeOpenInOtherPane, refre
 
       {/* Content area — list view */}
       {filteredNodesLoading ? (
-        <div style={{ padding: '40px', color: '#888', textAlign: 'center' }}>
+        <div style={{ padding: '40px', color: 'var(--app-text-muted)', textAlign: 'center' }}>
           Loading...
         </div>
       ) : filteredNodes.length === 0 ? (
-        <div style={{ padding: '40px', color: '#888', textAlign: 'center' }}>
+        <div style={{ padding: '40px', color: 'var(--app-text-muted)', textAlign: 'center' }}>
           {selectedFilters.length > 0 ? 'No nodes match the selected filters.' : 'No nodes yet. Add some content to get started.'}
         </div>
       ) : (

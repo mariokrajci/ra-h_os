@@ -10,7 +10,7 @@ describe('focus panel typography styles', () => {
       fontFamily: "'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       fontSize: '15px',
       lineHeight: '1.7',
-      color: '#d4d4d4',
+      color: 'var(--app-text)',
     });
   });
 
@@ -19,7 +19,7 @@ describe('focus panel typography styles', () => {
       fontFamily: "'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       fontSize: '15px',
       lineHeight: '1.7',
-      color: '#d4d4d4',
+      color: 'var(--app-text)',
     });
   });
 });

@@ -58,7 +58,7 @@ export default function PaneHeader({
         alignItems: 'center',
         gap: '8px',
         padding: '8px 12px',
-        background: isDragOver ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
+        background: isDragOver ? 'var(--app-selected)' : 'transparent',
         minHeight: '44px',
         cursor: slot && onSwapPanes ? 'grab' : 'default',
         opacity: isDragging ? 0.5 : 1,
@@ -79,9 +79,9 @@ export default function PaneHeader({
             width: '28px',
             height: '28px',
             borderRadius: '6px',
-            border: '1px solid #2a2a2a',
-            background: '#111',
-            color: '#777',
+            border: '1px solid var(--app-border)',
+            background: 'var(--app-input)',
+            color: 'var(--app-text-muted)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -91,14 +91,14 @@ export default function PaneHeader({
           }}
           title="Close pane"
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#1a1a1a';
-            e.currentTarget.style.borderColor = '#3a3a3a';
-            e.currentTarget.style.color = '#aaa';
+            e.currentTarget.style.background = 'var(--app-hover)';
+            e.currentTarget.style.borderColor = 'var(--app-border)';
+            e.currentTarget.style.color = 'var(--app-text)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#111';
-            e.currentTarget.style.borderColor = '#2a2a2a';
-            e.currentTarget.style.color = '#777';
+            e.currentTarget.style.background = 'var(--app-input)';
+            e.currentTarget.style.borderColor = 'var(--app-border)';
+            e.currentTarget.style.color = 'var(--app-text-muted)';
           }}
         >
           <X size={14} />

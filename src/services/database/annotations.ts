@@ -47,11 +47,7 @@ export class AnnotationService {
       );
 
       const id = Number(insertResult.lastInsertRowid);
-      const mirroredParts = [`[[annotation:${id}]]`, data.text];
-      if (data.comment?.trim()) {
-        mirroredParts.push(`(${data.comment.trim()})`);
-      }
-      const token = `\n\n${mirroredParts.join(' ')}`;
+      const token = `\n\n[[annotation:${id}]]`;
 
       sqlite.prepare(
         `UPDATE nodes SET notes = ?, updated_at = datetime('now') WHERE id = ?`

@@ -28,10 +28,10 @@ export default function LogsRow({ log, isEven }: LogsRowProps) {
 
   const highlightJson = (jsonStr: string) => {
     return jsonStr
-      .replace(/"([^"]+)":/g, '<span style="color: #60a5fa">"$1"</span>:')
-      .replace(/: "([^"]*)"/g, ': <span style="color: #34d399">"$1"</span>')
-      .replace(/: (\d+)/g, ': <span style="color: #fb923c">$1</span>')
-      .replace(/: (true|false|null)/g, ': <span style="color: #a78bfa">$1</span>');
+      .replace(/"([^"]+)":/g, '<span style="color: var(--app-info-text)">"$1"</span>:')
+      .replace(/: "([^"]*)"/g, ': <span style="color: var(--toolbar-accent)">"$1"</span>')
+      .replace(/: (\d+)/g, ': <span style="color: #d97706">$1</span>')
+      .replace(/: (true|false|null)/g, ': <span style="color: #7c3aed">$1</span>');
   };
 
   const getMetricsFromSnapshot = () => {
@@ -60,15 +60,15 @@ export default function LogsRow({ log, isEven }: LogsRowProps) {
       <tr
         onClick={() => setExpanded(!expanded)}
         style={{
-          background: isEven ? '#0f0f0f' : '#141414',
+          background: isEven ? 'var(--app-panel)' : 'var(--app-table-stripe)',
           cursor: 'pointer',
-          borderBottom: '1px solid #2a2a2a'
+          borderBottom: '1px solid var(--app-hairline)'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#1a1a1a';
+          e.currentTarget.style.background = 'var(--app-hover)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = isEven ? '#0f0f0f' : '#141414';
+          e.currentTarget.style.background = isEven ? 'var(--app-panel)' : 'var(--app-table-stripe)';
         }}
       >
         <td style={{ padding: '12px 16px', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace', width: '60px' }}>
@@ -86,7 +86,7 @@ export default function LogsRow({ log, isEven }: LogsRowProps) {
         <td style={{ padding: '12px 16px', fontSize: '12px', fontFamily: 'JetBrains Mono, monospace' }}>
           <div>{log.summary || '-'}</div>
           {metrics && (
-            <div style={{ marginTop: '6px', fontSize: '10px', color: '#888', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ marginTop: '6px', fontSize: '10px', color: 'var(--app-text-muted)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               {metrics.trace_id && (
                 <span title={`Trace: ${metrics.trace_id}`}>
                   🔗 {metrics.trace_id.substring(0, 8)}
@@ -103,7 +103,7 @@ export default function LogsRow({ log, isEven }: LogsRowProps) {
                 </span>
               )}
               {metrics.cache_hit !== undefined && metrics.cache_hit === 1 && (
-                <span style={{ color: '#60a5fa' }}>
+                <span style={{ color: 'var(--app-info-text)' }}>
                   ⚡ Cache Hit
                 </span>
               )}
@@ -115,11 +115,11 @@ export default function LogsRow({ log, isEven }: LogsRowProps) {
         </td>
       </tr>
       {expanded && (
-        <tr style={{ background: '#0a0a0a', borderTop: '1px solid #333', borderBottom: '1px solid #333' }}>
+        <tr style={{ background: 'var(--app-surface-strong)', borderTop: '1px solid var(--app-border)', borderBottom: '1px solid var(--app-border)' }}>
           <td colSpan={6} style={{ padding: '16px 24px' }}>
             {metrics?.system_message && (
               <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--app-text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   System Message
                 </div>
                 <pre
@@ -130,11 +130,11 @@ export default function LogsRow({ log, isEven }: LogsRowProps) {
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
                     margin: 0,
-                    color: '#60a5fa',
-                    background: '#0f0f0f',
+                    color: 'var(--app-info-text)',
+                    background: 'var(--app-input)',
                     padding: '12px',
                     borderRadius: '4px',
-                    border: '1px solid #1f1f1f',
+                    border: '1px solid var(--app-border)',
                     maxHeight: '300px',
                     overflow: 'auto'
                   }}
@@ -144,7 +144,7 @@ export default function LogsRow({ log, isEven }: LogsRowProps) {
               </div>
             )}
             <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--app-text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Snapshot JSON
               </div>
               <pre
@@ -161,10 +161,10 @@ export default function LogsRow({ log, isEven }: LogsRowProps) {
             </div>
             {log.enriched_summary && (
               <div>
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Enriched Summary
-                </div>
-                <div style={{ fontSize: '12px', color: '#ccc', lineHeight: '1.6' }}>
+                <div style={{ fontSize: '11px', color: 'var(--app-text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Enriched Summary
+              </div>
+                <div style={{ fontSize: '12px', color: 'var(--app-text)', lineHeight: '1.6' }}>
                   {log.enriched_summary}
                 </div>
               </div>

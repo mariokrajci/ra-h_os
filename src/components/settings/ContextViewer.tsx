@@ -90,7 +90,7 @@ export default function ContextViewer() {
             disabled={loadingSettings || saving}
             style={{
               ...toggleStyle,
-              background: enabled ? '#22c55e' : 'rgba(255, 255, 255, 0.1)',
+              background: enabled ? 'var(--toolbar-accent)' : 'var(--app-surface-subtle)',
             }}
           >
             <span style={{
@@ -130,20 +130,20 @@ export default function ContextViewer() {
   );
 }
 
-const containerStyle: CSSProperties = { padding: 24, height: '100%', overflow: 'auto' };
-const descStyle: CSSProperties = { fontSize: 13, color: '#6b7280', marginBottom: 20, lineHeight: 1.5 };
+const containerStyle: CSSProperties = { padding: 24, height: '100%', overflow: 'auto', color: 'var(--app-text)' };
+const descStyle: CSSProperties = { fontSize: 13, color: 'var(--app-text-muted)', marginBottom: 20, lineHeight: 1.5 };
 
 const cardStyle: CSSProperties = {
-  background: 'rgba(255, 255, 255, 0.02)',
-  border: '1px solid rgba(255, 255, 255, 0.06)',
+  background: 'var(--app-panel-elevated)',
+  border: '1px solid var(--app-border)',
   borderRadius: 8,
   padding: 16,
   marginBottom: 24,
 };
 
-const labelStyle: CSSProperties = { fontSize: 13, fontWeight: 500, color: '#e5e7eb', marginBottom: 8 };
-const subLabelStyle: CSSProperties = { fontSize: 12, color: '#6b7280' };
-const mutedStyle: CSSProperties = { fontSize: 13, color: '#6b7280' };
+const labelStyle: CSSProperties = { fontSize: 13, fontWeight: 500, color: 'var(--app-text)', marginBottom: 8 };
+const subLabelStyle: CSSProperties = { fontSize: 12, color: 'var(--app-text-muted)' };
+const mutedStyle: CSSProperties = { fontSize: 13, color: 'var(--app-text-muted)' };
 
 const toggleStyle: CSSProperties = {
   width: 48,
@@ -161,24 +161,24 @@ const toggleKnobStyle: CSSProperties = {
   width: 18,
   height: 18,
   borderRadius: '50%',
-  background: '#fff',
+  background: 'var(--app-panel)',
   transition: 'left 0.15s',
 };
 
 const nodeCardStyle: CSSProperties = {
   padding: '12px 14px',
-  background: 'rgba(255, 255, 255, 0.02)',
-  border: '1px solid rgba(255, 255, 255, 0.06)',
+  background: 'var(--app-panel-elevated)',
+  border: '1px solid var(--app-border)',
   borderRadius: 6,
 };
 
-const nodeTitleStyle: CSSProperties = { fontSize: 13, fontWeight: 500, color: '#e5e7eb' };
-const edgeCountStyle: CSSProperties = { fontSize: 12, color: '#22c55e' };
+const nodeTitleStyle: CSSProperties = { fontSize: 13, fontWeight: 500, color: 'var(--app-text)' };
+const edgeCountStyle: CSSProperties = { fontSize: 12, color: 'var(--toolbar-accent)' };
 
 const dimTagStyle: CSSProperties = {
   padding: '2px 8px',
   borderRadius: 4,
   fontSize: 11,
-  background: 'rgba(34, 197, 94, 0.1)',
-  color: '#22c55e',
+  background: 'var(--app-accent-soft)',
+  color: 'var(--toolbar-accent)',
 };

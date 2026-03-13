@@ -70,7 +70,7 @@ export function createDatabaseConnection(): Database.Database {
   try {
     db.loadExtension(vecPath);
   } catch (error) {
-    console.error('Warning: Could not load vec0 extension:', error);
+    console.warn('SQLite vec0 extension unavailable:', error);
     // Continue without vector support for non-vector operations
   }
   

@@ -16,6 +16,7 @@
 │ • Search    │ • Tabbed workspace      │
 │ • Filters   │ • Node content          │
 │ • Folders   │ • Connections           │
+│ • Docs      │                         │
 │             │                         │
 └─────────────┴─────────────────────────┘
 ```
@@ -32,6 +33,7 @@ Browse and manage your knowledge base.
 - **Dimension filters** — Multi-select dimension tags
 - **Node list** — Scrollable list of filtered nodes
 - **Folder view toggle** — Switch between list and folder views
+- **Docs button** — Opens the built-in docs modal from top-level numbered `docs/*.md` files
 
 ### Node Display
 
@@ -113,7 +115,7 @@ Active workspace for the node(s) you're working with.
 | **Content** | Full markdown content with syntax highlighting |
 | **Metadata** | Created, updated, type, link |
 | **Dimensions** | Editable dimension tags |
-| **Connections** | Incoming/outgoing edges |
+| **Connections** | Suggested connections plus incoming/outgoing edges |
 
 ### Content Rendering
 
@@ -121,6 +123,14 @@ Active workspace for the node(s) you're working with.
 - `[NODE:id:"title"]` renders as clickable links
 - Syntax highlighting for code blocks
 - YouTube embeds (if link is YouTube URL)
+
+### Edges Tab
+
+- Edge proposals are preloaded when a note becomes active.
+- Suggestions appear only inside the `Edges` tab under **Suggested connections**.
+- `Approve` creates the edge immediately through the existing edge-creation flow.
+- `Dismiss` hides the proposal for that source note so it does not keep reappearing.
+- Manual creation still exists as a fallback, but suggestions are the default workflow.
 
 ---
 
@@ -142,7 +152,7 @@ Global search modal with 4-tier relevance:
 
 ## Settings Panel
 
-**Access:** Settings cog icon (top-right)
+**Access:** Settings cog icon in the left toolbar
 
 ### Tabs
 
@@ -155,6 +165,14 @@ Global search modal with 4-tier relevance:
 | **Logs** | Activity feed (last 100 entries) |
 | **Context** | Context/system information viewer |
 | **Agents** | External agent (MCP) configuration |
+| **Preferences** | Theme selection and appearance settings |
+
+### Appearance
+
+- Theme preference supports **System**, **Light**, and **Dark**
+- The app defaults to your OS color scheme until you override it
+- The left toolbar uses stronger contrast in dark mode so actions and active panes are easier to distinguish
+- Settings content panels now inherit the active theme, including Logs, Database, Skills, API keys, Context, and External Agents
 
 ---
 
@@ -225,9 +243,9 @@ Each dimension can have a custom Lucide icon.
 
 ### Colors
 
-- **Background:** `#0a0a0a` (near black)
-- **Accent:** Green (`#22c55e`) for actions, selections
-- **Text:** White (primary), neutral-400 (secondary)
+- **Theme-aware shell:** Automatically follows system light/dark preference by default
+- **Accent:** Green for actions and selections
+- **Contrast:** Navigation and shell surfaces use stronger separation in dark mode
 
 ### Typography
 

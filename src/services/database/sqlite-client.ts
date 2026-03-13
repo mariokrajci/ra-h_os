@@ -20,11 +20,13 @@ class SQLiteClient {
   private config: SQLiteConfig;
   private readonly readOnly: boolean;
   private readonly embeddingsDisabled: boolean;
+  private vectorExtensionLoaded: boolean;
 
   private constructor() {
     this.config = this.getSQLiteConfig();
     this.readOnly = process.env.SQLITE_READONLY === 'true';
     this.embeddingsDisabled = process.env.DISABLE_EMBEDDINGS === 'true';
+    this.vectorExtensionLoaded = false;
     
     // Initialize database connection
     const dbDirectory = path.dirname(this.config.dbPath);
@@ -39,10 +41,11 @@ class SQLiteClient {
     if (!this.embeddingsDisabled) {
       try {
         this.db.loadExtension(this.config.vecExtensionPath);
+        this.vectorExtensionLoaded = true;
         console.log('SQLite vector extension loaded successfully');
       } catch (error) {
         // Do not fail hard — allow the app to run without vector features
-        console.error('Warning: Failed to load vector extension:', error);
+        console.warn('SQLite vector extension unavailable:', error);
       }
     }
 
@@ -62,7 +65,7 @@ class SQLiteClient {
       this.db.pragma('busy_timeout = 5000');
 
       // Ensure vector virtual tables are present and healthy (skip if disabled)
-      if (!this.embeddingsDisabled) {
+      if (!this.embeddingsDisabled && this.vectorExtensionLoaded) {
         this.ensureVectorTables();
         this.healVectorTablesIfCorrupt();
       }
@@ -140,7 +143,7 @@ class SQLiteClient {
       } as DatabaseError;
     }
     // Proactively validate/repair vec vtables before any write transaction
-    if (!this.embeddingsDisabled) {
+    if (!this.embeddingsDisabled && this.vectorExtensionLoaded) {
       this.healVectorTablesIfCorrupt();
     }
     const txn = this.db.transaction(callback);
@@ -162,7 +165,7 @@ class SQLiteClient {
   }
 
   public async checkVectorExtension(): Promise<boolean> {
-    if (this.embeddingsDisabled) {
+    if (this.embeddingsDisabled || !this.vectorExtensionLoaded) {
       return false;
     }
     try {
@@ -216,7 +219,7 @@ class SQLiteClient {
   }
 
   private ensureVectorTables(): void {
-    if (this.readOnly) {
+    if (this.readOnly || !this.vectorExtensionLoaded) {
       return;
     }
     // Wrapper to keep existing public API stable
@@ -228,6 +231,8 @@ class SQLiteClient {
       return;
     }
     try {
+      this.ensureCoreTables();
+
       // 1) If logs table missing but legacy memory table exists, migrate
       const hasLogs = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='logs'").get();
       const hasLegacyMemory = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='memory'").get();
@@ -255,6 +260,10 @@ class SQLiteClient {
 
       // Ensure nodes table has expected columns for memory nodes
       try {
+        const hasNodesTable = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='nodes'").get();
+        if (!hasNodesTable) {
+          throw new Error('nodes table not initialized yet');
+        }
         const nodeCols = this.db.prepare('PRAGMA table_info(nodes)').all() as Array<{ name: string }>;
         const ensureNodeCol = (name: string, ddl: string) => {
           if (!nodeCols.some(col => col.name === name)) {
@@ -268,7 +277,9 @@ class SQLiteClient {
         ensureNodeCol('description', "ALTER TABLE nodes ADD COLUMN description TEXT;");
         // type column removed in final schema pass
       } catch (nodeErr) {
-        console.warn('Failed to ensure nodes columns:', nodeErr);
+        if (!(nodeErr instanceof Error) || nodeErr.message !== 'nodes table not initialized yet') {
+          console.warn('Failed to ensure nodes columns:', nodeErr);
+        }
       }
 
       // Ensure chats table tracks creation timestamp for ordering
@@ -295,51 +306,63 @@ class SQLiteClient {
 
       // 4) Recreate triggers to write to logs (use CREATE IF NOT EXISTS)
       const hasChats = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='chats'").get();
-      this.db.exec(`
-        DROP TRIGGER IF EXISTS trg_nodes_ai;
-        DROP TRIGGER IF EXISTS trg_nodes_au;
-        CREATE TRIGGER IF NOT EXISTS trg_nodes_ai AFTER INSERT ON nodes BEGIN
-          INSERT INTO logs(table_name, action, row_id, summary, snapshot_json)
-          VALUES('nodes', 'insert', NEW.id,
-                 printf('node created: %s', COALESCE(NEW.title,'')),
-                 json_object('id', NEW.id, 'title', NEW.title, 'link', NEW.link));
-        END;
-        CREATE TRIGGER IF NOT EXISTS trg_nodes_au AFTER UPDATE ON nodes BEGIN
-          INSERT INTO logs(table_name, action, row_id, summary, snapshot_json)
-          VALUES('nodes', 'update', NEW.id,
-                 printf('node updated: %s', COALESCE(NEW.title,'')),
-                 json_object('id', NEW.id, 'title', NEW.title, 'link', NEW.link));
-        END;
+      const hasNodes = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='nodes'").get();
+      const hasEdges = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='edges'").get();
+      try {
+        if (hasNodes) {
+          this.db.exec(`
+            DROP TRIGGER IF EXISTS trg_nodes_ai;
+            DROP TRIGGER IF EXISTS trg_nodes_au;
+            CREATE TRIGGER IF NOT EXISTS trg_nodes_ai AFTER INSERT ON nodes BEGIN
+              INSERT INTO logs(table_name, action, row_id, summary, snapshot_json)
+              VALUES('nodes', 'insert', NEW.id,
+                     printf('node created: %s', COALESCE(NEW.title,'')),
+                     json_object('id', NEW.id, 'title', NEW.title, 'link', NEW.link));
+            END;
+            CREATE TRIGGER IF NOT EXISTS trg_nodes_au AFTER UPDATE ON nodes BEGIN
+              INSERT INTO logs(table_name, action, row_id, summary, snapshot_json)
+              VALUES('nodes', 'update', NEW.id,
+                     printf('node updated: %s', COALESCE(NEW.title,'')),
+                     json_object('id', NEW.id, 'title', NEW.title, 'link', NEW.link));
+            END;
+          `);
+        }
 
-        DROP TRIGGER IF EXISTS trg_edges_ai;
-        DROP TRIGGER IF EXISTS trg_edges_au;
-        CREATE TRIGGER IF NOT EXISTS trg_edges_ai AFTER INSERT ON edges BEGIN
-          INSERT INTO logs(table_name, action, row_id, summary, snapshot_json)
-          VALUES('edges', 'insert', NEW.id,
-                 printf('edge %d→%d (%s)', NEW.from_node_id, NEW.to_node_id, COALESCE(NEW.source,'')),
-                 json_object(
-                   'id', NEW.id,
-                   'from', NEW.from_node_id,
-                   'to', NEW.to_node_id,
-                   'source', NEW.source,
-                   'from_title', substr((SELECT title FROM nodes WHERE id = NEW.from_node_id), 1, 120),
-                   'to_title', substr((SELECT title FROM nodes WHERE id = NEW.to_node_id), 1, 120)
-                 ));
-        END;
-        CREATE TRIGGER IF NOT EXISTS trg_edges_au AFTER UPDATE ON edges BEGIN
-          INSERT INTO logs(table_name, action, row_id, summary, snapshot_json)
-          VALUES('edges', 'update', NEW.id,
-                 printf('edge updated %d→%d', NEW.from_node_id, NEW.to_node_id),
-                 json_object(
-                   'id', NEW.id,
-                   'from', NEW.from_node_id,
-                   'to', NEW.to_node_id,
-                   'source', NEW.source,
-                   'from_title', substr((SELECT title FROM nodes WHERE id = NEW.from_node_id), 1, 120),
-                   'to_title', substr((SELECT title FROM nodes WHERE id = NEW.to_node_id), 1, 120)
-                 ));
-        END;
-      `);
+        if (hasEdges) {
+          this.db.exec(`
+            DROP TRIGGER IF EXISTS trg_edges_ai;
+            DROP TRIGGER IF EXISTS trg_edges_au;
+            CREATE TRIGGER IF NOT EXISTS trg_edges_ai AFTER INSERT ON edges BEGIN
+              INSERT INTO logs(table_name, action, row_id, summary, snapshot_json)
+              VALUES('edges', 'insert', NEW.id,
+                     printf('edge %d→%d (%s)', NEW.from_node_id, NEW.to_node_id, COALESCE(NEW.source,'')),
+                     json_object(
+                       'id', NEW.id,
+                       'from', NEW.from_node_id,
+                       'to', NEW.to_node_id,
+                       'source', NEW.source,
+                       'from_title', substr((SELECT title FROM nodes WHERE id = NEW.from_node_id), 1, 120),
+                       'to_title', substr((SELECT title FROM nodes WHERE id = NEW.to_node_id), 1, 120)
+                     ));
+            END;
+            CREATE TRIGGER IF NOT EXISTS trg_edges_au AFTER UPDATE ON edges BEGIN
+              INSERT INTO logs(table_name, action, row_id, summary, snapshot_json)
+              VALUES('edges', 'update', NEW.id,
+                     printf('edge updated %d→%d', NEW.from_node_id, NEW.to_node_id),
+                     json_object(
+                       'id', NEW.id,
+                       'from', NEW.from_node_id,
+                       'to', NEW.to_node_id,
+                       'source', NEW.source,
+                       'from_title', substr((SELECT title FROM nodes WHERE id = NEW.from_node_id), 1, 120),
+                       'to_title', substr((SELECT title FROM nodes WHERE id = NEW.to_node_id), 1, 120)
+                     ));
+            END;
+          `);
+        }
+      } catch (triggerErr) {
+        console.warn('Failed to ensure logging triggers:', triggerErr);
+      }
 
       if (hasChats) {
         this.db.exec(`
@@ -657,6 +680,7 @@ class SQLiteClient {
           CREATE TABLE dimensions (
             name TEXT PRIMARY KEY,
             description TEXT,
+            icon TEXT,
             is_priority INTEGER DEFAULT 0,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           );
@@ -749,6 +773,26 @@ class SQLiteClient {
         console.warn('Failed to ensure files table schema:', filesSchemaErr);
       }
 
+      // 11.5) Edge proposal dismissals table
+      try {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS edge_proposal_dismissals (
+            id INTEGER PRIMARY KEY,
+            source_node_id INTEGER NOT NULL,
+            target_node_id INTEGER NOT NULL,
+            dismissed_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+            FOREIGN KEY (source_node_id) REFERENCES nodes(id) ON DELETE CASCADE,
+            FOREIGN KEY (target_node_id) REFERENCES nodes(id) ON DELETE CASCADE
+          );
+        `);
+        this.db.exec(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_edge_proposal_dismissals_source_target
+          ON edge_proposal_dismissals(source_node_id, target_node_id);
+        `);
+      } catch (edgeProposalDismissalsErr) {
+        console.warn('Failed to ensure edge proposal dismissals schema:', edgeProposalDismissalsErr);
+      }
+
       // 12) Log entries table
       try {
         this.db.exec(`
@@ -798,6 +842,10 @@ class SQLiteClient {
 
       // 10) Final schema pass migrations (content→notes, event_date, icon, drop dead columns)
       try {
+        const hasNodesTable = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='nodes'").get();
+        if (!hasNodesTable) {
+          throw new Error('nodes table not initialized yet');
+        }
         const nodeCols2 = this.db.prepare('PRAGMA table_info(nodes)').all() as Array<{ name: string }>;
         const nodeColNames = nodeCols2.map((c: any) => c.name);
 
@@ -868,13 +916,71 @@ class SQLiteClient {
 
         console.log('Final schema pass migrations complete');
       } catch (schemaErr) {
-        console.warn('Final schema pass migration error:', schemaErr);
+        if (!(schemaErr instanceof Error) || schemaErr.message !== 'nodes table not initialized yet') {
+          console.warn('Final schema pass migration error:', schemaErr);
+        }
       }
 
       console.log('Logging + memory schema ensured');
     } catch (error) {
       console.error('Failed to ensure logging/memory schema:', error);
     }
+  }
+
+  private ensureCoreTables(): void {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS nodes (
+        id INTEGER PRIMARY KEY,
+        title TEXT,
+        description TEXT,
+        notes TEXT,
+        link TEXT,
+        event_date TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        metadata TEXT,
+        chunk TEXT,
+        embedding BLOB,
+        embedding_updated_at TEXT,
+        embedding_text TEXT,
+        chunk_status TEXT DEFAULT 'not_chunked'
+      );
+
+      CREATE TABLE IF NOT EXISTS chunks (
+        id INTEGER PRIMARY KEY,
+        node_id INTEGER NOT NULL,
+        chunk_idx INTEGER,
+        text TEXT,
+        created_at TEXT,
+        embedding_type TEXT DEFAULT 'text-embedding-3-small',
+        metadata TEXT,
+        FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_chunks_by_node ON chunks(node_id);
+      CREATE INDEX IF NOT EXISTS idx_chunks_by_node_idx ON chunks(node_id, chunk_idx);
+
+      CREATE TABLE IF NOT EXISTS edges (
+        id INTEGER PRIMARY KEY,
+        from_node_id INTEGER NOT NULL,
+        to_node_id INTEGER NOT NULL,
+        source TEXT,
+        created_at TEXT,
+        context TEXT,
+        FOREIGN KEY (from_node_id) REFERENCES nodes(id) ON DELETE CASCADE,
+        FOREIGN KEY (to_node_id) REFERENCES nodes(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_node_id);
+      CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_node_id);
+
+      CREATE TABLE IF NOT EXISTS node_dimensions (
+        node_id INTEGER NOT NULL,
+        dimension TEXT NOT NULL,
+        PRIMARY KEY (node_id, dimension),
+        FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+      ) WITHOUT ROWID;
+      CREATE INDEX IF NOT EXISTS idx_dim_by_dimension ON node_dimensions(dimension, node_id);
+      CREATE INDEX IF NOT EXISTS idx_dim_by_node ON node_dimensions(node_id, dimension);
+    `);
   }
 
   private healVectorTablesIfCorrupt(): void {

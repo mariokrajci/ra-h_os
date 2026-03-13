@@ -16,6 +16,7 @@
     "setup": "npm install",
     "sqlite:backup": "bash scripts/database/sqlite-backup.sh",
     "sqlite:restore": "bash scripts/database/sqlite-restore.sh",
+    "vectors:reindex": "tsx scripts/vector/reindex-all.ts",
     "files:verify": "tsx scripts/database/verify-files-integrity.ts",
     "files:backup": "bash scripts/database/files-backup.sh",
     "backup:all": "bash scripts/database/backup-all.sh",

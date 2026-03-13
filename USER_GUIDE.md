@@ -30,7 +30,8 @@ When you open the app you see three regions:
 | Map | — | Interactive graph of connections |
 | Dimensions | — | Browse nodes grouped by tag |
 | Table | — | Spreadsheet view of all nodes |
-| Settings | — | API keys, logs, database, guides |
+| Docs | — | Built-in product and system documentation |
+| Settings | — | API keys, logs, database, guides, theme |
 
 **Slot A** is always open. It shows whichever view you picked in the toolbar (Feed by default).
 
@@ -140,17 +141,11 @@ When you add a connection, you're always on the **dependent** node, pointing tow
 
 1. Open a node in the Focus Panel
 2. Click the **Edges** tab (or the connections button with a number badge next to the title)
-3. In the **"Add connection"** input at the bottom, start typing the title of the node you want to connect to
-4. Select it from the dropdown (arrow keys + Enter, or click)
-5. A second input appears: type the relationship in plain English:
-   - _"created by"_ → `created_by` (this node was created by the target)
-   - _"part of"_ → `part_of` (this node is a part of the target)
-   - _"source of"_ → `source_of` (this node was derived from the target)
-   - _"related to"_ → `related_to` (no directional meaning)
-   - Anything else → AI infers the type
-6. Press **Enter**
+3. Review the **Suggested connections** section at the top
+4. Click **Approve** to create a suggested edge immediately, or **Dismiss** to hide that suggestion for this node
+5. If the connection you want is not suggested, use the manual **Create** flow as a fallback
 
-The connection appears immediately. Green arrows = outgoing (this node → other). Orange arrows = incoming (other → this node). Click any connected node title to jump to it.
+Approved connections appear immediately. Green arrows = outgoing (this node → other). Orange arrows = incoming (other → this node). Click any connected node title to jump to it.
 
 To remove a connection: click the **×** next to it.
 
@@ -190,6 +185,9 @@ A tree view of all your tags (dimensions). Shows how many nodes have each tag. C
 ### Table
 A sortable spreadsheet showing all nodes at once. Columns: Title, Dimensions, Link, Event Date, Created, Updated, Edges. Click any column header to sort. Click a row to open the node. Best for bulk scanning or auditing your knowledge base.
 
+### Docs
+Opens the in-app documentation browser. It automatically lists the numbered docs from the top-level `docs/` folder, such as Overview, Schema, UI, MCP, and Open Source notes. Use this when you want to understand how RA-H works without leaving the app.
+
 ---
 
 ## 5. Focus Panel — Tab Reference
@@ -215,13 +213,16 @@ AI-seeded editable synthesis. Supports full Markdown.
 ### Edges tab
 All connections this node has.
 
+- **Suggested connections:** Proposed edges based on explicit mentions in the node description
+- **Approve:** Creates the edge immediately using the normal edge inference flow
+- **Dismiss:** Hides that suggestion for this node so it does not keep reappearing
 - **Green arrow (→):** This node points _to_ another node (outgoing)
 - **Orange arrow (←):** Another node points _to_ this node (incoming)
 - Click any connected node's title to open it
 - Click the **×** to delete a connection
 - To edit a relationship explanation: click on the explanation text, edit, press Enter
 
-Adding connections: see Workflow 4 above.
+Suggested connections are the default path. Manual creation is still available as a fallback via the **Create** button. Adding connections manually: see Workflow 4 above.
 
 ### Source tab
 Raw content extracted from the source URL — YouTube transcript segments, PDF page text, website paragraphs. This is what gets chunked and embedded for semantic search.
@@ -238,6 +239,9 @@ For large PDFs, the app may generate initial Notes from detected high-signal sec
 ## 6. Settings
 
 Click the **Settings** icon (bottom of the left toolbar) to open the settings modal. It has these tabs:
+
+**Theme**
+Choose **System**, **Light**, or **Dark** in the Appearance section near the top of Settings. The default is **System**, which follows your operating system preference automatically.
 
 **API Keys**
 Enter your OpenAI API key (`sk-...`) and your Anthropic API key (`sk-ant-...`). A Tavily key is optional and enables web search. Keys are stored in `.env.local` on your machine only. Without these keys the app works manually — no auto-descriptions, no semantic search, no auto-tags.

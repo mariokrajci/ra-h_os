@@ -3,15 +3,14 @@
  * Embeds node metadata (title, content, dimensions) into nodes.embedding field
  */
 
-import OpenAI from 'openai';
 import { 
   createDatabaseConnection, 
   serializeFloat32Vector,
   formatEmbeddingText,
   batchProcess
 } from './sqlite-vec';
-import { getOpenAIEmbeddingModel } from '@/config/openaiModels';
-import { logAiUsage, normalizeUsageFromOpenAI } from '@/services/analytics/usageLogger';
+import { EmbeddingService } from '@/services/embeddings';
+import { getVectorStoreAdapter } from '@/services/vector-store';
 
 interface NodeRecord {
   id: number;
@@ -31,40 +30,12 @@ interface EmbedNodeOptions {
 }
 
 export class NodeEmbedder {
-  private openaiClient: OpenAI;
   private db: ReturnType<typeof createDatabaseConnection>;
   private processedCount: number = 0;
   private failedCount: number = 0;
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
-    
-    this.openaiClient = new OpenAI({ apiKey });
     this.db = createDatabaseConnection();
-  }
-
-  /**
-   * Generate embedding for text using OpenAI
-   */
-  private async generateEmbedding(text: string): Promise<number[]> {
-    const response = await this.openaiClient.embeddings.create({
-      model: getOpenAIEmbeddingModel(),
-      input: text,
-    });
-    const usage = normalizeUsageFromOpenAI(response.usage);
-    if (usage) {
-      logAiUsage({
-        feature: 'node_embedding',
-        provider: 'openai',
-        modelId: getOpenAIEmbeddingModel(),
-        usage,
-      });
-    }
-    
-    return response.data[0].embedding;
   }
 
   /**
@@ -90,7 +61,7 @@ export class NodeEmbedder {
 
     try {
       // Generate embedding
-      const embedding = await this.generateEmbedding(embeddingText);
+      const embedding = await EmbeddingService.generateContentEmbedding(embeddingText, 'node_embedding');
       const embeddingBlob = serializeFloat32Vector(embedding);
       
       // Update database
@@ -107,18 +78,11 @@ export class NodeEmbedder {
       
       // Update vec_nodes virtual table
       try {
-        // Determine correct column name for primary key (node_id vs id)
-        // Use declared PK column from your DB schema (confirmed: node_id)
-        const pkCol = 'node_id';
-
-        // Delete existing entry if any
-        const deleteStmt = this.db.prepare(`DELETE FROM vec_nodes WHERE ${pkCol} = ?`);
-        deleteStmt.run(BigInt(node.id));
-        
-        // Insert new entry (use bracketed string format compatible with sqlite-vec)
-        const vectorString = `[${embedding.join(',')}]`;
-        const insertStmt = this.db.prepare(`INSERT INTO vec_nodes (${pkCol}, embedding) VALUES (?, ?)`);
-        insertStmt.run(BigInt(node.id), vectorString);
+        await getVectorStoreAdapter().upsertNodeVector({
+          itemId: node.id,
+          vector: embedding,
+          metadata: { title: node.title },
+        });
       } catch (vecError) {
         console.warn(`Could not update vec_nodes for node ${node.id}:`, vecError);
         // Continue - main embedding is still saved

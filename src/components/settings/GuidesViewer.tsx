@@ -110,7 +110,7 @@ export default function GuidesViewer() {
 
   if (loading) {
     return (
-      <div style={{ padding: '24px', color: '#666' }}>Loading skills...</div>
+      <div style={{ padding: '24px', color: 'var(--app-text-muted)' }}>Loading skills...</div>
     );
   }
 
@@ -127,10 +127,10 @@ export default function GuidesViewer() {
             style={{
               flex: 1,
               padding: '8px 12px',
-              background: '#1a1a1a',
-              border: '1px solid #333',
+              background: 'var(--app-input)',
+              border: '1px solid var(--app-border)',
               borderRadius: '6px',
-              color: '#fff',
+              color: 'var(--app-text)',
               fontSize: '14px',
             }}
           />
@@ -138,10 +138,10 @@ export default function GuidesViewer() {
             onClick={handleSave}
             style={{
               padding: '8px 16px',
-              background: '#22c55e',
+              background: 'var(--toolbar-accent)',
               border: 'none',
               borderRadius: '6px',
-              color: '#000',
+              color: 'var(--app-accent-contrast)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -157,9 +157,9 @@ export default function GuidesViewer() {
             style={{
               padding: '8px 16px',
               background: 'transparent',
-              border: '1px solid #333',
+              border: '1px solid var(--app-border)',
               borderRadius: '6px',
-              color: '#888',
+              color: 'var(--app-text-muted)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -172,7 +172,7 @@ export default function GuidesViewer() {
         </div>
 
         {error && (
-          <div style={{ color: '#ef4444', fontSize: '13px', marginBottom: '12px' }}>{error}</div>
+          <div style={{ color: 'var(--app-danger-text)', fontSize: '13px', marginBottom: '12px' }}>{error}</div>
         )}
 
         <input
@@ -182,10 +182,10 @@ export default function GuidesViewer() {
           placeholder="Brief description"
           style={{
             padding: '8px 12px',
-            background: '#1a1a1a',
-            border: '1px solid #333',
+            background: 'var(--app-input)',
+            border: '1px solid var(--app-border)',
             borderRadius: '6px',
-            color: '#fff',
+            color: 'var(--app-text)',
             fontSize: '13px',
             marginBottom: '16px',
           }}
@@ -198,10 +198,10 @@ export default function GuidesViewer() {
           style={{
             flex: 1,
             padding: '12px',
-            background: '#1a1a1a',
-            border: '1px solid #333',
+            background: 'var(--app-input)',
+            border: '1px solid var(--app-border)',
             borderRadius: '6px',
-            color: '#ccc',
+            color: 'var(--app-text)',
             fontSize: '13px',
             fontFamily: 'monospace',
             resize: 'none',
@@ -209,7 +209,7 @@ export default function GuidesViewer() {
           }}
         />
 
-        <p style={{ color: '#666', fontSize: '12px', marginTop: '12px' }}>
+        <p style={{ color: 'var(--app-text-muted)', fontSize: '12px', marginTop: '12px' }}>
           Skills are markdown files that agents can read for reusable procedural instructions.
         </p>
       </div>
@@ -219,17 +219,17 @@ export default function GuidesViewer() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>
+        <p style={{ color: 'var(--app-text-muted)', fontSize: '13px', margin: 0 }}>
           Skills provide reusable context and procedural instructions for agents.
         </p>
         <button
           onClick={handleNew}
           style={{
             padding: '8px 16px',
-            background: '#22c55e',
+            background: 'var(--toolbar-accent)',
             border: 'none',
             borderRadius: '6px',
-            color: '#000',
+            color: 'var(--app-accent-contrast)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -244,10 +244,10 @@ export default function GuidesViewer() {
 
       <div style={{ flex: 1, overflow: 'auto' }}>
         {guides.length === 0 ? (
-          <div style={{ color: '#555', textAlign: 'center', paddingTop: '48px' }}>
+          <div style={{ color: 'var(--app-text-subtle)', textAlign: 'center', paddingTop: '48px' }}>
             <FileText size={48} style={{ marginBottom: '12px', opacity: 0.5 }} />
             <p style={{ fontSize: '14px' }}>No skills yet</p>
-            <p style={{ fontSize: '12px', color: '#444' }}>Create skills to guide how agents operate in your knowledge base</p>
+            <p style={{ fontSize: '12px', color: 'var(--app-text-subtle)' }}>Create skills to guide how agents operate in your knowledge base</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -259,15 +259,15 @@ export default function GuidesViewer() {
                   alignItems: 'center',
                   gap: '12px',
                   padding: '12px 16px',
-                  background: '#161616',
-                  border: '1px solid #222',
+                  background: 'var(--app-panel-elevated)',
+                  border: '1px solid var(--app-border)',
                   borderRadius: '8px',
                 }}
               >
-                <FileText size={18} style={{ color: '#22c55e', flexShrink: 0 }} />
+                <FileText size={18} style={{ color: 'var(--toolbar-accent)', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: '#ddd', fontSize: '14px', fontWeight: 500 }}>{guide.name}</div>
-                  <div style={{ color: '#666', fontSize: '12px', marginTop: '2px' }}>{guide.description}</div>
+                  <div style={{ color: 'var(--app-text)', fontSize: '14px', fontWeight: 500 }}>{guide.name}</div>
+                  <div style={{ color: 'var(--app-text-muted)', fontSize: '12px', marginTop: '2px' }}>{guide.description}</div>
                 </div>
                 <button
                   onClick={() => handleEdit(guide.name)}
@@ -275,7 +275,7 @@ export default function GuidesViewer() {
                     padding: '6px',
                     background: 'transparent',
                     border: 'none',
-                    color: '#666',
+                    color: 'var(--app-text-subtle)',
                     cursor: 'pointer',
                     borderRadius: '4px',
                   }}
@@ -289,7 +289,7 @@ export default function GuidesViewer() {
                     padding: '6px',
                     background: 'transparent',
                     border: 'none',
-                    color: '#666',
+                    color: 'var(--app-text-subtle)',
                     cursor: 'pointer',
                     borderRadius: '4px',
                   }}

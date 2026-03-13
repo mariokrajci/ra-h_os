@@ -195,7 +195,7 @@ export default function DatabaseViewer() {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--app-text-muted)' }}>
         Loading database...
       </div>
     );
@@ -203,7 +203,7 @@ export default function DatabaseViewer() {
 
   if (error) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--app-danger-text)' }}>
         Error: {error}
       </div>
     );
@@ -211,7 +211,7 @@ export default function DatabaseViewer() {
 
   if (nodes.length === 0) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--app-text-muted)' }}>
         No nodes found
       </div>
     );
@@ -222,30 +222,30 @@ export default function DatabaseViewer() {
       <div
         style={{
           padding: '16px 24px',
-          borderBottom: '1px solid #2a2a2a',
+          borderBottom: '1px solid var(--app-hairline)',
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
         }}
       >
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: '#888', gap: '4px' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: 'var(--app-text-subtle)', gap: '4px' }}>
             Search
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="title or content"
               style={{
-                background: '#0f0f0f',
-                border: '1px solid #2a2a2a',
-                color: '#ddd',
+                background: 'var(--app-input)',
+                border: '1px solid var(--app-border)',
+                color: 'var(--app-text)',
                 padding: '6px 10px',
                 borderRadius: '4px',
                 minWidth: '220px',
               }}
             />
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: '#888', gap: '4px' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: 'var(--app-text-subtle)', gap: '4px' }}>
             Dimension
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
@@ -254,9 +254,9 @@ export default function DatabaseViewer() {
                 onKeyDown={handleDimensionKeyDown}
                 placeholder="e.g. research"
                 style={{
-                  background: '#0f0f0f',
-                  border: '1px solid #2a2a2a',
-                  color: '#ddd',
+                  background: 'var(--app-input)',
+                  border: '1px solid var(--app-border)',
+                  color: 'var(--app-text)',
                   padding: '6px 10px',
                   borderRadius: '4px',
                   minWidth: '180px',
@@ -266,10 +266,10 @@ export default function DatabaseViewer() {
                 onClick={handleAddDimension}
                 style={{
                   padding: '6px 10px',
-                  background: '#1f3529',
-                  border: '1px solid #264333',
+                  background: 'var(--app-selected)',
+                  border: '1px solid var(--app-border)',
                   borderRadius: '4px',
-                  color: '#c4f5d2',
+                  color: 'var(--app-text)',
                   fontSize: '12px',
                   cursor: 'pointer',
                 }}
@@ -278,15 +278,15 @@ export default function DatabaseViewer() {
               </button>
             </div>
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: '#888', gap: '4px' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '11px', color: 'var(--app-text-subtle)', gap: '4px' }}>
             Sort by
             <select
               value={sortBy}
               onChange={handleSortChange}
               style={{
-                background: '#0f0f0f',
-                border: '1px solid #2a2a2a',
-                color: '#ddd',
+                background: 'var(--app-input)',
+                border: '1px solid var(--app-border)',
+                color: 'var(--app-text)',
                 padding: '6px 10px',
                 borderRadius: '4px',
               }}
@@ -308,10 +308,10 @@ export default function DatabaseViewer() {
                   gap: '6px',
                   padding: '3px 10px',
                   borderRadius: '999px',
-                  background: '#142817',
-                  color: '#c4f5d2',
+                  background: 'var(--app-selected)',
+                  color: 'var(--app-text)',
                   fontSize: '11px',
-                  border: '1px solid #1f3b23',
+                  border: '1px solid var(--app-border)',
                 }}
               >
                 <Folder size={12} />
@@ -322,7 +322,7 @@ export default function DatabaseViewer() {
                     marginLeft: '2px',
                     background: 'transparent',
                     border: 'none',
-                    color: '#7de8a5',
+                    color: 'var(--toolbar-accent)',
                     cursor: 'pointer',
                     fontSize: '11px',
                   }}
@@ -336,16 +336,16 @@ export default function DatabaseViewer() {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '12px', color: '#666' }}>{filterStatus}</div>
+          <div style={{ fontSize: '12px', color: 'var(--app-text-subtle)' }}>{filterStatus}</div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={handleApplyFilters}
               style={{
                 padding: '8px 16px',
-                background: '#22c55e33',
-                border: '1px solid #22c55e66',
+                background: 'var(--app-accent-soft)',
+                border: '1px solid var(--app-accent-border)',
                 borderRadius: '4px',
-                color: '#22c55e',
+                color: 'var(--toolbar-accent)',
                 cursor: 'pointer',
                 fontSize: '12px',
               }}
@@ -356,10 +356,10 @@ export default function DatabaseViewer() {
               onClick={handleClearFilters}
               style={{
                 padding: '8px 16px',
-                background: '#1a1a1a',
-                border: '1px solid #333',
+                background: 'var(--app-surface-subtle)',
+                border: '1px solid var(--app-border)',
                 borderRadius: '4px',
-                color: '#ccc',
+                color: 'var(--app-text-muted)',
                 cursor: 'pointer',
                 fontSize: '12px',
               }}
@@ -371,10 +371,10 @@ export default function DatabaseViewer() {
               disabled={isFirstPage || filtersActive}
               style={{
                 padding: '8px 12px',
-                background: isFirstPage || filtersActive ? '#1a1a1a' : '#2a2a2a',
-                border: '1px solid #333',
+                background: isFirstPage || filtersActive ? 'var(--app-surface-subtle)' : 'var(--app-panel-elevated)',
+                border: '1px solid var(--app-border)',
                 borderRadius: '4px',
-                color: isFirstPage || filtersActive ? '#555' : '#ccc',
+                color: isFirstPage || filtersActive ? 'var(--app-text-subtle)' : 'var(--app-text-muted)',
                 cursor: isFirstPage || filtersActive ? 'not-allowed' : 'pointer',
                 fontSize: '12px',
               }}
@@ -386,10 +386,10 @@ export default function DatabaseViewer() {
               disabled={isLastPage || filtersActive}
               style={{
                 padding: '8px 12px',
-                background: isLastPage || filtersActive ? '#1a1a1a' : '#2a2a2a',
-                border: '1px solid #333',
+                background: isLastPage || filtersActive ? 'var(--app-surface-subtle)' : 'var(--app-panel-elevated)',
+                border: '1px solid var(--app-border)',
                 borderRadius: '4px',
-                color: isLastPage || filtersActive ? '#555' : '#ccc',
+                color: isLastPage || filtersActive ? 'var(--app-text-subtle)' : 'var(--app-text-muted)',
                 cursor: isLastPage || filtersActive ? 'not-allowed' : 'pointer',
                 fontSize: '12px',
               }}
@@ -402,7 +402,7 @@ export default function DatabaseViewer() {
 
       <div style={{ flex: 1, overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ position: 'sticky', top: 0, background: '#1a1a1a', zIndex: 1 }}>
+          <thead style={{ position: 'sticky', top: 0, background: 'var(--app-surface-strong)', zIndex: 1 }}>
             <tr>
               {['Node', 'Categories', 'Edges', 'Highlights', 'Updated', 'Created'].map((column) => (
                 <th
@@ -411,11 +411,11 @@ export default function DatabaseViewer() {
                     padding: '12px 16px',
                     textAlign: 'left',
                     fontSize: '11px',
-                    color: '#888',
+                    color: 'var(--app-text-subtle)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                     fontWeight: 'normal',
-                    borderBottom: '1px solid #2a2a2a',
+                    borderBottom: '1px solid var(--app-hairline)',
                   }}
                 >
                   {column}
@@ -430,13 +430,13 @@ export default function DatabaseViewer() {
                 <tr
                   key={node.id}
                   style={{
-                    background: index % 2 === 0 ? '#080808' : '#0d0d0d',
-                    borderBottom: '1px solid #111',
+                    background: index % 2 === 0 ? 'var(--app-panel)' : 'var(--app-table-stripe)',
+                    borderBottom: '1px solid var(--app-hairline)',
                   }}
                 >
                   <td style={{ padding: '12px 16px', verticalAlign: 'top', width: '28%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div style={{ fontWeight: 600, color: '#f5f5f5', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--app-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {node.title || 'Untitled node'}
                         {node.link && (
                           <button
@@ -445,7 +445,7 @@ export default function DatabaseViewer() {
                             style={{
                               background: 'transparent',
                               border: 'none',
-                              color: '#7de8a5',
+                              color: 'var(--toolbar-accent)',
                               cursor: 'pointer',
                               padding: 0,
                               display: 'flex',
@@ -456,7 +456,7 @@ export default function DatabaseViewer() {
                           </button>
                         )}
                       </div>
-                      <span style={{ fontSize: '11px', color: '#666', fontFamily: 'JetBrains Mono, monospace' }}>ID: {node.id}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--app-text-subtle)', fontFamily: 'JetBrains Mono, monospace' }}>ID: {node.id}</span>
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px', verticalAlign: 'top', width: '24%' }}>
@@ -471,10 +471,10 @@ export default function DatabaseViewer() {
                               gap: '4px',
                               padding: '2px 8px',
                               borderRadius: '999px',
-                              background: '#111914',
-                              border: '1px solid #1f2f24',
+                              background: 'var(--app-accent-soft)',
+                              border: '1px solid var(--app-accent-border)',
                               fontSize: '11px',
-                              color: '#bbf7d0',
+                              color: 'var(--toolbar-accent)',
                             }}
                           >
                             <Folder size={11} />
@@ -482,38 +482,38 @@ export default function DatabaseViewer() {
                           </span>
                         ))
                       ) : (
-                        <span style={{ fontSize: '11px', color: '#555' }}>No categories</span>
+                        <span style={{ fontSize: '11px', color: 'var(--app-text-subtle)' }}>No categories</span>
                       )}
                       {node.dimensions && node.dimensions.length > 3 && (
-                        <span style={{ fontSize: '11px', color: '#666' }}>+{node.dimensions.length - 3} more</span>
+                        <span style={{ fontSize: '11px', color: 'var(--app-text-subtle)' }}>+{node.dimensions.length - 3} more</span>
                       )}
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px', verticalAlign: 'top', width: '10%' }}>
-                    <div style={{ fontWeight: 600, color: '#e2e8f0' }}>{node.edge_count ?? 0}</div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>connections</div>
+                    <div style={{ fontWeight: 600, color: 'var(--app-text)' }}>{node.edge_count ?? 0}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--app-text-subtle)' }}>connections</div>
                   </td>
                   <td style={{ padding: '12px 16px', verticalAlign: 'top', width: '14%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {contextHubIds.has(node.id) ? (
-                        <span style={{ fontSize: '11px', color: '#facc15', fontWeight: 600 }}>
+                        <span style={{ fontSize: '11px', color: 'var(--app-info-text)', fontWeight: 600 }}>
                           Auto-context hub
                         </span>
                       ) : (
-                        <span style={{ fontSize: '11px', color: '#475569' }}>—</span>
+                        <span style={{ fontSize: '11px', color: 'var(--app-text-subtle)' }}>—</span>
                       )}
                       {belongsToLocked && (
-                        <span style={{ fontSize: '11px', color: '#7de8a5' }}>Priority dimension</span>
+                        <span style={{ fontSize: '11px', color: 'var(--toolbar-accent)' }}>Priority dimension</span>
                       )}
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px', verticalAlign: 'top', width: '12%' }}>
-                    <div style={{ fontSize: '12px', color: '#e2e8f0' }}>{formatTimestamp(node.updated_at)}</div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>{formatRelative(node.updated_at)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--app-text)' }}>{formatTimestamp(node.updated_at)}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--app-text-subtle)' }}>{formatRelative(node.updated_at)}</div>
                   </td>
                   <td style={{ padding: '12px 16px', verticalAlign: 'top', width: '12%' }}>
-                    <div style={{ fontSize: '12px', color: '#cbd5f5' }}>{formatTimestamp(node.created_at)}</div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>{formatRelative(node.created_at)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--app-text)' }}>{formatTimestamp(node.created_at)}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--app-text-subtle)' }}>{formatRelative(node.created_at)}</div>
                   </td>
                 </tr>
               );

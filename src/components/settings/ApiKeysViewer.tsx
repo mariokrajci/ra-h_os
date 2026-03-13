@@ -84,8 +84,8 @@ export default function ApiKeysViewer() {
           <span style={cardTitleStyle}>OpenAI API Key</span>
           <span style={{
             fontSize: 12,
-            color: status === 'configured' ? '#22c55e' :
-                   status === 'checking' ? '#6b7280' : '#ef4444'
+            color: status === 'configured' ? 'var(--toolbar-accent)' :
+                   status === 'checking' ? 'var(--app-text-subtle)' : 'var(--app-danger-text)'
           }}>
             {status === 'configured' ? 'Configured' :
              status === 'checking' ? 'Checking...' : 'Not configured'}
@@ -99,7 +99,7 @@ export default function ApiKeysViewer() {
           <div style={codeBlockStyle}>
             <code>OPENAI_API_KEY=sk-your-key-here</code>
           </div>
-          <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--app-text-subtle)' }}>
             Restart the app after changing the key.
           </p>
         </div>
@@ -201,11 +201,12 @@ const containerStyle: CSSProperties = {
   padding: 24,
   height: '100%',
   overflow: 'auto',
+  color: 'var(--app-text)',
 };
 
 const featuresBoxStyle: CSSProperties = {
-  background: 'rgba(34, 197, 94, 0.08)',
-  border: '1px solid rgba(34, 197, 94, 0.2)',
+  background: 'var(--app-selected)',
+  border: '1px solid var(--app-border)',
   borderRadius: 8,
   padding: 16,
   marginBottom: 20,
@@ -214,7 +215,7 @@ const featuresBoxStyle: CSSProperties = {
 const featuresHeaderStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 500,
-  color: '#22c55e',
+  color: 'var(--toolbar-accent)',
   marginBottom: 8,
 };
 
@@ -222,20 +223,20 @@ const featuresListStyle: CSSProperties = {
   margin: 0,
   paddingLeft: 20,
   fontSize: 13,
-  color: '#d1d5db',
+  color: 'var(--app-text)',
   lineHeight: 1.6,
 };
 
 const noteStyle: CSSProperties = {
   marginTop: 12,
   fontSize: 12,
-  color: '#6b7280',
+  color: 'var(--app-text-muted)',
   fontStyle: 'italic',
 };
 
 const cardStyle: CSSProperties = {
-  background: 'rgba(255, 255, 255, 0.02)',
-  border: '1px solid rgba(255, 255, 255, 0.06)',
+  background: 'var(--app-panel-elevated)',
+  border: '1px solid var(--app-border)',
   borderRadius: 8,
   padding: 16,
   marginBottom: 12,
@@ -251,49 +252,49 @@ const cardHeaderStyle: CSSProperties = {
 const cardTitleStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 500,
-  color: '#e5e7eb',
+  color: 'var(--app-text)',
 };
 
 const instructionsStyle: CSSProperties = {
   fontSize: 13,
-  color: '#d1d5db',
+  color: 'var(--app-text)',
   lineHeight: 1.5,
 };
 
 const codeInlineStyle: CSSProperties = {
-  background: 'rgba(255, 255, 255, 0.08)',
+  background: 'var(--app-surface-subtle)',
   padding: '2px 6px',
   borderRadius: 4,
   fontSize: 12,
   fontFamily: 'monospace',
-  color: '#22c55e',
+  color: 'var(--toolbar-accent)',
 };
 
 const codeBlockStyle: CSSProperties = {
-  background: 'rgba(0, 0, 0, 0.4)',
-  border: '1px solid rgba(255, 255, 255, 0.08)',
+  background: 'var(--app-input)',
+  border: '1px solid var(--app-border)',
   borderRadius: 6,
   padding: '10px 12px',
   fontSize: 13,
   fontFamily: 'monospace',
-  color: '#e5e7eb',
+  color: 'var(--app-text)',
   marginBottom: 8,
 };
 
 const helpStyle: CSSProperties = {
   fontSize: 12,
-  color: '#6b7280',
+  color: 'var(--app-text-muted)',
   marginBottom: 16,
 };
 
 const linkStyle: CSSProperties = {
-  color: '#22c55e',
+  color: 'var(--toolbar-accent)',
   textDecoration: 'none',
 };
 
 const usageCardStyle: CSSProperties = {
-  background: 'rgba(255, 255, 255, 0.02)',
-  border: '1px solid rgba(255, 255, 255, 0.06)',
+  background: 'var(--app-panel-elevated)',
+  border: '1px solid var(--app-border)',
   borderRadius: 8,
   padding: 16,
 };
@@ -312,9 +313,9 @@ const rangeToggleStyle: CSSProperties = {
 };
 
 const rangeButtonStyle: CSSProperties = {
-  border: '1px solid #2a2a2a',
-  background: '#101010',
-  color: '#aaa',
+  border: '1px solid var(--app-border)',
+  background: 'var(--app-input)',
+  color: 'var(--app-text-muted)',
   borderRadius: 6,
   fontSize: 12,
   padding: '4px 8px',
@@ -322,9 +323,9 @@ const rangeButtonStyle: CSSProperties = {
 };
 
 const activeRangeButtonStyle: CSSProperties = {
-  background: '#16331f',
-  color: '#22c55e',
-  border: '1px solid #1f4f2d',
+  background: 'var(--app-selected)',
+  color: 'var(--toolbar-accent)',
+  border: '1px solid var(--app-border)',
 };
 
 const kpiGridStyle: CSSProperties = {
@@ -335,15 +336,15 @@ const kpiGridStyle: CSSProperties = {
 };
 
 const kpiTileStyle: CSSProperties = {
-  border: '1px solid rgba(255, 255, 255, 0.08)',
+  border: '1px solid var(--app-border)',
   borderRadius: 8,
   padding: '10px 12px',
-  background: 'rgba(0, 0, 0, 0.25)',
+  background: 'var(--app-input)',
 };
 
 const kpiLabelStyle: CSSProperties = {
   fontSize: 11,
-  color: '#8d8d8d',
+  color: 'var(--app-text-subtle)',
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   marginBottom: 4,
@@ -351,18 +352,18 @@ const kpiLabelStyle: CSSProperties = {
 
 const kpiValueStyle: CSSProperties = {
   fontSize: 16,
-  color: '#e5e7eb',
+  color: 'var(--app-text)',
   fontWeight: 600,
 };
 
 const usageMetaStyle: CSSProperties = {
   fontSize: 12,
-  color: '#8a8a8a',
+  color: 'var(--app-text-muted)',
 };
 
 const usageErrorStyle: CSSProperties = {
   fontSize: 12,
-  color: '#ef4444',
+  color: 'var(--app-danger-text)',
 };
 
 const modelTableWrapStyle: CSSProperties = {
@@ -379,13 +380,13 @@ const modelTableStyle: CSSProperties = {
 const thStyle: CSSProperties = {
   textAlign: 'left',
   fontWeight: 500,
-  color: '#8a8a8a',
-  borderBottom: '1px solid #2a2a2a',
+  color: 'var(--app-text-subtle)',
+  borderBottom: '1px solid var(--app-hairline)',
   padding: '6px 4px',
 };
 
 const tdStyle: CSSProperties = {
-  color: '#d4d4d4',
-  borderBottom: '1px solid #1f1f1f',
+  color: 'var(--app-text)',
+  borderBottom: '1px solid var(--app-hairline)',
   padding: '6px 4px',
 };

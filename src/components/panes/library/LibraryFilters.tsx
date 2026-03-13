@@ -19,19 +19,19 @@ export default function LibraryFilters({
   const filters: LibraryFilter[] = ['all', 'in_progress', 'completed', 'not_started'];
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '8px 12px', borderBottom: '1px solid #1a1a1a' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--app-hairline)' }}>
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         {filters.map((value) => (
           <button
             key={value}
             onClick={() => onFilterChange(value)}
             style={{
-              border: '1px solid #222',
+              border: '1px solid var(--app-border)',
               borderRadius: '999px',
               padding: '4px 10px',
               fontSize: '11px',
-              color: filter === value ? '#e5e5e5' : '#777',
-              background: filter === value ? '#181818' : 'transparent',
+              color: filter === value ? 'var(--app-text)' : 'var(--app-text-muted)',
+              background: filter === value ? 'var(--app-surface-subtle)' : 'transparent',
               cursor: 'pointer',
             }}
           >
@@ -43,7 +43,7 @@ export default function LibraryFilters({
       <select
         value={sort}
         onChange={(event) => onSortChange(event.target.value as LibrarySort)}
-        style={{ background: '#111', color: '#ccc', border: '1px solid #222', borderRadius: '6px', padding: '4px 8px', fontSize: '11px' }}
+        style={{ background: 'var(--app-input)', color: 'var(--app-text)', border: '1px solid var(--app-border)', borderRadius: '6px', padding: '4px 8px', fontSize: '11px' }}
       >
         <option value="last_read">Last Read</option>
         <option value="title">Title</option>
