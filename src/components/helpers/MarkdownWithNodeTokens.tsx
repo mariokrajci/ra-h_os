@@ -81,6 +81,11 @@ interface MarkdownWithNodeTokensProps {
   annotations?: Record<number, Annotation>;
   onJumpToSource?: (text: string, matchIndex: number) => void;
   onDeleteAnnotation?: (id: number) => void;
+  highlightQuery?: string;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function maybeWrapAsciiTreeAsCode(content: string): string {
@@ -187,6 +192,7 @@ export default function MarkdownWithNodeTokens({
   annotations = {},
   onJumpToSource,
   onDeleteAnnotation,
+  highlightQuery = '',
 }: MarkdownWithNodeTokensProps) {
   if (!content) return null;
 
@@ -210,6 +216,38 @@ export default function MarkdownWithNodeTokens({
     return `%%ANNOTATION_PLACEHOLDER_${index}%%`;
   });
 
+  const normalizedHighlightQuery = highlightQuery.trim();
+
+  const highlightText = (text: string, keyPrefix: string): React.ReactNode => {
+    if (!normalizedHighlightQuery) {
+      return text;
+    }
+
+    const pattern = new RegExp(`(${escapeRegExp(normalizedHighlightQuery)})`, 'ig');
+    const segments = text.split(pattern);
+    if (segments.length === 1) {
+      return text;
+    }
+
+    return segments.map((segment, index) => (
+      segment.toLowerCase() === normalizedHighlightQuery.toLowerCase()
+        ? (
+          <mark
+            key={`${keyPrefix}-mark-${index}`}
+            style={{
+              background: 'color-mix(in srgb, var(--app-selected) 72%, #f4d35e)',
+              color: 'var(--app-text)',
+              padding: '0 2px',
+              borderRadius: '3px',
+            }}
+          >
+            {segment}
+          </mark>
+        )
+        : <React.Fragment key={`${keyPrefix}-text-${index}`}>{segment}</React.Fragment>
+    ));
+  };
+
   // Helper: replace %%NODE_PLACEHOLDER_N%% in a text string with NodeLabelInline components
   const processText = (text: string, keyPrefix: string): React.ReactNode => {
     const placeholderPattern = /%%NODE_PLACEHOLDER_(\d+)%%/g;
@@ -222,7 +260,7 @@ export default function MarkdownWithNodeTokens({
 
     while ((m = placeholderPattern.exec(text)) !== null) {
       if (m.index > lastIdx) {
-        parts.push(text.substring(lastIdx, m.index));
+        parts.push(highlightText(text.substring(lastIdx, m.index), `${keyPrefix}-segment-${matchCount}`));
       }
 
       const placeholderIndex = parseInt(m[1]);
@@ -243,7 +281,7 @@ export default function MarkdownWithNodeTokens({
     }
 
     if (lastIdx < text.length) {
-      parts.push(text.substring(lastIdx));
+      parts.push(highlightText(text.substring(lastIdx), `${keyPrefix}-tail`));
     }
 
     return parts.length > 0 ? <>{parts}</> : text;
@@ -316,30 +354,21 @@ export default function MarkdownWithNodeTokens({
     ),
     table: ({ children }: any) => (
       <div style={{ overflowX: 'auto', marginTop: '8px', marginBottom: '10px' }}>
-        <table
-          className="markdown-table"
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            borderSpacing: 0,
-            border: '1px solid var(--app-border)',
-            fontSize: 'inherit',
-          }}
-        >
+        <table className="app-table markdown-table" style={{ fontSize: 'inherit' }}>
           {children}
         </table>
       </div>
     ),
     thead: ({ children }: any) => <thead>{children}</thead>,
     tbody: ({ children }: any) => <tbody>{children}</tbody>,
-    tr: ({ children }: any) => <tr style={{ borderBottom: '1px solid var(--app-border)' }}>{children}</tr>,
+    tr: ({ children }: any) => <tr>{children}</tr>,
     th: ({ children }: any) => (
-      <th style={{ padding: '6px 13px', borderRight: '1px solid var(--app-border)', textAlign: 'left', fontWeight: 700, color: 'var(--app-text)', verticalAlign: 'top' }}>
+      <th>
         {processChildren(children, 'th')}
       </th>
     ),
     td: ({ children }: any) => (
-      <td style={{ padding: '6px 13px', borderRight: '1px solid var(--app-border)', verticalAlign: 'top', color: 'var(--app-text)', lineHeight: 1.45 }}>
+      <td>
         {processChildren(children, 'td')}
       </td>
     ),
@@ -355,14 +384,7 @@ export default function MarkdownWithNodeTokens({
       const language = className?.replace('language-', '').toLowerCase() || 'text';
       if (isInline) {
         return (
-          <code style={{
-            background: 'var(--app-surface-subtle)',
-            padding: '0.2em 0.4em',
-            borderRadius: '6px',
-            fontSize: '85%',
-            color: 'var(--app-text)',
-            fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, "Liberation Mono", monospace'
-          }}>
+          <code className="app-code-inline">
             {processChildren(children, 'code')}
           </code>
         );
@@ -371,7 +393,7 @@ export default function MarkdownWithNodeTokens({
     },
     pre: ({ children }: any) => <>{children}</>,
     blockquote: ({ children }: any) => (
-      <blockquote style={{ borderLeft: '3px solid var(--app-border)', paddingLeft: '12px', marginLeft: '0', marginTop: '8px', marginBottom: '8px', color: 'var(--app-text-muted)' }}>
+      <blockquote>
         {processChildren(children, 'blockquote')}
       </blockquote>
     ),
@@ -391,9 +413,11 @@ export default function MarkdownWithNodeTokens({
       {sections.map((section, sectionIdx) => (
         <React.Fragment key={sectionIdx}>
           {section.trim() && (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {section}
-            </ReactMarkdown>
+            <div className="app-prose">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {section}
+              </ReactMarkdown>
+            </div>
           )}
           {annotationMatchesArr[sectionIdx] && (() => {
             const placeholderIndex = parseInt(annotationMatchesArr[sectionIdx][1], 10);
