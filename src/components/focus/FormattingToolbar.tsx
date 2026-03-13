@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Bold, Italic, Heading1, Heading2, Heading3 } from 'lucide-react';
+import { Bold, Italic, Heading1, Heading2, Heading3, Code2 } from 'lucide-react';
 
 interface FormattingToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -12,7 +12,7 @@ interface FormattingToolbarProps {
 
 export default function FormattingToolbar({ textareaRef, value, onChange, inline = false }: FormattingToolbarProps) {
   const applyFormatting = (
-    type: 'h1' | 'h2' | 'h3' | 'bold' | 'italic'
+    type: 'h1' | 'h2' | 'h3' | 'bold' | 'italic' | 'code'
   ) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -70,6 +70,21 @@ export default function FormattingToolbar({ textareaRef, value, onChange, inline
           // Insert ** and place cursor in middle
           newText = value.substring(0, start) + '**' + value.substring(end);
           newCursorPos = start + 1;
+        }
+        break;
+      }
+      case 'code': {
+        if (selectedText) {
+          newText =
+            value.substring(0, start) +
+            '```bash\n' +
+            selectedText +
+            '\n```' +
+            value.substring(end);
+          newCursorPos = start + 8 + selectedText.length;
+        } else {
+          newText = value.substring(0, start) + '```bash\n```' + value.substring(end);
+          newCursorPos = start + 8;
         }
         break;
       }
@@ -170,6 +185,16 @@ export default function FormattingToolbar({ textareaRef, value, onChange, inline
         title="Italic (*text*)"
       >
         <Italic size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => applyFormatting('code')}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={buttonStyle}
+        title="Code block (```bash)"
+      >
+        <Code2 size={14} />
       </button>
     </div>
   );
