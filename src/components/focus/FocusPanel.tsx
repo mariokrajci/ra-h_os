@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, type DragEvent } from 'react';
-import { Eye, Trash2, Link, Loader, Database, RefreshCw, Pencil, X, Save, Plus, BookOpen, ExternalLink, Sparkles } from 'lucide-react';
+import { Eye, Trash2, Link, Loader, Database, RefreshCw, Pencil, X, Save, Plus, BookOpen, ExternalLink, Sparkles, Lock, LockOpen, Bookmark } from 'lucide-react';
 import { parseAndRenderContent } from '@/components/helpers/NodeLabelRenderer';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
 import AnnotationToolbar, { AnnotationColor } from '@/components/annotations/AnnotationToolbar';
@@ -82,7 +82,9 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   const [embeddingNode, setEmbeddingNode] = useState<number | null>(null);
   const [showReembedPrompt, setShowReembedPrompt] = useState<number | null>(null);
   const [priorityDimensions, setPriorityDimensions] = useState<string[]>([]);
-  
+  const [availableFlags, setAvailableFlags] = useState<Array<{ name: string; color: string }>>([]);
+  const [showFlagPicker, setShowFlagPicker] = useState(false);
+
   const activeNodeId = activeTab;
   const currentNode = activeNodeId !== null ? nodesData[activeNodeId] : undefined;
   const notesIngestionStatus = getNodeNotesStatus(currentNode?.metadata);
@@ -432,6 +434,36 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     });
   };
 
+
+  useEffect(() => {
+    fetch('/api/flags')
+      .then(r => r.json())
+      .then(data => { if (data.success) setAvailableFlags(data.flags); })
+      .catch(() => {});
+  }, []);
+
+  const assignFlag = async (nodeId: number, flag: string) => {
+    await fetch(`/api/nodes/${nodeId}/flags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flag }),
+    });
+    fetchNodeData(nodeId);
+  };
+
+  const removeNodeFlag = async (nodeId: number, flag: string) => {
+    await fetch(`/api/nodes/${nodeId}/flags/${encodeURIComponent(flag)}`, { method: 'DELETE' });
+    fetchNodeData(nodeId);
+  };
+
+  const togglePrivacy = async (nodeId: number, currentValue: number) => {
+    await fetch(`/api/nodes/${nodeId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_private: currentValue === 1 ? 0 : 1 }),
+    });
+    fetchNodeData(nodeId);
+  };
 
   const fetchEdgesData = async (nodeId: number) => {
     setLoadingEdges(prev => new Set(prev).add(nodeId));
@@ -2457,6 +2489,31 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 </div>
               </div>
 
+              {/* Privacy Lock Button */}
+              <button
+                onClick={() => togglePrivacy(activeTab, nodesData[activeTab]?.is_private ?? 0)}
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: '1px solid var(--app-border)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                  marginTop: '-12px',
+                }}
+                title={nodesData[activeTab]?.is_private ? 'Private — hidden from MCP agents' : 'Public — visible to MCP agents'}
+              >
+                {nodesData[activeTab]?.is_private
+                  ? <Lock size={13} style={{ color: 'var(--app-danger-text)' }} />
+                  : <LockOpen size={13} style={{ color: 'var(--app-text-subtle)' }} />
+                }
+              </button>
+
               {/* Delete Button */}
               <button
                 onClick={() => confirmDeleteNode(activeTab)}
@@ -2619,6 +2676,83 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 disabled={false}
               />
               </div>
+
+              {/* Flag chips */}
+              {((nodesData[activeTab]?.flags ?? []).length > 0 || availableFlags.length > 0) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                  {(nodesData[activeTab]?.flags ?? []).map(flagName => {
+                    const flagDef = availableFlags.find(f => f.name === flagName);
+                    return (
+                      <span
+                        key={flagName}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          padding: '2px 8px', borderRadius: '4px', fontSize: '11px',
+                          background: `${flagDef?.color ?? '#6b7280'}22`,
+                          border: `1px solid ${flagDef?.color ?? '#6b7280'}`,
+                          color: flagDef?.color ?? '#6b7280',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => activeNodeId !== null && removeNodeFlag(activeNodeId, flagName)}
+                        title="Click to remove flag"
+                      >
+                        <Bookmark size={10} />
+                        {flagName}
+                      </span>
+                    );
+                  })}
+
+                  {/* Add flag button */}
+                  {availableFlags.length > 0 && (
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        onClick={() => setShowFlagPicker(!showFlagPicker)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '4px',
+                          fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
+                          background: 'transparent',
+                          border: '1px dashed var(--app-border)',
+                          color: 'var(--app-text-subtle)',
+                          cursor: 'pointer',
+                        }}
+                        title="Add flag"
+                      >
+                        <Bookmark size={10} />
+                      </button>
+                      {showFlagPicker && (
+                        <div style={{
+                          position: 'absolute', top: '100%', left: 0, marginTop: '4px',
+                          background: 'var(--app-panel-elevated)', border: '1px solid var(--app-border)',
+                          borderRadius: '6px', padding: '4px', zIndex: 100,
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.4)', minWidth: '140px',
+                        }}>
+                          {availableFlags
+                            .filter(f => !(nodesData[activeTab]?.flags ?? []).includes(f.name))
+                            .map(flag => (
+                              <button
+                                key={flag.name}
+                                onClick={() => {
+                                  if (activeNodeId !== null) assignFlag(activeNodeId, flag.name);
+                                  setShowFlagPicker(false);
+                                }}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                                  padding: '6px 10px', background: 'transparent', border: 'none',
+                                  color: 'var(--app-text)', fontSize: '12px', cursor: 'pointer', borderRadius: '4px',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--app-hover)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                              >
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: flag.color, flexShrink: 0, display: 'inline-block' }} />
+                                {flag.name}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Notes | Connections | Source Tabs */}
@@ -3512,6 +3646,13 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
       />
     )}
     {/* Tab Context Menu */}
+    {showFlagPicker && (
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+        onClick={() => setShowFlagPicker(false)}
+      />
+    )}
+
     {contextMenu && (
       <div
         style={{
