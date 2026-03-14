@@ -9,6 +9,7 @@ interface DimensionTagsProps {
   onUpdate: (dimensions: string[]) => Promise<void>;
   onPriorityToggle?: (dimension: string) => Promise<void>;
   disabled?: boolean;
+  extraChips?: React.ReactNode;
 }
 
 interface DimensionSuggestion {
@@ -16,12 +17,13 @@ interface DimensionSuggestion {
   count: number;
 }
 
-export default function DimensionTags({ 
-  dimensions, 
+export default function DimensionTags({
+  dimensions,
   priorityDimensions = [],
-  onUpdate, 
+  onUpdate,
   onPriorityToggle,
-  disabled = false 
+  disabled = false,
+  extraChips,
 }: DimensionTagsProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -335,6 +337,9 @@ export default function DimensionTags({
           </div>
         )}
         
+        {/* Extra chips (e.g. flags) rendered inline */}
+        {extraChips}
+
         {/* Add dimension button - chip styled */}
         {!disabled && (
           <button
