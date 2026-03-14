@@ -176,6 +176,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   const [descEditMode, setDescEditMode] = useState(false);
   const [descEditValue, setDescEditValue] = useState('');
   const [descSaving, setDescSaving] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   // Notes edit mode state (separate from inline editing)
   const [notesEditMode, setNotesEditMode] = useState(false);
@@ -365,6 +366,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     setNotesEditValue('');
     setDescEditMode(false);
     setDescEditValue('');
+    setDescExpanded(false);
     setSourceEditMode(false);
     setSourceEditValue('');
     setMetadataEditMode(false);
@@ -2536,131 +2538,6 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
               </button>
             </div>
 
-            {/* Description — inline note identity layer */}
-            {descEditMode ? (
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{
-                  fontSize: '11px',
-                  color: '#f59e0b',
-                  marginBottom: '8px',
-                  padding: '6px 8px',
-                  background: '#1a1500',
-                  borderRadius: '4px',
-                  border: '1px solid #3d3500'
-                }}>
-                  Used as context for AI. Describe this node clearly in 280 chars or less.
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <textarea
-                    value={descEditValue}
-                    onChange={(e) => setDescEditValue(e.target.value.slice(0, 280))}
-                    onKeyDown={(e) => { if (e.key === 'Escape') cancelDescEdit(); }}
-                    disabled={descSaving}
-                    style={{
-                      ...FOCUS_PANEL_BODY_TEXTAREA_STYLE,
-                      minHeight: '80px',
-                      width: '100%',
-                      paddingBottom: '24px',
-                    }}
-                    placeholder="Write a brief description of this node (max 280 chars)..."
-                    maxLength={280}
-                    autoFocus
-                  />
-                  <span style={{
-                    position: 'absolute',
-                    bottom: '8px',
-                    right: '10px',
-                    fontSize: '10px',
-                    color: descEditValue.length >= 260 ? '#f59e0b' : '#555'
-                  }}>
-                    {descEditValue.length}/280
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                  <button
-                    onClick={syncDescToSource}
-                    disabled={descSaving}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '4px',
-                      padding: '5px 8px', fontSize: '10px',
-                      color: '#f59e0b', background: 'transparent',
-                      border: '1px solid #3d3500', borderRadius: '4px', cursor: 'pointer'
-                    }}
-                    title="Copy description to source and re-embed"
-                  >
-                    {descSaving ? <Loader size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                    Sync to Source
-                  </button>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button
-                      onClick={cancelDescEdit}
-                      disabled={descSaving}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '4px',
-                        padding: '5px 10px', fontSize: '11px',
-                        color: '#888', background: 'transparent',
-                        border: '1px solid #2a2a2a', borderRadius: '4px', cursor: 'pointer'
-                      }}
-                    >
-                      <X size={12} />
-                      Cancel
-                    </button>
-                    <button
-                      onClick={saveDesc}
-                      disabled={descSaving}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '4px',
-                        padding: '5px 10px', fontSize: '11px',
-                        color: '#000', background: '#22c55e',
-                        border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600
-                      }}
-                    >
-                      {descSaving ? <Loader size={12} className="animate-spin" /> : <Save size={12} />}
-                      Save
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : nodesData[activeTab]?.description ? (
-              <div
-                onClick={startDescEdit}
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--app-text-muted)',
-                  lineHeight: 1.5,
-                  marginBottom: '12px',
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid transparent',
-                  transition: 'border-color 0.15s',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--app-border)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent'; }}
-                title="Click to edit description"
-              >
-                {nodesData[activeTab].description}
-              </div>
-            ) : (
-              <div
-                onClick={startDescEdit}
-                style={{
-                  fontSize: '11px',
-                  color: 'var(--app-text-subtle)',
-                  fontStyle: 'italic',
-                  marginBottom: '12px',
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                }}
-              >
-                Add description…
-              </div>
-            )}
-
             {/* Dimensions Section */}
             <div style={{ marginBottom: '16px' }}>
               <div style={{
@@ -2861,6 +2738,110 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
               {/* Notes Tab Content */}
               {activeContentTab === 'notes' && (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {/* Description preview — compact, above notes body */}
+                  {descEditMode ? (
+                    <div style={{ marginBottom: '12px', flexShrink: 0 }}>
+                      <div style={{
+                        fontSize: '11px', color: '#f59e0b',
+                        marginBottom: '6px', padding: '5px 8px',
+                        background: '#1a1500', borderRadius: '4px', border: '1px solid #3d3500'
+                      }}>
+                        Used as context for AI. 280 chars or less.
+                      </div>
+                      <div style={{ position: 'relative' }}>
+                        <textarea
+                          value={descEditValue}
+                          onChange={(e) => setDescEditValue(e.target.value.slice(0, 280))}
+                          onKeyDown={(e) => { if (e.key === 'Escape') cancelDescEdit(); }}
+                          disabled={descSaving}
+                          style={{ ...FOCUS_PANEL_BODY_TEXTAREA_STYLE, minHeight: '72px', width: '100%', paddingBottom: '22px' }}
+                          placeholder="Brief description (max 280 chars)..."
+                          maxLength={280}
+                          autoFocus
+                        />
+                        <span style={{
+                          position: 'absolute', bottom: '8px', right: '10px',
+                          fontSize: '10px', color: descEditValue.length >= 260 ? '#f59e0b' : '#555'
+                        }}>
+                          {descEditValue.length}/280
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                        <button
+                          onClick={syncDescToSource}
+                          disabled={descSaving}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            padding: '4px 8px', fontSize: '10px', color: '#f59e0b',
+                            background: 'transparent', border: '1px solid #3d3500', borderRadius: '4px', cursor: 'pointer'
+                          }}
+                          title="Copy description to source and re-embed"
+                        >
+                          {descSaving ? <Loader size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                          Sync to Source
+                        </button>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={cancelDescEdit}
+                            disabled={descSaving}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '3px',
+                              padding: '4px 10px', fontSize: '11px', color: '#888',
+                              background: 'transparent', border: '1px solid #2a2a2a', borderRadius: '4px', cursor: 'pointer'
+                            }}
+                          >
+                            <X size={11} /> Cancel
+                          </button>
+                          <button
+                            onClick={saveDesc}
+                            disabled={descSaving}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '3px',
+                              padding: '4px 10px', fontSize: '11px', color: '#000',
+                              background: '#22c55e', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600
+                            }}
+                          >
+                            {descSaving ? <Loader size={11} className="animate-spin" /> : <Save size={11} />}
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : nodesData[activeTab]?.description ? (() => {
+                    const desc = nodesData[activeTab].description!;
+                    const PREVIEW_LEN = 120;
+                    const isLong = desc.length > PREVIEW_LEN;
+                    const displayText = isLong && !descExpanded
+                      ? desc.slice(0, PREVIEW_LEN).trimEnd() + '…'
+                      : desc;
+                    return (
+                      <div style={{
+                        marginBottom: '12px', flexShrink: 0,
+                        fontSize: '12px', color: 'var(--app-text-muted)', lineHeight: 1.5,
+                        padding: '6px 8px', borderRadius: '4px',
+                        background: 'var(--app-panel)', border: '1px solid var(--app-border)',
+                      }}>
+                        {displayText}
+                        <span style={{ marginLeft: '4px', whiteSpace: 'nowrap' }}>
+                          {isLong && (
+                            <button
+                              onClick={() => setDescExpanded(v => !v)}
+                              style={{ background: 'none', border: 'none', padding: 0, fontSize: '11px', color: 'var(--toolbar-accent)', cursor: 'pointer', fontWeight: 500 }}
+                            >
+                              {descExpanded ? 'Show less' : 'Show more'}
+                            </button>
+                          )}
+                          <button
+                            onClick={startDescEdit}
+                            style={{ background: 'none', border: 'none', padding: '0 0 0 8px', fontSize: '11px', color: 'var(--app-text-subtle)', cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                        </span>
+                      </div>
+                    );
+                  })() : null}
+
                   {notesEditMode ? (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                       {/* Editor */}
