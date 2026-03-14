@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, type DragEvent } from 'react';
-import { Eye, Trash2, Link, Loader, Database, RefreshCw, Pencil, X, Save, Plus, BookOpen, ExternalLink } from 'lucide-react';
+import { Eye, Trash2, Link, Loader, Database, RefreshCw, Pencil, X, Save, Plus, BookOpen, ExternalLink, Sparkles } from 'lucide-react';
 import { parseAndRenderContent } from '@/components/helpers/NodeLabelRenderer';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
 import AnnotationToolbar, { AnnotationColor } from '@/components/annotations/AnnotationToolbar';
@@ -3129,44 +3129,66 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   ) : notesIngestionStatus ? (
                     renderPendingState(notesIngestionStatus)
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
-                      <button
-                        onClick={startNotesEdit}
-                        className="app-button"
-                        style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <Pencil size={12} />
-                        Write notes
-                      </button>
-                      {nodesData[activeTab]?.chunk && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', padding: '8px 4px' }}>
+
+                      {/* Group 1: Notes actions */}
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', padding: '8px 0' }}>
                         <button
-                          onClick={() => setActiveContentTab('source')}
-                          className="app-button app-button--secondary"
-                          style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
+                          onClick={startNotesEdit}
+                          className="app-button app-button--compact"
+                          style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 500 }}
                         >
-                          View source
+                          <Pencil size={12} />
+                          Write notes
                         </button>
-                      )}
+                        {nodesData[activeTab]?.chunk && (
+                          <button
+                            onClick={generateNotesFromSource}
+                            disabled={generatingNotesFromSource}
+                            className="app-button app-button--secondary app-button--compact"
+                            style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 500 }}
+                          >
+                            {generatingNotesFromSource ? <Loader size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                            {generatingNotesFromSource ? 'Generating…' : 'Generate notes'}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Divider */}
                       {nodesData[activeTab]?.chunk && (
-                        <button
-                          onClick={generateNotesFromSource}
-                          disabled={generatingNotesFromSource}
-                          className="app-button app-button--secondary"
-                          style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          {generatingNotesFromSource ? <Loader size={12} className="animate-spin" /> : null}
-                          {generatingNotesFromSource ? 'Generating notes…' : 'Generate notes from source'}
-                        </button>
+                        <div style={{ width: '100%', height: '1px', background: 'var(--app-border)' }} />
                       )}
-                      <button
-                        onClick={createLinkedNote}
-                        disabled={creatingNote}
-                        className="app-button app-button--secondary"
-                        style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        {creatingNote ? <Loader size={12} className="animate-spin" /> : <Plus size={12} />}
-                        Create related node
-                      </button>
+
+                      {/* Group 2: Source action (conditional) */}
+                      {nodesData[activeTab]?.chunk && (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+                          <button
+                            onClick={() => setActiveContentTab('source')}
+                            className="app-button app-button--secondary app-button--compact"
+                            style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 500 }}
+                          >
+                            <BookOpen size={12} />
+                            View source
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Divider */}
+                      <div style={{ width: '100%', height: '1px', background: 'var(--app-border)' }} />
+
+                      {/* Group 3: Graph action */}
+                      <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+                        <button
+                          onClick={createLinkedNote}
+                          disabled={creatingNote}
+                          className="app-button app-button--secondary app-button--compact"
+                          style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 500 }}
+                        >
+                          {creatingNote ? <Loader size={12} className="animate-spin" /> : <Link size={12} />}
+                          New linked node
+                        </button>
+                      </div>
+
                     </div>
                   )}
                 </div>
