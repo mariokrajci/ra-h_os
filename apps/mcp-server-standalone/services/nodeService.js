@@ -13,7 +13,7 @@ function getNodes(filters = {}) {
            n.created_at, n.updated_at,
            COALESCE((SELECT JSON_GROUP_ARRAY(d.dimension)
                      FROM node_dimensions d WHERE d.node_id = n.id), '[]') as dimensions_json
-    FROM nodes n
+    FROM public_nodes n
     WHERE 1=1
   `;
   const params = [];
@@ -74,7 +74,7 @@ function getNodeById(id) {
            n.created_at, n.updated_at,
            COALESCE((SELECT JSON_GROUP_ARRAY(d.dimension)
                      FROM node_dimensions d WHERE d.node_id = n.id), '[]') as dimensions_json
-    FROM nodes n
+    FROM public_nodes n
     WHERE n.id = ?
   `;
 
@@ -278,7 +278,7 @@ function getContext() {
   const recentNodes = query(`
     SELECT n.id, n.title, n.description,
            GROUP_CONCAT(nd.dimension) as dimensions
-    FROM nodes n
+    FROM public_nodes n
     LEFT JOIN node_dimensions nd ON n.id = nd.node_id
     GROUP BY n.id
     ORDER BY n.created_at DESC
@@ -287,7 +287,7 @@ function getContext() {
 
   const hubNodes = query(`
     SELECT n.id, n.title, n.description, COUNT(e.id) as edge_count
-    FROM nodes n
+    FROM public_nodes n
     LEFT JOIN edges e ON n.id = e.from_node_id OR n.id = e.to_node_id
     GROUP BY n.id
     ORDER BY edge_count DESC
