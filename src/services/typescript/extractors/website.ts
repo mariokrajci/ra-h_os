@@ -223,9 +223,13 @@ export function sanitizeGitHubReadmeRst(raw: string): string {
 }
 
 export function deriveGitHubReadmeTitle(repoSlug: string, markdown: string): string {
-  const headingMatch = markdown.match(/^\s*#\s+(.+?)\s*$/m);
-  const firstLineMatch = markdown.match(/^\s*([^\n#][^\n]{3,160})\s*$/m);
-  const candidate = (headingMatch?.[1] || firstLineMatch?.[1] || '').trim();
+  // Match any heading level (not just h1)
+  const headingMatch = markdown.match(/^\s*#+\s+(.+?)\s*$/m);
+  // Skip lines starting with HTML tags or `#`
+  const firstLineMatch = markdown.match(/^\s*([^\n#<][^\n]{3,160})\s*$/m);
+  const rawCandidate = (headingMatch?.[1] || firstLineMatch?.[1] || '').trim();
+  // Strip any inline HTML that may appear in the candidate (e.g. <img>, <a>)
+  const candidate = rawCandidate.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 
   if (!candidate) {
     return repoSlug;
@@ -274,9 +278,10 @@ export class WebsiteExtractor {
 
     const markdown = await response.text();
 
-    // Parse title from first markdown heading or first line
-    const titleMatch = markdown.match(/^#\s+(.+)$/m) || markdown.match(/^(.+)$/m);
-    const title = titleMatch?.[1]?.trim() || 'Extracted Content';
+    // Parse title from first markdown heading or first non-HTML line
+    const titleMatch = markdown.match(/^\s*#+\s+(.+)$/m) || markdown.match(/^\s*([^\n#<][^\n]{3,160})$/m);
+    const rawTitle = titleMatch?.[1]?.trim() ?? '';
+    const title = (rawTitle.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()) || 'Extracted Content';
 
     const cleanedMarkdown = this.cleanMarkdown(markdown);
 

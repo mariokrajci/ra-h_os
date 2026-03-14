@@ -430,9 +430,10 @@ function renderNode(
           theme={themeFromPalette(palette)}
         />
       );
-    case 'list':
+    case 'list': {
+      const hasTaskItems = (node.children ?? []).some((child) => child.checked !== null && child.checked !== undefined);
       return node.ordered ? (
-        <ol key={key} style={{ margin: 0, paddingLeft: '20px' }}>
+        <ol key={key} style={{ margin: 0, paddingLeft: '20px', listStyle: 'decimal' }}>
           {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </ol>
       ) : (
@@ -441,14 +442,13 @@ function renderNode(
           style={{
             margin: 0,
             paddingLeft: '20px',
-            listStyle: (node.children ?? []).some((child) => child.checked !== null && child.checked !== undefined)
-              ? 'none'
-              : undefined,
+            listStyle: hasTaskItems ? 'none' : 'disc',
           }}
         >
           {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </ul>
       );
+    }
     case 'listItem':
       return renderListItem(node, content, annotationRanges, activeRange, palette, key);
     case 'blockquote':
