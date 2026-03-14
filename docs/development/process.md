@@ -38,9 +38,11 @@ npm run build
 
 ## Production Build Behavior
 
-- `npm run build` prepares the standalone runtime under `.next/standalone`.
-- After the build finishes, `postbuild` copies `.next/static` and `public/` into the standalone runtime.
-- If `rah.service` is currently serving this checkout, `postbuild` stops its current PID so `Restart=always` brings it back on the new build automatically.
+- `npm run build` runs a live-safe wrapper before invoking `next build`.
+- If `rah.service` is currently serving this checkout, the wrapper pauses its PID and backs up the current standalone runtime before the build rewrites `.next/`.
+- If the build fails, the wrapper restores the backup and resumes the paused service.
+- After a successful build, `postbuild` copies `.next/static` and `public/` into the standalone runtime.
+- If the wrapper paused `rah.service`, `postbuild` then terminates the paused PID so `Restart=always` brings it back on the fully prepared build.
 
 ## PR Checklist
 

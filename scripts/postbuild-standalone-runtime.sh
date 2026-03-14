@@ -10,6 +10,8 @@ STATIC_DEST="${STANDALONE_ROOT}/.next/static"
 PUBLIC_SOURCE="${REPO_ROOT}/public"
 PUBLIC_DEST="${STANDALONE_ROOT}/public"
 SERVICE_NAME="rah.service"
+SERVICE_STATE_FILE="${NEXT_ROOT}/rah-service.pid"
+RUNTIME_BACKUP_ROOT="${REPO_ROOT}/.runtime-backups"
 
 copy_tree() {
   local source_path="$1"
@@ -22,9 +24,16 @@ copy_tree() {
 
 restart_live_service() {
   local current_pid
+  local paused_pid=""
   current_pid="$(systemctl show "$SERVICE_NAME" -p MainPID --value 2>/dev/null || true)"
+  if [ -f "$SERVICE_STATE_FILE" ]; then
+    paused_pid="$(cat "$SERVICE_STATE_FILE" 2>/dev/null || true)"
+  fi
 
-  if [[ ! "$current_pid" =~ ^[0-9]+$ ]] || [ "$current_pid" -le 1 ]; then
+  if [ -n "$paused_pid" ]; then
+    kill "$paused_pid" 2>/dev/null || true
+    current_pid="$paused_pid"
+  elif [[ ! "$current_pid" =~ ^[0-9]+$ ]] || [ "$current_pid" -le 1 ]; then
     echo "No active ${SERVICE_NAME} PID found; standalone runtime prepared without restart."
     return 0
   fi
@@ -73,3 +82,5 @@ if [ -d "$PUBLIC_SOURCE" ]; then
 fi
 
 restart_live_service
+rm -f "$SERVICE_STATE_FILE"
+rm -rf "$RUNTIME_BACKUP_ROOT"

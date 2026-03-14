@@ -109,19 +109,19 @@ export default function WikiPane({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent', overflow: 'hidden' }}>
       <PaneHeader slot={slot} onCollapse={onCollapse} onSwapPanes={onSwapPanes}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ color: '#d5d5d5', fontSize: 13, fontWeight: 600 }}>Wiki</span>
+          <span style={{ color: 'var(--app-text-muted)', fontSize: 13, fontWeight: 600 }}>Wiki</span>
           <WikiGenerateButton onComplete={fetchTopics} />
         </div>
       </PaneHeader>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <div style={{ width: 240, borderRight: '1px solid #222', overflowY: 'auto', flexShrink: 0 }}>
+        <div style={{ width: 240, borderRight: '1px solid var(--app-border)', overflowY: 'auto', flexShrink: 0 }}>
           <WikiSidebar topics={topics} selectedId={selectedId} onSelect={setSelectedId} />
         </div>
 
         <div style={{ flex: 1, overflow: 'hidden' }}>
           {loading ? (
-            <div style={{ color: '#8a8a8a', fontSize: 12, padding: 24 }}>Loading...</div>
+            <div style={{ color: 'var(--app-text-muted)', fontSize: 12, padding: 24 }}>Loading...</div>
           ) : subtopic && showArticle && subtopic.article ? (
             <WikiArticleView
               title={subtopic.title}
@@ -154,9 +154,9 @@ export default function WikiPane({
               }}
             />
           ) : fetchError ? (
-            <div style={{ color: '#ef4444', fontSize: 12, padding: 24 }}>{fetchError}</div>
+            <div style={{ color: 'var(--app-danger-text)', fontSize: 12, padding: 24 }}>{fetchError}</div>
           ) : (
-            <div style={{ color: '#8a8a8a', fontSize: 12, padding: 24 }}>
+            <div style={{ color: 'var(--app-text-muted)', fontSize: 12, padding: 24 }}>
               Select a topic from the sidebar, or refresh to build wiki.
             </div>
           )}

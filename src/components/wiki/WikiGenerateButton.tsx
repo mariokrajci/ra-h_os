@@ -71,20 +71,13 @@ export default function WikiGenerateButton({ onComplete }: Props) {
       <button
         onClick={run}
         disabled={running}
-        style={{
-          padding: '4px 12px',
-          borderRadius: 6,
-          border: '1px solid #2a2a2a',
-          background: running ? '#1a1a1a' : '#101010',
-          color: '#d4d4d4',
-          cursor: running ? 'not-allowed' : 'pointer',
-          fontSize: 12,
-        }}
+        className="app-button app-button--secondary app-button--compact"
+        style={{ fontSize: 12 }}
       >
         {running ? 'Refreshing...' : 'Refresh Wiki'}
       </button>
       {message ? (
-        <span style={{ fontSize: 12, color: '#8a8a8a' }}>
+        <span style={{ fontSize: 12, color: 'var(--app-text-muted)' }}>
           {message}
           {cost !== null ? ` | $${cost.toFixed(4)}` : ''}
         </span>

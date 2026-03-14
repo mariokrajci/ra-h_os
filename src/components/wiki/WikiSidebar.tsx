@@ -35,7 +35,7 @@ export default function WikiSidebar({ topics, selectedId, onSelect }: Props) {
 
   if (!topics.length) {
     return (
-      <div style={{ padding: 14, color: '#8a8a8a', fontSize: 12 }}>
+      <div style={{ padding: 14, color: 'var(--app-text-muted)', fontSize: 12 }}>
         No wiki yet. Refresh to build.
       </div>
     );
@@ -52,7 +52,7 @@ export default function WikiSidebar({ topics, selectedId, onSelect }: Props) {
               textAlign: 'left',
               background: 'none',
               border: 'none',
-              color: '#8a8a8a',
+              color: 'var(--app-text-muted)',
               fontSize: 11,
               fontWeight: 700,
               letterSpacing: '0.04em',
@@ -70,20 +70,20 @@ export default function WikiSidebar({ topics, selectedId, onSelect }: Props) {
               style={{
                 width: '100%',
                 textAlign: 'left',
-                background: selectedId === subtopic.id ? '#1d1d1d' : 'none',
+                background: selectedId === subtopic.id ? 'var(--app-selected)' : 'none',
                 border: 'none',
-                color: selectedId === subtopic.id ? '#e5e5e5' : '#b8b8b8',
+                color: selectedId === subtopic.id ? 'var(--app-text)' : 'var(--app-text-muted)',
                 fontSize: 13,
                 padding: '6px 14px 6px 24px',
                 cursor: 'pointer',
               }}
             >
               {subtopic.title}
-              <span style={{ marginLeft: 6, fontSize: 11, color: '#7a7a7a' }}>
+              <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--app-text-subtle)' }}>
                 {subtopic.node_count}
               </span>
               {subtopic.article_status === 'ready' ? (
-                <span style={{ marginLeft: 4, fontSize: 10, color: '#7a7a7a' }}>*</span>
+                <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--app-text-subtle)' }}>*</span>
               ) : null}
             </button>
           ))}

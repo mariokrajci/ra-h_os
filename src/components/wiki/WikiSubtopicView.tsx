@@ -70,32 +70,24 @@ export default function WikiSubtopicView({
   return (
     <div style={{ padding: '24px 30px', overflowY: 'auto', height: '100%' }}>
       {breadcrumb ? (
-        <div style={{ color: '#7f7f7f', fontSize: 12, marginBottom: 10 }}>{breadcrumb}</div>
+        <div style={{ color: 'var(--app-text-subtle)', fontSize: 12, marginBottom: 10 }}>{breadcrumb}</div>
       ) : null}
-      <h1 style={{ color: '#f2f2f2', fontSize: 22, marginBottom: 4 }}>{title}</h1>
+      <h1 style={{ color: 'var(--app-text)', fontSize: 22, marginBottom: 4 }}>{title}</h1>
       {generatedAt ? (
-        <div style={{ color: '#7f7f7f', fontSize: 12, marginBottom: 18 }}>
+        <div style={{ color: 'var(--app-text-subtle)', fontSize: 12, marginBottom: 18 }}>
           Updated {new Date(generatedAt).toLocaleString()}
         </div>
       ) : null}
 
       {summary ? (
-        <p style={{ color: '#d5d5d5', fontSize: 14, lineHeight: 1.75, maxWidth: 760, marginBottom: 18 }}>{summary}</p>
+        <p style={{ color: 'var(--app-text-muted)', fontSize: 14, lineHeight: 1.75, maxWidth: 760, marginBottom: 18 }}>{summary}</p>
       ) : null}
 
       <button
         onClick={generateArticle}
         disabled={generating}
-        style={{
-          padding: '6px 14px',
-          borderRadius: 6,
-          border: '1px solid #2b2b2b',
-          background: '#111111',
-          color: '#d5d5d5',
-          cursor: generating ? 'not-allowed' : 'pointer',
-          fontSize: 12,
-          marginBottom: 14,
-        }}
+        className="app-button app-button--secondary app-button--compact"
+        style={{ fontSize: 12, marginBottom: 14 }}
       >
         {generating
           ? 'Generating article...'
@@ -107,12 +99,12 @@ export default function WikiSubtopicView({
       </button>
 
       {error ? (
-        <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 14 }}>{error}</div>
+        <div style={{ color: 'var(--app-danger-text)', fontSize: 12, marginBottom: 14 }}>{error}</div>
       ) : null}
 
       {guideNodes.length > 0 ? (
-        <section style={{ borderTop: '1px solid #222', paddingTop: 14, marginBottom: 14 }}>
-          <div style={{ color: '#8a8a8a', fontSize: 12, marginBottom: 8 }}>Guide nodes ({guideNodes.length})</div>
+        <section style={{ borderTop: '1px solid var(--app-border)', paddingTop: 14, marginBottom: 14 }}>
+          <div style={{ color: 'var(--app-text-muted)', fontSize: 12, marginBottom: 8 }}>Guide nodes ({guideNodes.length})</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {guideNodes.map((node) => (
               <button
@@ -120,24 +112,24 @@ export default function WikiSubtopicView({
                 onClick={() => onNodeClick(node.id)}
                 style={{
                   textAlign: 'left',
-                  border: '1px solid #2a2a2a',
+                  border: '1px solid var(--app-border)',
                   borderRadius: 6,
                   background: 'none',
-                  color: '#d7d7d7',
+                  color: 'var(--app-text-muted)',
                   padding: '8px 10px',
                   cursor: 'pointer',
                 }}
               >
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{node.title}</div>
-                {node.description ? <div style={{ color: '#8a8a8a', fontSize: 12 }}>{node.description}</div> : null}
+                {node.description ? <div style={{ color: 'var(--app-text-subtle)', fontSize: 12 }}>{node.description}</div> : null}
               </button>
             ))}
           </div>
         </section>
       ) : null}
 
-      <section style={{ borderTop: '1px solid #222', paddingTop: 14 }}>
-        <div style={{ color: '#8a8a8a', fontSize: 12, marginBottom: 8 }}>Subtopic nodes ({sourceNodes.length})</div>
+      <section style={{ borderTop: '1px solid var(--app-border)', paddingTop: 14 }}>
+        <div style={{ color: 'var(--app-text-muted)', fontSize: 12, marginBottom: 8 }}>Subtopic nodes ({sourceNodes.length})</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {sourceNodes.map((node) => (
             <button
@@ -145,24 +137,24 @@ export default function WikiSubtopicView({
               onClick={() => onNodeClick(node.id)}
               style={{
                 textAlign: 'left',
-                border: '1px solid #2a2a2a',
+                border: '1px solid var(--app-border)',
                 borderRadius: 6,
                 background: 'none',
-                color: '#d7d7d7',
+                color: 'var(--app-text-muted)',
                 padding: '8px 10px',
                 cursor: 'pointer',
               }}
             >
               <div style={{ fontWeight: 600, fontSize: 13 }}>{node.title}</div>
-              {node.description ? <div style={{ color: '#8a8a8a', fontSize: 12 }}>{node.description}</div> : null}
+              {node.description ? <div style={{ color: 'var(--app-text-subtle)', fontSize: 12 }}>{node.description}</div> : null}
             </button>
           ))}
         </div>
       </section>
 
       {citations.length > 0 ? (
-        <section style={{ borderTop: '1px solid #222', paddingTop: 14, marginTop: 14 }}>
-          <div style={{ color: '#8a8a8a', fontSize: 12, marginBottom: 8 }}>Related citations ({citations.length})</div>
+        <section style={{ borderTop: '1px solid var(--app-border)', paddingTop: 14, marginTop: 14 }}>
+          <div style={{ color: 'var(--app-text-muted)', fontSize: 12, marginBottom: 8 }}>Related citations ({citations.length})</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {citations.map((citation) => (
               <button
@@ -170,22 +162,22 @@ export default function WikiSubtopicView({
                 onClick={() => onNodeClick(citation.id)}
                 style={{
                   textAlign: 'left',
-                  border: '1px solid #2a2a2a',
+                  border: '1px solid var(--app-border)',
                   borderRadius: 6,
                   background: 'none',
-                  color: '#d7d7d7',
+                  color: 'var(--app-text-muted)',
                   padding: '8px 10px',
                   cursor: 'pointer',
                 }}
               >
                 <div style={{ fontWeight: 600, fontSize: 13 }}>
                   {citation.title}
-                  <span style={{ color: '#8a8a8a', fontSize: 11, marginLeft: 8 }}>
+                  <span style={{ color: 'var(--app-text-subtle)', fontSize: 11, marginLeft: 8 }}>
                     linked {citation.connection_count_to_subtopic}x
                   </span>
                 </div>
                 {citation.description ? (
-                  <div style={{ color: '#8a8a8a', fontSize: 12 }}>{citation.description}</div>
+                  <div style={{ color: 'var(--app-text-subtle)', fontSize: 12 }}>{citation.description}</div>
                 ) : null}
               </button>
             ))}
