@@ -1,59 +1,89 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { Fragment, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 import type { PendingNode } from '@/components/layout/AppShellProvider';
 import { NOTES_SORT_OPTIONS, useNotesFeed } from './useNotesFeed';
 import { getMobileNotePreview } from './mobileNotesPresentation';
+import { formatRelativeTime } from './formatRelativeTime';
+import type { NavDirection } from './MobileShell';
 
 export default function MobileNotesList({
+  navDirection,
   refreshToken,
   pendingNodes,
   onDismissPending,
   onOpenNode,
+  onOpenAdd,
 }: {
+  navDirection: NavDirection;
   refreshToken: number;
   pendingNodes: PendingNode[];
   onDismissPending: (id: string) => void;
   onOpenNode: (nodeId: number) => void;
+  onOpenAdd: () => void;
 }) {
-  const { sortOrder, setSortOrder, nodes, loading } = useNotesFeed(refreshToken);
+  const { sortOrder, setSortOrder, nodes, loading, sortLabel } = useNotesFeed(refreshToken);
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [showHeaderTitle, setShowHeaderTitle] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!showSortMenu) return;
+  const animation =
+    navDirection === 'forward' ? 'slideInFromRight 280ms ease-out'
+    : navDirection === 'backward' ? 'slideInFromLeft 280ms ease-out'
+    : undefined;
 
-    const handleClick = (event: MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setShowSortMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showSortMenu]);
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    setShowHeaderTitle(e.currentTarget.scrollTop > 56);
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--app-bg)', color: 'var(--app-text)' }}>
-      <div style={{ position: 'sticky', top: 0, zIndex: 15, padding: '12px 14px 6px', display: 'flex', justifyContent: 'flex-end' }}>
-        <div ref={menuRef} style={{ position: 'relative' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--app-bg)', color: 'var(--app-text)', animation }}>
+      {/* Sticky nav header */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 15,
+        background: 'color-mix(in srgb, var(--app-bg) 88%, transparent)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: showHeaderTitle ? '0.5px solid var(--app-border)' : '0.5px solid transparent',
+        transition: 'border-color 0.15s',
+        padding: '14px 16px 10px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        minHeight: '52px',
+      }}>
+        <span style={{
+          fontSize: '17px',
+          fontWeight: 600,
+          opacity: showHeaderTitle ? 1 : 0,
+          transition: 'opacity 0.18s ease',
+          fontFamily: 'ui-sans-serif, -apple-system, system-ui, sans-serif',
+        }}>
+          Notes
+        </span>
+
+        {/* Sort control */}
+        <div style={{ position: 'relative' }}>
           <button
             type="button"
             className="app-button app-button--ghost"
             style={{
-              width: '42px',
-              height: '42px',
+              padding: '6px 10px 6px 12px',
               borderRadius: '999px',
-              background: 'color-mix(in srgb, var(--app-panel) 70%, transparent)',
-              borderColor: 'color-mix(in srgb, var(--app-border) 80%, transparent)',
-              backdropFilter: 'blur(14px)',
+              fontSize: '13px',
+              color: 'var(--app-text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              height: '32px',
             }}
-            onClick={() => setShowSortMenu((value) => !value)}
-            aria-label="Sort notes"
+            onClick={() => setShowSortMenu((v) => !v)}
           >
-            <MoreHorizontal size={18} />
+            {sortLabel}
+            <ChevronDown size={13} />
           </button>
 
           {showSortMenu && (
@@ -61,12 +91,13 @@ export default function MobileNotesList({
               className="app-panel-elevated"
               style={{
                 position: 'absolute',
-                top: '48px',
+                top: '38px',
                 right: 0,
                 minWidth: '180px',
-                borderRadius: '18px',
-                padding: '8px',
+                borderRadius: '16px',
+                padding: '6px',
                 boxShadow: '0 18px 48px rgba(0, 0, 0, 0.22)',
+                zIndex: 30,
               }}
             >
               {NOTES_SORT_OPTIONS.map((option) => {
@@ -81,9 +112,10 @@ export default function MobileNotesList({
                       justifyContent: 'space-between',
                       textAlign: 'left',
                       padding: '10px 12px',
-                      borderRadius: '12px',
+                      borderRadius: '10px',
                       display: 'flex',
                       alignItems: 'center',
+                      fontSize: '14px',
                     }}
                     onClick={() => {
                       setSortOrder(option.value);
@@ -91,7 +123,7 @@ export default function MobileNotesList({
                     }}
                   >
                     <span>{option.label}</span>
-                    {active ? <span style={{ color: 'var(--toolbar-accent)' }}>✓</span> : null}
+                    {active && <span style={{ color: 'var(--toolbar-accent)', fontSize: '16px' }}>✓</span>}
                   </button>
                 );
               })}
@@ -100,14 +132,33 @@ export default function MobileNotesList({
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px 108px' }}>
+      {/* Scrollable content */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        style={{ flex: 1, overflowY: 'auto', paddingBottom: '100px' }}
+      >
+        {/* Large collapsing title */}
+        <div style={{ padding: '4px 16px 16px' }}>
+          <h1 style={{
+            fontSize: '32px',
+            fontWeight: 700,
+            lineHeight: 1.1,
+            fontFamily: 'ui-sans-serif, -apple-system, system-ui, sans-serif',
+            letterSpacing: '-0.5px',
+          }}>
+            Notes
+          </h1>
+        </div>
+
+        {/* Pending nodes */}
         {pendingNodes.length > 0 && (
-          <div style={{ padding: '4px 4px 8px' }}>
+          <div style={{ padding: '0 16px 12px' }}>
             {pendingNodes.map((pending) => (
               <div
                 key={pending.id}
                 className="app-panel-elevated"
-                style={{ padding: '12px', borderRadius: '18px', marginBottom: '10px' }}
+                style={{ padding: '12px 14px', borderRadius: '14px', marginBottom: '8px' }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
                   <div>
@@ -127,46 +178,96 @@ export default function MobileNotesList({
           </div>
         )}
 
+        {/* List */}
         {loading ? (
-          <div style={{ padding: '24px 10px', color: 'var(--app-text-muted)' }}>Loading notes...</div>
+          <div style={{ padding: '24px 16px', color: 'var(--app-text-muted)', fontSize: '15px' }}>Loading…</div>
+        ) : nodes.length === 0 ? (
+          // Empty state
+          <div style={{ padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', textAlign: 'center' }}>
+            <div style={{ fontSize: '40px', opacity: 0.25 }}>📝</div>
+            <div style={{ fontSize: '17px', fontWeight: 600, color: 'var(--app-text)' }}>No notes yet</div>
+            <div style={{ fontSize: '14px', color: 'var(--app-text-muted)', lineHeight: 1.5 }}>
+              Capture your first note, link, or source material.
+            </div>
+            <button
+              type="button"
+              className="app-button"
+              style={{
+                marginTop: '8px',
+                padding: '12px 24px',
+                borderRadius: '999px',
+                background: 'var(--toolbar-accent)',
+                color: '#fff',
+                border: 'none',
+                fontSize: '15px',
+                fontWeight: 600,
+              }}
+              onClick={onOpenAdd}
+            >
+              Capture your first note
+            </button>
+          </div>
         ) : (
-          <div style={{ paddingTop: '2px' }}>
-            {nodes.map((node) => (
-              <button
-                key={node.id}
-                type="button"
-                onClick={() => onOpenNode(node.id)}
-                className="app-button app-button--ghost"
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '16px 16px 15px',
-                  marginBottom: '10px',
-                  borderRadius: '24px',
-                  borderColor: 'color-mix(in srgb, var(--app-border) 72%, transparent)',
-                  background: 'color-mix(in srgb, var(--app-panel) 94%, transparent)',
-                  boxShadow: '0 10px 24px rgba(0, 0, 0, 0.06)',
-                }}
-              >
-                <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--app-text)', lineHeight: 1.3 }}>
-                  {node.title || `Untitled #${node.id}`}
-                </div>
-                <div
+          <div>
+            {nodes.map((node, index) => (
+              <Fragment key={node.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenNode(node.id)}
                   style={{
-                    marginTop: '8px',
-                    fontSize: '14px',
-                    color: 'var(--app-text-muted)',
-                    lineHeight: 1.45,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '12px 16px',
+                    minHeight: '64px',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    gap: '3px',
+                    WebkitTapHighlightColor: 'transparent',
                   }}
                 >
-                  {getMobileNotePreview(node)}
-                </div>
-              </button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
+                    <div style={{
+                      fontSize: '16px',
+                      fontWeight: 650,
+                      color: 'var(--app-text)',
+                      lineHeight: 1.25,
+                      fontFamily: 'ui-sans-serif, -apple-system, system-ui, sans-serif',
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {node.title || `Untitled #${node.id}`}
+                    </div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: 'var(--app-text-subtle)',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {formatRelativeTime(node.updated_at)}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: 'var(--app-text-muted)',
+                    lineHeight: 1.4,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {getMobileNotePreview(node)}
+                  </div>
+                </button>
+                {index < nodes.length - 1 && (
+                  <div style={{ height: '0.5px', background: 'var(--app-border)', margin: '0 16px' }} />
+                )}
+              </Fragment>
             ))}
           </div>
         )}
