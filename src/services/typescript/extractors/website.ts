@@ -222,6 +222,47 @@ export function sanitizeGitHubReadmeRst(raw: string): string {
   return normalized.join('\n').trim().slice(0, 200_000);
 }
 
+export function convertMermaidToText(code: string): string {
+  const nodeLabels = new Map<string, string>();
+  const edges: Array<{ from: string; to: string }> = [];
+
+  for (const line of code.split('\n')) {
+    const t = line.trim();
+    if (!t) continue;
+    if (/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|gantt|pie|gitGraph|erDiagram|journey|mindmap|timeline|sankey)/i.test(t)) continue;
+    if (/^(subgraph|end\b|classDef|class\s|%%)/i.test(t)) continue;
+
+    const parseNodePart = (part: string): { id: string; label?: string } => {
+      const m = part.match(/^([A-Za-z_]\w*)(?:[([{]["']?(.+?)["']?[)\]}])?/);
+      return m ? { id: m[1], label: m[2] } : { id: part };
+    };
+
+    // Edge lines: A --> B, A --> B[label], A -- text --> B, chained A --> B --> C
+    const arrowSplit = t.split(/\s*(?:--[->.=|]*>?|==+>?)\s*/);
+    if (arrowSplit.length >= 2) {
+      const parts = arrowSplit.map((p) => parseNodePart(p.trim()));
+      for (const part of parts) {
+        if (part.label) nodeLabels.set(part.id, part.label);
+      }
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (parts[i].id && parts[i + 1].id) {
+          edges.push({ from: parts[i].id, to: parts[i + 1].id });
+        }
+      }
+      continue;
+    }
+
+    // Standalone node definition: ID[Label]
+    const nodeMatch = t.match(/^([A-Za-z_]\w*)[([{]["']?(.+?)["']?[)\]}]$/);
+    if (nodeMatch) nodeLabels.set(nodeMatch[1], nodeMatch[2]);
+  }
+
+  if (edges.length === 0) return code;
+
+  const resolve = (id: string) => nodeLabels.get(id) ?? id;
+  return edges.map(({ from, to }) => `${resolve(from)} → ${resolve(to)}`).join('\n');
+}
+
 export function deriveGitHubReadmeTitle(repoSlug: string, markdown: string): string {
   // Match any heading level (not just h1)
   const headingMatch = markdown.match(/^\s*#+\s+(.+?)\s*$/m);
@@ -396,13 +437,19 @@ export class WebsiteExtractor {
 
     const cleanedHtmlish = markdown
       .replace(/\r\n/g, '\n')
+      .replace(/```mermaid\n([\s\S]*?)```/g, (_m, code: string) => convertMermaidToText(code))
       .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<picture[\s\S]*?<\/picture>/gi, '')
+      .replace(/<source\s[^>]*\/?>/gi, '')
       .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, headingToMarkdown)
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
       .replace(/<img\s+[^>]*>/gi, '')
       .replace(/<\/?(p|div|span|center|strong|em|b|i|u)[^>]*>/gi, '')
-      .replace(/<\/?h([1-6])[^>]*>/gi, '');
+      .replace(/<\/?h([1-6])[^>]*>/gi, '')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      .replace(/\[\s*\]\([^)]*\)/gs, '')
+      .replace(/^\[[^\]]+\]:\s+\S.*$/gm, '');
 
     const lines = cleanedHtmlish.split('\n');
     const out: string[] = [];

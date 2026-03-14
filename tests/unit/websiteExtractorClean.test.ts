@@ -3,6 +3,7 @@ import {
   sanitizeWebsiteText,
   sanitizeGitHubReadmeRst,
   deriveGitHubReadmeTitle,
+  convertMermaidToText,
 } from '@/services/typescript/extractors/website';
 
 describe('sanitizeWebsiteText', () => {
@@ -121,6 +122,43 @@ describe('sanitizeGitHubReadmeRst', () => {
     expect(cleaned).not.toContain('Join Discord Server');
     expect(cleaned).not.toContain('Follow us');
     expect(cleaned).not.toContain('View QR Code');
+  });
+});
+
+describe('convertMermaidToText', () => {
+  it('converts graph TB with subgraphs and inline labels to arrow lines', () => {
+    const input = `graph TB
+    subgraph TOP[" "]
+        AG[AI Coding Agents]
+    end
+    subgraph MID[" "]
+        SL[InsForge Semantic Layer]
+    end
+    AG --> SL
+    SL --> AUTH[Authentication]
+    SL --> DB[Database]
+    SL --> ST[Storage]`;
+
+    const result = convertMermaidToText(input);
+    expect(result).toBe([
+      'AI Coding Agents → InsForge Semantic Layer',
+      'InsForge Semantic Layer → Authentication',
+      'InsForge Semantic Layer → Database',
+      'InsForge Semantic Layer → Storage',
+    ].join('\n'));
+  });
+
+  it('returns original code when no edges are found', () => {
+    const input = 'graph TD\n    A[Only node]';
+    expect(convertMermaidToText(input)).toBe(input);
+  });
+
+  it('handles simple flowchart without subgraphs', () => {
+    const input = `flowchart LR
+    A[Start] --> B[Process] --> C[End]`;
+    const result = convertMermaidToText(input);
+    expect(result).toContain('Start → Process');
+    expect(result).toContain('Process → End');
   });
 });
 

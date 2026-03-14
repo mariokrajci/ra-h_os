@@ -41,7 +41,7 @@ export default function FlagPickerModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.85)',
+        background: 'color-mix(in srgb, var(--app-bg) 60%, transparent)',
         backdropFilter: 'blur(8px)',
         display: 'flex', justifyContent: 'center',
         paddingTop: '15vh', zIndex: 9999,
@@ -57,20 +57,20 @@ export default function FlagPickerModal({
         }}
       >
         <div style={{
-          background: '#141414', border: '1px solid #262626',
+          background: 'var(--app-panel)', border: '1px solid var(--app-border)',
           borderRadius: '16px', overflow: 'hidden',
-          boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 24px 48px -12px rgba(0,0,0,0.6)',
+          boxShadow: '0 24px 48px -12px rgba(0,0,0,0.4)',
         }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #1f1f1f' }}>
-            <span style={{ color: '#737373', fontSize: '13px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--app-border)' }}>
+            <span style={{ color: 'var(--app-text-subtle)', fontSize: '13px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               Add Flag
             </span>
             <kbd
               onClick={onClose}
               style={{
                 float: 'right', display: 'inline-flex', alignItems: 'center',
-                padding: '3px 8px', background: '#262626', borderRadius: '6px',
-                fontSize: '11px', color: '#737373', border: '1px solid #333', cursor: 'pointer',
+                padding: '3px 8px', background: 'var(--app-panel-elevated)', borderRadius: '6px',
+                fontSize: '11px', color: 'var(--app-text-subtle)', border: '1px solid var(--app-border)', cursor: 'pointer',
               }}
             >
               esc
@@ -78,7 +78,7 @@ export default function FlagPickerModal({
           </div>
 
           {unassigned.length === 0 ? (
-            <div style={{ padding: '24px 20px', color: '#525252', fontSize: '14px', textAlign: 'center' }}>
+            <div style={{ padding: '24px 20px', color: 'var(--app-text-subtle)', fontSize: '14px', textAlign: 'center' }}>
               {availableFlags.length === 0
                 ? <>No flags defined yet.<br />Create them in Settings → Flags.</>
                 : 'All flags already assigned.'}
@@ -92,11 +92,11 @@ export default function FlagPickerModal({
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                     padding: '14px 20px', background: 'transparent', border: 'none',
-                    borderBottom: '1px solid #1f1f1f', color: '#e5e5e5',
+                    borderBottom: '1px solid var(--app-border)', color: 'var(--app-text)',
                     fontSize: '15px', cursor: 'pointer', textAlign: 'left',
                     fontFamily: 'inherit', transition: 'background 100ms ease',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#1a1a1a'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--app-panel-elevated)'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                 >
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: flag.color, flexShrink: 0 }} />

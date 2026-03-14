@@ -288,7 +288,7 @@ export default function DimensionSearchModal({
         .search-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.85);
+          background: color-mix(in srgb, var(--app-bg) 60%, transparent);
           backdrop-filter: blur(8px);
           display: flex;
           justify-content: center;
@@ -296,80 +296,76 @@ export default function DimensionSearchModal({
           z-index: 9999;
           animation: backdropIn 200ms ease-out;
         }
-        
+
         .search-container {
           width: 100%;
           max-width: 640px;
           max-height: 70vh;
           animation: containerIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
         }
-        
+
         .search-input-wrapper {
           display: flex;
           align-items: center;
           gap: 16px;
-          background: #141414;
-          border: 1px solid #262626;
+          background: var(--app-panel);
+          border: 1px solid var(--app-border);
           border-radius: 16px;
           padding: 20px 24px;
-          box-shadow: 
-            0 0 0 1px rgba(255, 255, 255, 0.04),
-            0 24px 48px -12px rgba(0, 0, 0, 0.6);
+          box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.4);
         }
-        
+
         .search-icon {
           width: 22px;
           height: 22px;
-          color: #525252;
+          color: var(--app-text-subtle);
           flex-shrink: 0;
         }
-        
+
         .search-input {
           flex: 1;
           background: none;
           border: none;
           outline: none;
-          color: #fafafa;
+          color: var(--app-text);
           font-size: 18px;
           font-family: inherit;
           font-weight: 400;
         }
-        
+
         .search-input::placeholder {
-          color: #525252;
+          color: var(--app-text-subtle);
         }
-        
+
         .search-shortcut {
           display: flex;
           align-items: center;
           gap: 4px;
         }
-        
+
         .search-shortcut kbd {
           display: inline-flex;
           align-items: center;
           justify-content: center;
           padding: 4px 8px;
-          background: #262626;
+          background: var(--app-panel-elevated);
           border-radius: 6px;
           font-size: 11px;
           font-family: inherit;
-          color: #737373;
-          border: 1px solid #333;
+          color: var(--app-text-subtle);
+          border: 1px solid var(--app-border);
         }
-        
+
         .search-results {
           margin-top: 8px;
-          background: #141414;
-          border: 1px solid #262626;
+          background: var(--app-panel);
+          border: 1px solid var(--app-border);
           border-radius: 16px;
           overflow: hidden;
-          box-shadow: 
-            0 0 0 1px rgba(255, 255, 255, 0.04),
-            0 24px 48px -12px rgba(0, 0, 0, 0.6);
+          box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.4);
           animation: resultsIn 150ms ease-out;
         }
-        
+
         .search-result-item {
           width: 100%;
           display: flex;
@@ -378,53 +374,51 @@ export default function DimensionSearchModal({
           padding: 16px 20px;
           background: transparent;
           border: none;
-          border-bottom: 1px solid #1f1f1f;
+          border-bottom: 1px solid var(--app-border);
           cursor: pointer;
           transition: background 100ms ease;
           text-align: left;
           font-family: inherit;
         }
-        
+
         .search-result-item:last-child {
           border-bottom: none;
         }
-        
+
         .search-result-item:hover,
         .search-result-item.selected {
-          background: #1a1a1a;
+          background: var(--app-panel-elevated);
         }
-        
+
         .result-name {
           flex: 1;
-          color: #e5e5e5;
+          color: var(--app-text);
           font-size: 15px;
         }
-        
+
         .result-name.priority {
-          color: #22c55e;
+          color: var(--toolbar-accent);
         }
-        
+
         .result-count {
-          color: #525252;
+          color: var(--app-text-subtle);
           font-size: 12px;
           font-family: 'SF Mono', 'Fira Code', monospace;
         }
-        
+
         .result-hint {
-          color: #525252;
+          color: var(--app-text-subtle);
           font-size: 13px;
         }
-        
+
         .search-create {
           margin-top: 8px;
-          background: #141414;
-          border: 1px solid #262626;
+          background: var(--app-panel);
+          border: 1px solid var(--app-border);
           border-radius: 16px;
           overflow: hidden;
           padding: 16px 20px;
-          box-shadow:
-            0 0 0 1px rgba(255, 255, 255, 0.04),
-            0 24px 48px -12px rgba(0, 0, 0, 0.6);
+          box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.4);
         }
 
         .create-header {
@@ -435,7 +429,7 @@ export default function DimensionSearchModal({
         }
 
         .create-title {
-          color: #22c55e;
+          color: var(--toolbar-accent);
           font-size: 15px;
           font-weight: 500;
         }
@@ -448,10 +442,10 @@ export default function DimensionSearchModal({
         .description-input {
           width: 100%;
           padding: 12px;
-          background: #0a0a0a;
-          border: 1px solid #333;
+          background: var(--app-bg);
+          border: 1px solid var(--app-border);
           border-radius: 8px;
-          color: #e5e5e5;
+          color: var(--app-text);
           font-size: 14px;
           font-family: inherit;
           resize: none;
@@ -460,11 +454,11 @@ export default function DimensionSearchModal({
         }
 
         .description-input:focus {
-          border-color: #525252;
+          border-color: var(--app-text-subtle);
         }
 
         .description-input::placeholder {
-          color: #525252;
+          color: var(--app-text-subtle);
         }
 
         .description-counter {
@@ -472,17 +466,17 @@ export default function DimensionSearchModal({
           bottom: 8px;
           right: 12px;
           font-size: 11px;
-          color: #525252;
+          color: var(--app-text-subtle);
           font-family: 'SF Mono', 'Fira Code', monospace;
         }
 
         .description-warning {
           margin-bottom: 12px;
           padding: 8px 12px;
-          background: rgba(234, 179, 8, 0.1);
-          border: 1px solid rgba(234, 179, 8, 0.2);
+          background: color-mix(in srgb, var(--app-danger-text) 10%, transparent);
+          border: 1px solid color-mix(in srgb, var(--app-danger-text) 20%, transparent);
           border-radius: 6px;
-          color: #eab308;
+          color: var(--app-danger-text);
           font-size: 12px;
         }
 
@@ -493,61 +487,61 @@ export default function DimensionSearchModal({
           justify-content: center;
           gap: 8px;
           padding: 12px 16px;
-          background: #1a1a1a;
-          border: 1px solid #333;
+          background: var(--app-panel-elevated);
+          border: 1px solid var(--app-border);
           border-radius: 8px;
           cursor: pointer;
           transition: background 100ms ease;
           font-family: inherit;
-          color: #22c55e;
+          color: var(--toolbar-accent);
           font-size: 14px;
           font-weight: 500;
         }
 
         .create-button:hover,
         .create-button.selected {
-          background: #262626;
+          background: color-mix(in srgb, var(--app-border) 60%, var(--app-panel-elevated));
         }
 
         .create-icon {
           font-size: 18px;
           font-weight: 300;
-          color: #22c55e;
+          color: var(--toolbar-accent);
         }
-        
+
         .search-empty {
           margin-top: 8px;
           padding: 32px 24px;
-          background: #141414;
-          border: 1px solid #262626;
+          background: var(--app-panel);
+          border: 1px solid var(--app-border);
           border-radius: 16px;
-          color: #525252;
+          color: var(--app-text-subtle);
           font-size: 14px;
           text-align: center;
         }
-        
+
         @keyframes backdropIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        
+
         @keyframes containerIn {
-          from { 
+          from {
             opacity: 0;
             transform: scale(0.96) translateY(-8px);
           }
-          to { 
+          to {
             opacity: 1;
             transform: scale(1) translateY(0);
           }
         }
-        
+
         @keyframes resultsIn {
-          from { 
+          from {
             opacity: 0;
             transform: translateY(-4px);
           }
-          to { 
+          to {
             opacity: 1;
             transform: translateY(0);
           }
