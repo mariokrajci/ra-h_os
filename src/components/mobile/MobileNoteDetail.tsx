@@ -187,8 +187,36 @@ export default function MobileNoteDetail({
               ) : node.notes?.trim() ? (
                 <MarkdownWithNodeTokens content={node.notes} />
               ) : (
-                <div style={{ color: 'var(--app-text-muted)', fontStyle: 'italic' }}>
-                  No notes yet. Tap Edit to add notes.
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '4px' }}>
+                  <button
+                    type="button"
+                    className="app-button"
+                    style={{ padding: '12px 16px', borderRadius: '12px', textAlign: 'left', fontSize: '15px', fontWeight: 500 }}
+                    onClick={() => setEditingNotes(true)}
+                  >
+                    Write notes
+                  </button>
+                  {node.chunk && (
+                    <button
+                      type="button"
+                      className="app-button app-button--ghost"
+                      style={{ padding: '12px 16px', borderRadius: '12px', textAlign: 'left', fontSize: '15px', fontWeight: 500 }}
+                      onClick={() => onOpenChild('source')}
+                    >
+                      View source
+                    </button>
+                  )}
+                  {node.chunk && (
+                    <button
+                      type="button"
+                      className="app-button app-button--ghost"
+                      style={{ padding: '12px 16px', borderRadius: '12px', textAlign: 'left', fontSize: '15px', fontWeight: 500, opacity: 0.45 }}
+                      disabled
+                      title="Coming soon"
+                    >
+                      Generate notes from source
+                    </button>
+                  )}
                 </div>
               )}
             </div>

@@ -12,6 +12,7 @@ import MobileCaptureScreen from '@/components/mobile/MobileCaptureScreen';
 import MobileNoteChildScreen from '@/components/mobile/MobileNoteChildScreen';
 import { useMobileNodeDetail } from '@/components/mobile/useMobileNodeDetail';
 import { NOTES_SORT_OPTIONS, useNotesFeed } from '@/components/mobile/useNotesFeed';
+import { getMobileNotePreview } from '@/components/mobile/mobileNotesPresentation';
 
 export default function TabletShell() {
   const {
@@ -102,7 +103,7 @@ export default function TabletShell() {
                 >
                   <div style={{ fontSize: '14px', fontWeight: 600 }}>{node.title || `Untitled #${node.id}`}</div>
                   <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--app-text-muted)' }}>
-                    {node.description || node.notes?.slice(0, 120) || 'No preview yet.'}
+                    {getMobileNotePreview(node)}
                   </div>
                 </button>
               );

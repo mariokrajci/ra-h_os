@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft } from 'lucide-react';
+import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
 import type { Node, NodeConnection } from '@/types/database';
 
 type ChildScreen = 'source' | 'metadata' | 'connections';
@@ -71,9 +72,11 @@ export default function MobileNoteChildScreen({
             <div style={{ fontSize: '11px', color: 'var(--app-text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' }}>
               Source excerpt
             </div>
-            <div style={{ fontSize: '15px', color: 'var(--app-text)', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
-              {node?.chunk?.trim() || 'No source content attached to this note.'}
-            </div>
+            {node?.chunk?.trim() ? (
+              <MarkdownWithNodeTokens content={node.chunk} />
+            ) : (
+              <div style={{ fontSize: '15px', color: 'var(--app-text-muted)' }}>No source content attached to this note.</div>
+            )}
           </div>
         )}
 
