@@ -2698,7 +2698,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                     marginBottom: '-1px'
                   }}
                 >
-                  Edges{activeTab && edgesData[activeTab]?.length ? ` (${edgesData[activeTab].length})` : ''}
+                  Connections{activeTab && edgesData[activeTab]?.length ? ` (${edgesData[activeTab].length})` : ''}
                 </button>
                 <button
                   onClick={() => { setActiveContentTab('source'); setDescEditMode(false); setNotesEditMode(false); setMetadataEditMode(false); setEdgeSearchOpen(false); setPendingAnnotation(null); }}
@@ -2776,23 +2776,6 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 {/* Action buttons for Notes tab */}
                 {activeContentTab === 'notes' && !notesEditMode && (
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
-                    <button
-                      onClick={createLinkedNote}
-                      disabled={creatingNote}
-                      className="app-button app-button--accent app-button--compact app-button--icon"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 8px',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                      }}
-                      title="Create a new linked node"
-                    >
-                      {creatingNote ? <Loader size={12} className="animate-spin" /> : <Plus size={12} />}
-                      Node
-                    </button>
                     <button
                       onClick={startNotesEdit}
                       className="app-button app-button--secondary app-button--compact app-button--icon"
@@ -3244,55 +3227,77 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       )}
                     </div>
                   ) : nodesData[activeTab]?.notes ? (
-                    <div
-                      style={{
-                        ...FOCUS_PANEL_BODY_TEXT_STYLE,
-                        padding: '4px',
-                        flex: 1,
-                        overflow: 'auto'
-                      }}
-                    >
-                      <MarkdownWithNodeTokens
-                        content={nodesData[activeTab].notes || ''}
-                        onNodeClick={onNodeClick || onTabSelect}
-                        annotations={activeNodeId !== null && annotationsData[activeNodeId]
-                          ? Object.fromEntries(annotationsData[activeNodeId].map(a => [a.id, a]))
-                          : {}}
-                        onJumpToSource={handleJumpToSource}
-                        onDeleteAnnotation={deleteAnnotation}
-                      />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+                      <div
+                        style={{
+                          ...FOCUS_PANEL_BODY_TEXT_STYLE,
+                          padding: '4px',
+                          flex: 1,
+                        }}
+                      >
+                        <MarkdownWithNodeTokens
+                          content={nodesData[activeTab].notes || ''}
+                          onNodeClick={onNodeClick || onTabSelect}
+                          annotations={activeNodeId !== null && annotationsData[activeNodeId]
+                            ? Object.fromEntries(annotationsData[activeNodeId].map(a => [a.id, a]))
+                            : {}}
+                          onJumpToSource={handleJumpToSource}
+                          onDeleteAnnotation={deleteAnnotation}
+                        />
+                      </div>
+                      <div style={{ padding: '16px 4px 4px', borderTop: '1px solid var(--app-border)', marginTop: '12px' }}>
+                        <button
+                          onClick={createLinkedNote}
+                          disabled={creatingNote}
+                          className="app-button app-button--secondary app-button--compact app-button--icon"
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 10px', fontSize: '11px', borderRadius: '4px' }}
+                          title="Create a new linked node"
+                        >
+                          {creatingNote ? <Loader size={12} className="animate-spin" /> : <Plus size={12} />}
+                          Create related node
+                        </button>
+                      </div>
                     </div>
                   ) : notesIngestionStatus ? (
                     renderPendingState(notesIngestionStatus)
                   ) : (
-                    <div
-                      onClick={startNotesEdit}
-                      style={{
-                        color: '#555',
-                        fontSize: '12px',
-                        fontStyle: 'italic',
-                        cursor: 'pointer',
-                        padding: '8px',
-                        minHeight: '200px',
-                        border: '1px dashed #1a1a1a',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'transparent',
-                        flex: 1,
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#2a2a2a';
-                        e.currentTarget.style.color = '#666';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#1a1a1a';
-                        e.currentTarget.style.color = '#555';
-                      }}
-                    >
-                      Click to add notes...
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
+                      <button
+                        onClick={startNotesEdit}
+                        className="app-button"
+                        style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Pencil size={12} />
+                        Write notes
+                      </button>
+                      {nodesData[activeTab]?.chunk && (
+                        <button
+                          onClick={() => setActiveContentTab('source')}
+                          className="app-button app-button--secondary"
+                          style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          View source
+                        </button>
+                      )}
+                      {nodesData[activeTab]?.chunk && (
+                        <button
+                          disabled
+                          className="app-button app-button--secondary"
+                          style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.4 }}
+                          title="Coming soon"
+                        >
+                          Generate notes from source
+                        </button>
+                      )}
+                      <button
+                        onClick={createLinkedNote}
+                        disabled={creatingNote}
+                        className="app-button app-button--secondary"
+                        style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        {creatingNote ? <Loader size={12} className="animate-spin" /> : <Plus size={12} />}
+                        Create related node
+                      </button>
                     </div>
                   )}
                 </div>
