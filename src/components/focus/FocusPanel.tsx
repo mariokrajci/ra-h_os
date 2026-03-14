@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, type DragEvent } from 'react';
-import { Eye, Trash2, Link, Loader, Database, RefreshCw, Pencil, X, Save, Plus, BookOpen } from 'lucide-react';
+import { Eye, Trash2, Link, Loader, Database, RefreshCw, Pencil, X, Save, Plus, BookOpen, ExternalLink } from 'lucide-react';
 import { parseAndRenderContent } from '@/components/helpers/NodeLabelRenderer';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
 import AnnotationToolbar, { AnnotationColor } from '@/components/annotations/AnnotationToolbar';
@@ -170,7 +170,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   const [regeneratingDescription, setRegeneratingDescription] = useState<number | null>(null);
 
   // Content tab state: 'notes', 'desc', or 'source'
-  const [activeContentTab, setActiveContentTab] = useState<'notes' | 'desc' | 'edges' | 'source' | 'metadata'>('desc');
+  const [activeContentTab, setActiveContentTab] = useState<'notes' | 'edges' | 'source' | 'metadata'>('notes');
 
   // Desc (description) edit mode state
   const [descEditMode, setDescEditMode] = useState(false);
@@ -374,7 +374,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
 
   useEffect(() => {
     if (activeContentTab === 'metadata' && !isBookNode) {
-      setActiveContentTab('desc');
+      setActiveContentTab('notes');
     }
   }, [activeContentTab, isBookNode]);
 
@@ -2366,31 +2366,25 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       }
                     }}
                     style={{
-                      color: 'var(--app-info-text)',
-                      fontSize: '11px',
+                      color: 'var(--app-text-muted)',
                       textDecoration: 'none',
-                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '10px',
+                      maxWidth: '220px',
                       overflow: 'hidden',
+                      whiteSpace: 'nowrap',
                       textOverflow: 'ellipsis',
-                      display: 'block'
                     }}
                     title={`${nodesData[activeTab].link} (Cmd+Click to edit)`}
                   >
-                    {nodesData[activeTab].link}
+                    <ExternalLink size={10} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {(() => { try { return new URL(nodesData[activeTab].link!).hostname; } catch { return nodesData[activeTab].link; } })()}
+                    </span>
                   </a>
-                ) : (
-                  <span
-                    onClick={() => startEdit('link', '')}
-                    style={{
-                      color: 'var(--app-text-subtle)',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      fontStyle: 'italic'
-                    }}
-                  >
-                    Click to add URL
-                  </span>
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -2505,47 +2499,6 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 </h1>
               )}
 
-              {/* Connections Button — opens Edges tab */}
-              <button
-                onClick={() => setActiveContentTab('edges')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  fontSize: '10px',
-                  fontWeight: 500,
-                  color: activeContentTab === 'edges' ? 'var(--toolbar-accent)' : 'var(--app-text-muted)',
-                  background: activeContentTab === 'edges' ? 'var(--app-accent-soft)' : 'transparent',
-                  border: '1px solid',
-                  borderColor: activeContentTab === 'edges' ? 'var(--app-accent-border)' : 'var(--app-border)',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  flexShrink: 0
-                }}
-                onMouseEnter={(e) => {
-                  if (activeContentTab !== 'edges') {
-                    e.currentTarget.style.color = 'var(--toolbar-accent)';
-                    e.currentTarget.style.borderColor = 'var(--app-toolbar-border)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (activeContentTab !== 'edges') {
-                    e.currentTarget.style.color = 'var(--app-text-muted)';
-                    e.currentTarget.style.borderColor = 'var(--app-border)';
-                  }
-                }}
-                title="Connections"
-              >
-                <Link size={12} />
-                {activeTab && edgesData[activeTab] && edgesData[activeTab].length > 0 && (
-                  <span style={{ fontWeight: 600 }}>
-                    {edgesData[activeTab].length}
-                  </span>
-                )}
-              </button>
-
               {/* Delete Button */}
               <button
                 onClick={() => confirmDeleteNode(activeTab)}
@@ -2582,6 +2535,131 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 {deletingNode === activeTab ? '...' : <Trash2 size={12} />}
               </button>
             </div>
+
+            {/* Description — inline note identity layer */}
+            {descEditMode ? (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{
+                  fontSize: '11px',
+                  color: '#f59e0b',
+                  marginBottom: '8px',
+                  padding: '6px 8px',
+                  background: '#1a1500',
+                  borderRadius: '4px',
+                  border: '1px solid #3d3500'
+                }}>
+                  Used as context for AI. Describe this node clearly in 280 chars or less.
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <textarea
+                    value={descEditValue}
+                    onChange={(e) => setDescEditValue(e.target.value.slice(0, 280))}
+                    onKeyDown={(e) => { if (e.key === 'Escape') cancelDescEdit(); }}
+                    disabled={descSaving}
+                    style={{
+                      ...FOCUS_PANEL_BODY_TEXTAREA_STYLE,
+                      minHeight: '80px',
+                      width: '100%',
+                      paddingBottom: '24px',
+                    }}
+                    placeholder="Write a brief description of this node (max 280 chars)..."
+                    maxLength={280}
+                    autoFocus
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    bottom: '8px',
+                    right: '10px',
+                    fontSize: '10px',
+                    color: descEditValue.length >= 260 ? '#f59e0b' : '#555'
+                  }}>
+                    {descEditValue.length}/280
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                  <button
+                    onClick={syncDescToSource}
+                    disabled={descSaving}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '4px',
+                      padding: '5px 8px', fontSize: '10px',
+                      color: '#f59e0b', background: 'transparent',
+                      border: '1px solid #3d3500', borderRadius: '4px', cursor: 'pointer'
+                    }}
+                    title="Copy description to source and re-embed"
+                  >
+                    {descSaving ? <Loader size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                    Sync to Source
+                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      onClick={cancelDescEdit}
+                      disabled={descSaving}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        padding: '5px 10px', fontSize: '11px',
+                        color: '#888', background: 'transparent',
+                        border: '1px solid #2a2a2a', borderRadius: '4px', cursor: 'pointer'
+                      }}
+                    >
+                      <X size={12} />
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveDesc}
+                      disabled={descSaving}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        padding: '5px 10px', fontSize: '11px',
+                        color: '#000', background: '#22c55e',
+                        border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600
+                      }}
+                    >
+                      {descSaving ? <Loader size={12} className="animate-spin" /> : <Save size={12} />}
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : nodesData[activeTab]?.description ? (
+              <div
+                onClick={startDescEdit}
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--app-text-muted)',
+                  lineHeight: 1.5,
+                  marginBottom: '12px',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid transparent',
+                  transition: 'border-color 0.15s',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--app-border)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent'; }}
+                title="Click to edit description"
+              >
+                {nodesData[activeTab].description}
+              </div>
+            ) : (
+              <div
+                onClick={startDescEdit}
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--app-text-subtle)',
+                  fontStyle: 'italic',
+                  marginBottom: '12px',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                }}
+              >
+                Add description…
+              </div>
+            )}
 
             {/* Dimensions Section */}
             <div style={{ marginBottom: '16px' }}>
@@ -2642,7 +2720,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
               </div>
             </div>
 
-            {/* Notes | Desc | Source Tabs */}
+            {/* Notes | Connections | Source Tabs */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               {/* Tab Bar */}
               <div style={{
@@ -2652,22 +2730,6 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 marginBottom: '12px',
                 borderBottom: '1px solid var(--app-border)'
               }}>
-                <button
-                  onClick={() => { setActiveContentTab('desc'); setNotesEditMode(false); setSourceEditMode(false); setMetadataEditMode(false); setPendingAnnotation(null); }}
-                  className={`app-tab${activeContentTab === 'desc' ? ' is-active' : ''}`}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '11px',
-                    fontWeight: activeContentTab === 'desc' ? 600 : 400,
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    marginBottom: '-1px'
-                  }}
-                >
-                  Desc
-                </button>
                 <button
                   onClick={() => { setActiveContentTab('notes'); setDescEditMode(false); setSourceEditMode(false); setMetadataEditMode(false); setPendingAnnotation(null); }}
                   className={`app-tab${activeContentTab === 'notes' ? ' is-active' : ''}`}
@@ -2735,44 +2797,6 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   </button>
                 )}
                 <div style={{ flex: 1 }} />
-                {/* Action buttons for Desc tab */}
-                {activeContentTab === 'desc' && !descEditMode && (
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
-                    <button
-                      onClick={() => activeTab && regenerateDescription(activeTab)}
-                      disabled={regeneratingDescription === activeTab}
-                      className="app-button app-button--secondary app-button--compact app-button--icon"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 8px',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                      }}
-                      title="Regenerate description with AI"
-                    >
-                      <RefreshCw size={12} style={{ animation: regeneratingDescription === activeTab ? 'spin 1s linear infinite' : 'none' }} />
-                      Regenerate
-                    </button>
-                    <button
-                      onClick={startDescEdit}
-                      className="app-button app-button--secondary app-button--compact app-button--icon"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 8px',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                      }}
-                      title="Edit description"
-                    >
-                      <Pencil size={12} />
-                      Edit
-                    </button>
-                  </div>
-                )}
                 {/* Action buttons for Notes tab */}
                 {activeContentTab === 'notes' && !notesEditMode && (
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
@@ -2833,167 +2857,6 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   </div>
                 )}
               </div>
-
-              {/* Desc Tab Content */}
-              {activeContentTab === 'desc' && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  {descEditMode ? (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <div style={{
-                        fontSize: '11px',
-                        color: '#f59e0b',
-                        marginBottom: '8px',
-                        padding: '8px',
-                        background: '#1a1500',
-                        borderRadius: '4px',
-                        border: '1px solid #3d3500'
-                      }}>
-                        Used as context for AI. Clearly describe what this node is in 280 chars or less.
-                      </div>
-                      {/* Editor */}
-                      <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <textarea
-                          value={descEditValue}
-                          onChange={(e) => {
-                            const newValue = e.target.value.slice(0, 280);
-                            setDescEditValue(newValue);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') {
-                              cancelDescEdit();
-                            }
-                          }}
-                          disabled={descSaving}
-                          style={{
-                            ...FOCUS_PANEL_BODY_TEXTAREA_STYLE,
-                            flex: 1,
-                            minHeight: '120px',
-                          }}
-                          placeholder="Write a brief description of this node (max 280 chars)..."
-                          maxLength={280}
-                        />
-                        <span style={{
-                          position: 'absolute',
-                          bottom: '12px',
-                          right: '12px',
-                          fontSize: '10px',
-                          color: descEditValue.length >= 260 ? '#f59e0b' : '#555'
-                        }}>
-                          {descEditValue.length}/280
-                        </span>
-                      </div>
-                      {/* Save/Cancel/Sync buttons */}
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginTop: '12px'
-                      }}>
-                        {/* Sync to Source button - left side */}
-                        <div>
-                          <button
-                            onClick={syncDescToSource}
-                            disabled={descSaving}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 10px',
-                              fontSize: '10px',
-                              color: '#f59e0b',
-                              background: 'transparent',
-                              border: '1px solid #3d3500',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}
-                            title="Copy description to source and re-embed"
-                          >
-                            {descSaving ? <Loader size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                            Sync to Source
-                          </button>
-                        </div>
-                        {/* Save/Cancel - right side */}
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={cancelDescEdit}
-                            disabled={descSaving}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 12px',
-                              fontSize: '11px',
-                              color: '#888',
-                              background: 'transparent',
-                              border: '1px solid #2a2a2a',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <X size={14} />
-                            Cancel
-                          </button>
-                          <button
-                            onClick={saveDesc}
-                            disabled={descSaving}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 12px',
-                              fontSize: '11px',
-                              color: '#000',
-                              background: '#22c55e',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontWeight: 600
-                            }}
-                          >
-                            {descSaving ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : nodesData[activeTab]?.description ? (
-                    <div
-                      style={{
-                        ...FOCUS_PANEL_BODY_TEXT_STYLE,
-                        padding: '4px',
-                        flex: 1,
-                        overflow: 'auto'
-                      }}
-                    >
-                      {nodesData[activeTab].description}
-                    </div>
-                  ) : (
-                    <div
-                      onClick={startDescEdit}
-                      style={{
-                        color: '#555',
-                        fontSize: '12px',
-                        fontStyle: 'italic',
-                        cursor: 'pointer',
-                        padding: '8px',
-                        minHeight: '100px',
-                        border: '1px dashed #1a1a1a',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'transparent',
-                        flex: 1,
-                        transition: 'border-color 0.15s'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2a2a2a'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; }}
-                    >
-                      Click to add a description...
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Notes Tab Content */}
               {activeContentTab === 'notes' && (
