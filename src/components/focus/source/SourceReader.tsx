@@ -152,6 +152,7 @@ export default function SourceReader({
       flexDirection: 'column',
       borderRadius: '4px',
       overflow: 'hidden',
+      background: 'var(--app-surface-strong)',
     }}>
       {/* Header with content type and search */}
       {content && content.length >= 50 && (
