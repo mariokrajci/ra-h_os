@@ -17,6 +17,18 @@ export interface DescriptionInput {
   dimensions?: string[];
 }
 
+export function clampDescription(value: string, limit = 280): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= limit) return trimmed;
+
+  const budget = Math.max(1, limit - 1);
+  const slice = trimmed.slice(0, budget);
+  const lastWhitespace = slice.search(/\s+\S*$/);
+  const boundary = lastWhitespace > 0 ? slice.slice(0, lastWhitespace).trimEnd() : slice.trimEnd();
+
+  return `${boundary}…`;
+}
+
 // Re-export for backwards compatibility — canonical source is ../storage/apiKeys
 export { hasValidOpenAiKey } from '../storage/apiKeys';
 
@@ -39,10 +51,10 @@ export function generateFallbackDescription(input: DescriptionInput): string {
   }
 
   if (parts.length > 0) {
-    return `${parts.join(' — ')}: ${title.slice(0, 200)}`;
+    return clampDescription(`${parts.join(' — ')}: ${title}`, 280);
   }
 
-  return title.slice(0, 280);
+  return clampDescription(title, 280);
 }
 
 /**
@@ -89,7 +101,7 @@ export async function generateDescription(input: DescriptionInput): Promise<stri
     const description = response.text.trim();
 
     // Ensure within character limit
-    const finalDescription = description.slice(0, 280);
+    const finalDescription = clampDescription(description, 280);
 
     console.log(`[DescriptionService] Generated: "${finalDescription}"`);
 
@@ -149,17 +161,19 @@ function buildDescriptionPrompt(input: DescriptionInput): string {
 Say WHAT this literally is and WHY it matters. Be concrete and specific — like you're telling a friend what this thing is in one breath.
 
 RULES:
-1) Name the format: "Podcast episode where…", "Blog post arguing…", "Your note on…", "Research paper showing…", "Idea that…"
+1) Name the format only when it adds meaning: "Podcast episode where…", "Blog post arguing…", "Your note on…", "Research paper showing…", "Idea that…"
 2) Name people by role — channel/host is the creator, title figures are guests/subjects. Use the Creator hint if available.
 3) State the actual claim, finding, or insight from the content — not a vague summary of the topic.
 4) End with why it's interesting or important — one concrete phrase.
 5) ABSOLUTELY FORBIDDEN — these words will be rejected: "discusses", "explores", "examines", "talks about", "is about", "delves into", "emphasizing the need for". State things directly instead.
+6) Do NOT waste characters on container labels like "GitHub repository for", "website for", or "PDF about" unless they are genuinely needed for disambiguation.
 
 GOOD: "Karpathy blog post — AI agents make software fluid, ripping functionality from repos instead of taking dependencies. Signals the end of monolithic libraries."
 GOOD: "Dwarkesh Patel interview with Anthropic CEO Dario Amodei — argues we're nearing the end of exponential AI scaling. Key signal for what comes next."
 GOOD: "Your note — morning optimism consistently reverses to evening pessimism. Not energy — the belief itself flips. Pattern worth tracking."
 BAD: "By Dario Amodei — discusses reaching the limits of exponential growth in AI, emphasizing the need for a critical perspective on future advancements."
 BAD: "This article explores ideas about how software is changing."
+BAD: "GitHub repository for Promptfoo — a tool for prompt management."
 
 Return ONLY the description text. Nothing else.
 

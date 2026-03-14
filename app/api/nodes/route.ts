@@ -4,7 +4,7 @@ import { Node, NodeFilters } from '@/types/database';
 import { autoEmbedQueue } from '@/services/embedding/autoEmbedQueue';
 import { hasSufficientContent } from '@/services/embedding/constants';
 import { DimensionService } from '@/services/database/dimensionService';
-import { generateDescription } from '@/services/database/descriptionService';
+import { clampDescription, generateDescription } from '@/services/database/descriptionService';
 import { scheduleAutoEdgeCreation } from '@/services/agents/autoEdge';
 import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     // Use provided description if present, otherwise auto-generate
     let nodeDescription: string | undefined = typeof body.description === 'string' && body.description.trim()
-      ? body.description.trim().slice(0, 280)
+      ? clampDescription(body.description, 280)
       : undefined;
 
     if (!nodeDescription) {
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // Final safety net — never store null/empty description
     if (!nodeDescription || nodeDescription.trim().length === 0) {
-      nodeDescription = body.title.slice(0, 280);
+      nodeDescription = clampDescription(body.title, 280);
     }
 
     // Monitor description quality

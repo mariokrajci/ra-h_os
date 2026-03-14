@@ -8,6 +8,7 @@ import { formatNodeForChat } from '../infrastructure/nodeFormatter';
 import { extractCreatedNodeDimensions, extractCreatedNodeId, resolveCreateNodeError } from '../infrastructure/createNodeResult';
 import { getOpenAIChatModel } from '@/config/openaiModels';
 import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
+import { clampDescription } from '@/services/database/descriptionService';
 
 async function analyzePodcastWithAI(episodeTitle: string, podcastName: string, description: string) {
   try {
@@ -53,7 +54,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
 
     return {
       nodeDescription: typeof result.nodeDescription === 'string'
-        ? result.nodeDescription.slice(0, 280)
+        ? clampDescription(result.nodeDescription, 280)
         : undefined,
       tags: Array.isArray(result.tags) ? result.tags : [],
     };
