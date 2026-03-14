@@ -12,7 +12,7 @@ RA-OS is a minimal knowledge graph UI with MCP server integration. It provides a
 
 **Agent-agnostic** — No built-in AI chat. Instead, RA-OS exposes an MCP server that any AI agent (Claude Code, custom agents) can connect to.
 
-**Simple & focused** — 2-panel UI for browsing and editing your knowledge graph. No bloat.
+**Simple & focused** — desktop keeps a multi-pane knowledge workspace, while phone mode collapses into a capture-and-retrieval flow. No bloat.
 
 ## Tech Stack
 
@@ -23,7 +23,7 @@ RA-OS is a minimal knowledge graph UI with MCP server integration. It provides a
 
 ## What's Included
 
-- 2-panel UI (nodes list + focus panel)
+- Responsive app shell with desktop workspace and phone capture/retrieval mode
 - Node/Edge/Dimension CRUD
 - Full-text and semantic search
 - MCP server with graph and skill tools
@@ -40,7 +40,15 @@ RA-OS is a minimal knowledge graph UI with MCP server integration. It provides a
 - Auth/subscription system
 - Desktop packaging
 
-## Two-Panel Layout
+## Responsive Layout Modes
+
+RA-OS now uses different shells depending on screen size:
+
+- **Phone** — notes list by default, with full-screen `Search` and `Add` flows
+- **Tablet** — touch-friendly master-detail layout with notes on the left and note detail on the right
+- **Desktop** — multi-pane workspace for browsing, editing, and graph work
+
+## Desktop Workspace
 
 ```
 ┌─────────────┬─────────────────────────┐
@@ -53,6 +61,15 @@ RA-OS is a minimal knowledge graph UI with MCP server integration. It provides a
 │             │                         │
 └─────────────┴─────────────────────────┘
 ```
+
+## Phone Mode
+
+Phone mode is intentionally narrower than desktop:
+
+- opens to the notes list sorted by last edited
+- keeps only `Search` and `Add` as persistent bottom actions
+- uses full-screen drill-down navigation for note retrieval
+- de-emphasizes graph/admin tooling that makes more sense on larger screens
 
 ## MCP Integration
 

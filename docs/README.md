@@ -17,7 +17,7 @@
 | [Schema](./2_schema.md) | Database schema, node/edge structure |
 | [Tools & Skills](./4_tools-and-guides.md) | MCP tools, skill system |
 | [Logging & Evals](./5_logging-and-evals.md) | Debugging, evaluation framework |
-| [UI](./6_ui.md) | 2-panel layout, components, views |
+| [UI](./6_ui.md) | Responsive shells, mobile notes flow, desktop panes |
 | [MCP](./8_mcp.md) | Connect Claude Code and external agents |
 | [About](./9_open-source.md) | What's included, contributing |
 | [Troubleshooting](./TROUBLESHOOTING.md) | Common issues and fixes |

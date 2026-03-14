@@ -2,8 +2,8 @@
 
 import PaneHeader from './PaneHeader';
 import ViewsOverlay from '../views/ViewsOverlay';
+import type { PendingNode } from '../layout/AppShellProvider';
 import type { BasePaneProps, PaneAction, PaneType } from './types';
-import type { PendingNode } from '../layout/ThreePanelLayout';
 
 export interface ViewsPaneProps extends BasePaneProps {
   onNodeClick: (nodeId: number) => void;

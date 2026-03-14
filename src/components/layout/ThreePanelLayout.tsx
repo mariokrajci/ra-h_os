@@ -5,8 +5,8 @@ import SettingsModal, { SettingsTab } from '../settings/SettingsModal';
 import SearchModal from '../nodes/SearchModal';
 import DocsModal from '../docs/DocsModal';
 import { Node } from '@/types/database';
-import { DatabaseEvent } from '@/services/events';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { useAppShell } from './AppShellProvider';
 // ChatMessage import removed - chat disabled in rah-light
 
 // Stub type for delegation (delegation system removed in rah-light)
@@ -21,15 +21,6 @@ type AgentDelegation = {
   createdAt: string;
   updatedAt: string;
 };
-
-export interface PendingNode {
-  id: string;
-  input: string;
-  inputType: string;
-  submittedAt: number;
-  status: 'processing' | 'error';
-  error?: string;
-}
 
 // Layout components
 import LeftToolbar from './LeftToolbar';
@@ -92,11 +83,6 @@ export default function ThreePanelLayout() {
   // Open tabs data (full node objects for context)
   const [openTabsData, setOpenTabsData] = useState<Node[]>([]);
 
-  // Event handlers for SSE events
-  const [nodesPanelRefresh, setNodesPanelRefresh] = useState(0);
-  const [focusPanelRefresh, setFocusPanelRefresh] = useState(0);
-  const [folderViewRefresh, setFolderViewRefresh] = useState(0);
-
   // Active dimension tracking
   const [activeDimension, setActiveDimension] = usePersistentState<string | null>('ui.focus.activeDimension', null);
 
@@ -111,8 +97,16 @@ export default function ThreePanelLayout() {
     selectedText: string;
   } | null>(null);
 
-  // Pending quick-add nodes (loading placeholders)
-  const [pendingNodes, setPendingNodes] = useState<PendingNode[]>([]);
+  const {
+    refreshState,
+    pendingNodes,
+    dismissPendingNode,
+    setOpenTabs,
+    submitQuickAdd,
+    refreshAll,
+    openLogEntry,
+    consumeOpenLogEntry,
+  } = useAppShell();
 
   // Ref to get current openTabs value in SSE handler
   const openTabsRef = useRef<number[]>([]);
@@ -183,18 +177,17 @@ export default function ThreePanelLayout() {
   const openTabsKey = openTabs.join(',');
   useEffect(() => {
     openTabsRef.current = openTabs;
+    setOpenTabs(openTabs);
     fetchOpenTabsData(openTabs);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openTabsKey, focusPanelRefresh]);
+  }, [openTabsKey, refreshState.focus, setOpenTabs]);
 
   // Delegations loading removed (delegation system removed in rah-light)
 
   // Refresh all panes
   const handleRefreshAll = useCallback(() => {
-    setNodesPanelRefresh(prev => prev + 1);
-    setFolderViewRefresh(prev => prev + 1);
-    setFocusPanelRefresh(prev => prev + 1);
-  }, []);
+    refreshAll();
+  }, [refreshAll]);
 
   // Keyboard shortcut handler
   useEffect(() => {
@@ -234,135 +227,15 @@ export default function ThreePanelLayout() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [slotB, setSlotB, handleRefreshAll]);
 
-  // SSE connection for real-time updates
   useEffect(() => {
-    let eventSource: EventSource | null = null;
+    if (!openLogEntry) return;
+    setSlotA(prev => prev ? { ...prev, type: 'log' } : { type: 'log' });
+    setActivePane('A');
+    consumeOpenLogEntry();
+  }, [consumeOpenLogEntry, openLogEntry, setSlotA]);
 
-    try {
-      eventSource = new EventSource('/api/events');
-
-      eventSource.onopen = () => {
-        console.log('🔌 SSE connected for real-time updates');
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data: DatabaseEvent = JSON.parse(event.data);
-
-          switch (data.type) {
-            case 'NODE_CREATED':
-              setNodesPanelRefresh(prev => prev + 1);
-              console.log('📥 Node created via helper:', data.data.node.title);
-              break;
-
-            case 'NODE_UPDATED':
-              const currentOpenTabs = openTabsRef.current;
-              const updatedNodeId = Number(data.data.nodeId);
-              if (currentOpenTabs.includes(updatedNodeId)) {
-                setFocusPanelRefresh(prev => prev + 1);
-              }
-              setNodesPanelRefresh(prev => prev + 1);
-              break;
-
-            case 'NODE_DELETED':
-              handleNodeDeleted(data.data.nodeId);
-              setNodesPanelRefresh(prev => prev + 1);
-              break;
-
-            case 'EDGE_CREATED':
-            case 'EDGE_DELETED':
-              const currentOpenTabsForEdge = openTabsRef.current;
-              if (currentOpenTabsForEdge.includes(data.data.fromNodeId) ||
-                  currentOpenTabsForEdge.includes(data.data.toNodeId)) {
-                setFocusPanelRefresh(prev => prev + 1);
-              }
-              break;
-
-            case 'DIMENSION_UPDATED':
-              setNodesPanelRefresh(prev => prev + 1);
-              setFolderViewRefresh(prev => prev + 1);
-              break;
-
-            case 'HELPER_UPDATED':
-            case 'AGENT_UPDATED':
-              if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('agents:updated', { detail: data.data }));
-              }
-              break;
-
-            case 'AGENT_DELEGATION_CREATED':
-            case 'AGENT_DELEGATION_UPDATED':
-              // Delegation events ignored (delegation system removed in rah-light)
-              break;
-
-            case 'GUIDE_UPDATED':
-              if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('guides:updated', { detail: data.data }));
-                window.dispatchEvent(new CustomEvent('skills:updated', { detail: data.data }));
-              }
-              break;
-
-            case 'QUICK_ADD_COMPLETED':
-              if (data.data?.quickAddId) {
-                setPendingNodes(prev => prev.filter(p => p.id !== data.data.quickAddId));
-              }
-              break;
-
-            case 'QUICK_ADD_FAILED':
-              if (data.data?.quickAddId) {
-                setPendingNodes(prev => prev.map(p =>
-                  p.id === data.data.quickAddId
-                    ? { ...p, status: 'error' as const, error: data.data.error || 'Unknown error' }
-                    : p
-                ));
-              }
-              break;
-
-            case 'CONNECTION_ESTABLISHED':
-              console.log('✅ SSE connection established');
-              break;
-
-            default:
-              console.log('📡 Unknown SSE event:', data.type);
-          }
-        } catch (error) {
-          console.error('Failed to parse SSE event:', error);
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error);
-      };
-    } catch (error) {
-      console.error('Failed to establish SSE connection:', error);
-    }
-
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-        console.log('🔌 SSE connection closed');
-      }
-    };
-  }, []);
-
-  // Auto-dismiss pending nodes after timeout
   useEffect(() => {
-    if (pendingNodes.length === 0) return;
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setPendingNodes(prev => prev.filter(p => {
-        const age = now - p.submittedAt;
-        if (p.status === 'processing' && age > 90_000) return false; // 90s timeout
-        if (p.status === 'error' && age > 120_000) return false; // 120s for errors
-        return true;
-      }));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [pendingNodes.length]);
-
-  // Open Log pane when a log entry is selected from search
-  useEffect(() => {
-    const handler = (e: Event) => {
+    const handler = (_e: Event) => {
       setSlotA(prev => prev ? { ...prev, type: 'log' } : { type: 'log' });
       setActivePane('A');
     };
@@ -494,9 +367,8 @@ export default function ThreePanelLayout() {
   }, [slotA, setSlotA]);
 
   const handleFolderViewDataChanged = useCallback(() => {
-    setFolderViewRefresh(prev => prev + 1);
-    setNodesPanelRefresh(prev => prev + 1);
-  }, []);
+    refreshAll();
+  }, [refreshAll]);
 
   const handleNodeOpenFromDimensions = useCallback((nodeId: number) => {
     // Switch to node pane and open the node
@@ -570,30 +442,7 @@ export default function ThreePanelLayout() {
     };
   }) => {
     try {
-      const response = await fetch('/api/quick-add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, mode, description, bookSelection })
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to submit Quick Add');
-      }
-
-      const result = await response.json();
-      const delegation = result.delegation;
-
-      // Add pending placeholder
-      if (delegation?.id && delegation?.inputType) {
-        setPendingNodes(prev => [{
-          id: delegation.id,
-          input: input.slice(0, 120),
-          inputType: delegation.inputType,
-          submittedAt: Date.now(),
-          status: 'processing' as const,
-        }, ...prev]);
-      }
+      await submitQuickAdd({ input, mode, description, bookSelection });
 
       // Ensure feed pane is visible
       ensureFeedOpen();
@@ -603,7 +452,7 @@ export default function ThreePanelLayout() {
     } catch (error) {
       console.error('[ThreePanelLayout] Quick Add error:', error);
     }
-  }, [ensureFeedOpen]);
+  }, [ensureFeedOpen, submitQuickAdd]);
 
   // Handle closing a pane
   const handleCloseSlotA = useCallback(() => {
@@ -917,7 +766,7 @@ export default function ThreePanelLayout() {
               setActivePane(slot);
             }}
             onReorderTabs={slot === 'A' ? handleReorderTabs : undefined}
-            refreshTrigger={focusPanelRefresh}
+            refreshTrigger={refreshState.focus}
             onOpenInOtherSlot={slot === 'A' ? handleNodeOpenInSlotB : handleNodeOpenInSlotA}
             onTextSelect={(nodeId, nodeTitle, text) => {
               setHighlightedPassage({ nodeId, nodeTitle, selectedText: text });
@@ -938,7 +787,7 @@ export default function ThreePanelLayout() {
             onCollapse={onCollapse}
             onSwapPanes={slotB ? handleSwapPanes : undefined}
             onNodeOpen={handleNodeOpenFromDimensions}
-            refreshToken={folderViewRefresh}
+            refreshToken={refreshState.folder}
             onDataChanged={handleFolderViewDataChanged}
             onDimensionSelect={setActiveDimension}
           />
@@ -970,9 +819,9 @@ export default function ThreePanelLayout() {
               setActivePane(slot);
             }}
             onNodeOpenInOtherPane={slot === 'A' ? handleNodeOpenInSlotB : handleNodeOpenInSlotA}
-            refreshToken={nodesPanelRefresh}
+            refreshToken={refreshState.nodes}
             pendingNodes={pendingNodes}
-            onDismissPending={(id) => setPendingNodes(prev => prev.filter(p => p.id !== id))}
+            onDismissPending={dismissPendingNode}
           />
         );
 
@@ -988,7 +837,7 @@ export default function ThreePanelLayout() {
               handleNodeSelect(nodeId, false);
               setActivePane(slot);
             }}
-            refreshToken={nodesPanelRefresh}
+            refreshToken={refreshState.nodes}
           />
         );
 
@@ -1015,7 +864,7 @@ export default function ThreePanelLayout() {
             onPaneAction={slot === 'A' ? handleSlotAAction : handleSlotBAction}
             onCollapse={onCollapse}
             onSwapPanes={slotB ? handleSwapPanes : undefined}
-            refreshToken={nodesPanelRefresh}
+            refreshToken={refreshState.nodes}
           />
         );
 
