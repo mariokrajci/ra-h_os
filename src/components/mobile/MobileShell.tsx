@@ -42,40 +42,44 @@ function MobileBottomBar({
         className="app-button"
         style={{
           pointerEvents: 'auto',
-          width: '60px',
-          height: '60px',
+          width: '56px',
+          height: '56px',
           borderRadius: '999px',
-          background: 'color-mix(in srgb, var(--app-panel) 78%, transparent)',
-          borderColor: 'color-mix(in srgb, var(--app-border) 72%, transparent)',
+          background: 'color-mix(in srgb, var(--app-panel) 48%, transparent)',
+          borderColor: 'color-mix(in srgb, var(--app-border) 48%, transparent)',
           backdropFilter: 'blur(20px)',
-          boxShadow: '0 16px 36px rgba(0, 0, 0, 0.14)',
-          color: 'var(--app-text)',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+          color: 'var(--app-text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
         onClick={onOpenSearch}
         aria-label="Search notes"
       >
-        <Search size={22} />
+        <Search size={20} />
       </button>
       <button
         type="button"
         className="app-button"
         style={{
           pointerEvents: 'auto',
-          width: '60px',
-          height: '60px',
+          width: '56px',
+          height: '56px',
           borderRadius: '999px',
-          background: 'color-mix(in srgb, var(--app-panel) 78%, transparent)',
-          borderColor: 'color-mix(in srgb, var(--app-border) 72%, transparent)',
+          background: 'color-mix(in srgb, var(--app-panel) 48%, transparent)',
+          borderColor: 'color-mix(in srgb, var(--app-border) 48%, transparent)',
           backdropFilter: 'blur(20px)',
-          boxShadow: '0 16px 36px rgba(0, 0, 0, 0.16)',
-          color: 'var(--app-text)',
-          fontSize: '28px',
-          lineHeight: 1,
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+          color: 'var(--app-text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
         onClick={onOpenAdd}
         aria-label="Add note"
       >
-        <Plus size={24} />
+        <Plus size={22} />
       </button>
     </div>
   );
