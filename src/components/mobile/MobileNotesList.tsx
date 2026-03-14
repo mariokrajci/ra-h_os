@@ -265,7 +265,7 @@ export default function MobileNotesList({
                   </div>
                 </button>
                 {index < nodes.length - 1 && (
-                  <div style={{ height: '0.5px', background: 'var(--app-border)', margin: '0 16px' }} />
+                  <div style={{ height: '0.5px', background: 'var(--app-border)', marginLeft: '16px' }} />
                 )}
               </Fragment>
             ))}
