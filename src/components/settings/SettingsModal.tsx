@@ -9,6 +9,7 @@ import DatabaseViewer from './DatabaseViewer';
 import ExternalAgentsPanel from './ExternalAgentsPanel';
 import ContextViewer from './ContextViewer';
 import SkillsViewer from './GuidesViewer';
+import FlagsViewer from './FlagsViewer';
 import { useAppTheme } from '@/components/theme/AppThemeProvider';
 import type { ThemeMode } from '@/components/theme/themeState';
 
@@ -20,7 +21,8 @@ export type SettingsTab =
   | 'database'
   | 'context'
   | 'agents'
-  | 'preferences';
+  | 'preferences'
+  | 'flags';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -206,6 +208,9 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             <div onClick={() => setActiveTab('preferences')} className={navItemClassName('preferences')}>
               Preferences
             </div>
+            <div onClick={() => setActiveTab('flags')} className={navItemClassName('flags')}>
+              Flags
+            </div>
             <div
               style={{
                 padding: '12px 24px',
@@ -286,6 +291,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
               {activeTab === 'context' && 'Auto-Context'}
               {activeTab === 'agents' && 'External Agents'}
               {activeTab === 'preferences' && 'Preferences'}
+              {activeTab === 'flags' && 'Flags'}
             </h2>
             <button
               onClick={onClose}
@@ -320,6 +326,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             {activeTab === 'context' && <ContextViewer />}
             {activeTab === 'agents' && <ExternalAgentsPanel />}
             {activeTab === 'preferences' && preferencesContent}
+            {activeTab === 'flags' && <FlagsViewer />}
           </div>
         </div>
       </div>
