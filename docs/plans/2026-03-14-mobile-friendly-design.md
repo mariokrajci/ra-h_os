@@ -253,6 +253,36 @@ Use explicit layout modes instead of only CSS adaptation:
 
 This is a behavioral adaptation, not just a visual one.
 
+## Layout Detection Strategy
+
+Use a hybrid layout detection strategy:
+
+- CSS for presentation changes within a mode
+- a client layout hook for behavioral mode switching
+
+Recommendation:
+
+- use CSS media queries for spacing, typography, visibility, and responsive component styling
+- use a shared client hook to determine whether the app should mount the phone shell, tablet shell, or desktop shell
+
+Why not CSS-only:
+
+- the mobile proposal changes navigation behavior, not just layout
+- phone should mount a different shell instead of hiding pieces of the desktop shell
+- CSS alone would leave desktop-only state and interaction logic active in the wrong mode
+
+Why not client-hook-only:
+
+- styling still belongs in CSS
+- using JavaScript for all responsive behavior would make simple visual adaptation more brittle than necessary
+
+Practical direction:
+
+- define explicit breakpoints for `phone`, `tablet`, and `desktop`
+- expose them through a shared layout-mode hook
+- use that hook at the app-shell boundary to choose which shell to render
+- let CSS handle the internal presentation details of each shell
+
 ## Technical Direction
 
 ### Existing code to preserve
@@ -277,21 +307,47 @@ The current desktop shell patterns should not be carried onto phone unchanged:
 
 These can remain for desktop while a dedicated mobile shell is introduced.
 
+### SSE and shared app-state extraction
+
+Before building the mobile shell, the live update and shared app-state layer needs to be extracted from `ThreePanelLayout`.
+
+Right now `ThreePanelLayout` owns:
+
+- the SSE subscription to `/api/events`
+- refresh counters for notes, focus, and folder state
+- cross-pane synchronization behavior tied to active tabs and open nodes
+
+If mobile is built before this extraction, Phase 1 will hit one of two bad outcomes:
+
+- duplicate SSE subscription logic in both desktop and mobile shells
+- block mobile implementation on desktop-specific state that remains trapped inside `ThreePanelLayout`
+
+Recommendation:
+
+- extract SSE subscription and app-wide refresh coordination into a shared hook or provider
+- keep shell-specific navigation state inside each shell
+- let both desktop and mobile consume the same live-update source
+
+This extraction should be treated as a Phase 0 prerequisite for the mobile shell.
+
 ### Suggested implementation approach
 
-1. Add layout mode detection for phone, tablet, and desktop.
-2. Create a dedicated mobile shell component.
-3. Build the mobile notes list as the default home screen.
-4. Build mobile note detail using simplified rendering from the existing focus view.
-5. Convert search into a mobile-first full-screen route.
-6. Build a focused add flow for phone capture.
-7. Keep advanced panes desktop-only in phase 1.
-8. Update documentation to reflect the new multi-mode UI model.
+1. Extract SSE subscription and shared refresh coordination from `ThreePanelLayout`.
+2. Add hybrid layout mode detection for phone, tablet, and desktop.
+3. Create a dedicated mobile shell component.
+4. Build the mobile notes list as the default home screen.
+5. Build mobile note detail using simplified rendering from the existing focus view.
+6. Convert search into a mobile-first full-screen route.
+7. Build a focused add flow for phone capture.
+8. Keep advanced panes desktop-only in phase 1.
+9. Update documentation to reflect the new multi-mode UI model.
 
 ## Rollout Phases
 
 ### Phase 1
 
+- extract shared SSE/live-update logic
+- add shell-level layout mode detection
 - mobile shell
 - notes list home screen
 - note detail screen
