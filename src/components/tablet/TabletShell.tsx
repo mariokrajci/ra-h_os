@@ -113,7 +113,7 @@ export default function TabletShell() {
 
       <main style={{ minWidth: 0, overflow: 'auto' }}>
         {route.screen === 'search' && (
-          <MobileSearchScreen onBack={() => dispatch({ type: 'back' })} onOpenNode={openNode} />
+          <MobileSearchScreen onBack={() => dispatch({ type: 'back' })} onOpenNode={openNode} animation={undefined} />
         )}
         {route.screen === 'add' && (
           <MobileCaptureScreen
@@ -122,14 +122,18 @@ export default function TabletShell() {
               await submitQuickAdd(payload);
               dispatch({ type: 'back' });
             }}
+            animation={undefined}
           />
         )}
         {route.screen === 'detail' && selectedNodeId !== null && (
           <MobileNoteDetail
             nodeId={route.nodeId}
             refreshToken={refreshState.focus}
+            navDirection="none"
             onBack={() => dispatch({ type: 'back' })}
             onOpenChild={(child) => dispatch({ type: 'open-child', child })}
+            onOpenNode={openNode}
+            animation={undefined}
           />
         )}
         {route.screen === 'child' && (
@@ -138,14 +142,19 @@ export default function TabletShell() {
             node={childDetail.node}
             connections={childDetail.connections}
             onBack={() => dispatch({ type: 'back' })}
+            onOpenNode={openNode}
+            animation={undefined}
           />
         )}
         {route.screen === 'notes' && selectedNodeId !== null && (
           <MobileNoteDetail
             nodeId={selectedNodeId}
             refreshToken={refreshState.focus}
+            navDirection="none"
             onBack={() => dispatch({ type: 'back' })}
             onOpenChild={(child) => dispatch({ type: 'open-child', child })}
+            onOpenNode={openNode}
+            animation={undefined}
           />
         )}
         {route.screen === 'notes' && selectedNodeId === null && (
