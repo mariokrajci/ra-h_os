@@ -3,8 +3,9 @@
 export type ViewType = 'focus' | 'list' | 'kanban' | 'grid';
 
 export interface ViewFilter {
-  dimension: string;
+  dimension: string;           // value: dimension name OR flag name
   operator: 'includes' | 'excludes';
+  type?: 'dimension' | 'flag'; // omit = 'dimension' for backwards compat
 }
 
 export interface ViewSort {

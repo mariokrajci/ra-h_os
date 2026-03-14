@@ -921,6 +921,41 @@ class SQLiteClient {
         }
       }
 
+      // 11) Flags + privacy migration
+      try {
+        const nodeColNames = (this.db.pragma('table_info(nodes)') as Array<{ name: string }>).map(c => c.name);
+        if (!nodeColNames.includes('is_private')) {
+          this.db.exec('ALTER TABLE nodes ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;');
+          console.log('Added nodes.is_private column');
+        }
+
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS flags (
+            name       TEXT PRIMARY KEY,
+            color      TEXT NOT NULL DEFAULT '#6b7280',
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+          );
+        `);
+
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS node_flags (
+            node_id    INTEGER NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+            flag       TEXT    NOT NULL REFERENCES flags(name) ON DELETE CASCADE,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (node_id, flag)
+          );
+        `);
+
+        this.db.exec(`
+          DROP VIEW IF EXISTS public_nodes;
+          CREATE VIEW public_nodes AS SELECT * FROM nodes WHERE is_private = 0;
+        `);
+
+        console.log('Flags + privacy migration complete');
+      } catch (flagsErr) {
+        console.warn('Flags + privacy migration error:', flagsErr);
+      }
+
       console.log('Logging + memory schema ensured');
     } catch (error) {
       console.error('Failed to ensure logging/memory schema:', error);

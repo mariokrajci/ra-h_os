@@ -83,6 +83,8 @@ export interface Node {
   created_at: string;
   updated_at: string;
   edge_count?: number;       // Derived count of edges, included in some queries
+  is_private?: number;       // 0 = public, 1 = private (hidden from MCP)
+  flags?: string[];          // assigned flag names, included in some queries
 
   // Optional embedding fields
   embedding_updated_at?: string;
@@ -145,6 +147,9 @@ export interface NodeFilters {
   createdBefore?: string;    // ISO date (YYYY-MM-DD) — nodes created before
   eventAfter?: string;       // ISO date (YYYY-MM-DD) — nodes with event_date on or after
   eventBefore?: string;      // ISO date (YYYY-MM-DD) — nodes with event_date before
+  flags?: string[];          // filter by flag names
+  flagsMatch?: 'any' | 'all'; // 'any' = OR (default), 'all' = AND
+  excludePrivate?: boolean;  // when true, exclude nodes where is_private = 1
 }
 
 export interface ChunkData {
@@ -194,6 +199,18 @@ export interface Dimension {
   icon?: string | null;
   is_priority: boolean;
   updated_at: string;
+}
+
+export interface Flag {
+  name: string;
+  color: string;
+  created_at: string;
+}
+
+export interface NodeFlag {
+  node_id: number;
+  flag: string;
+  created_at: string;
 }
 
 export interface Annotation {
