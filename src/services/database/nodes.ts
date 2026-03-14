@@ -9,11 +9,16 @@ export class NodeService {
 
   async countNodes(filters: NodeFilters = {}): Promise<number> {
     const { dimensions, search, dimensionsMatch = 'any',
-            createdAfter, createdBefore, eventAfter, eventBefore } = filters;
+            createdAfter, createdBefore, eventAfter, eventBefore,
+            excludePrivate, flags, flagsMatch = 'any' } = filters;
     const sqlite = getSQLiteClient();
 
     let query = `SELECT COUNT(*) as total FROM nodes n WHERE 1=1`;
     const params: any[] = [];
+
+    if (excludePrivate) {
+      query += ` AND n.is_private = 0`;
+    }
 
     if (dimensions && dimensions.length > 0) {
       if (dimensionsMatch === 'all' && dimensions.length > 1) {
@@ -38,6 +43,24 @@ export class NodeService {
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
+    if (flags && flags.length > 0) {
+      if (flagsMatch === 'all' && flags.length > 1) {
+        query += ` AND (
+          SELECT COUNT(DISTINCT nf.flag) FROM node_flags nf
+          WHERE nf.node_id = n.id
+          AND nf.flag IN (${flags.map(() => '?').join(',')})
+        ) = ?`;
+        params.push(...flags, flags.length);
+      } else {
+        query += ` AND EXISTS (
+          SELECT 1 FROM node_flags nf
+          WHERE nf.node_id = n.id
+          AND nf.flag IN (${flags.map(() => '?').join(',')})
+        )`;
+        params.push(...flags);
+      }
+    }
+
     if (createdAfter) { query += ` AND n.created_at >= ?`; params.push(createdAfter); }
     if (createdBefore) { query += ` AND n.created_at < ?`; params.push(createdBefore); }
     if (eventAfter) { query += ` AND n.event_date >= ?`; params.push(eventAfter); }
@@ -51,21 +74,28 @@ export class NodeService {
 
   private async getNodesSQLite(filters: NodeFilters = {}): Promise<Node[]> {
     const { dimensions, search, limit = 100, offset = 0, sortBy, dimensionsMatch = 'any',
-            createdAfter, createdBefore, eventAfter, eventBefore } = filters;
+            createdAfter, createdBefore, eventAfter, eventBefore,
+            excludePrivate, flags, flagsMatch = 'any' } = filters;
     const sqlite = getSQLiteClient();
-    
-    // Use nodes_v view for array-like dimensions behavior (exclude embedding BLOB for performance)
+
     let query = `
       SELECT n.id, n.title, n.description, n.notes, n.link, n.event_date, n.metadata, n.chunk,
-             n.chunk_status, n.embedding_updated_at, n.embedding_text,
+             n.chunk_status, n.embedding_updated_at, n.embedding_text, n.is_private,
              n.created_at, n.updated_at,
              COALESCE((SELECT JSON_GROUP_ARRAY(d.dimension)
                        FROM node_dimensions d WHERE d.node_id = n.id), '[]') as dimensions_json,
+             COALESCE((SELECT JSON_GROUP_ARRAY(nf.flag)
+                       FROM node_flags nf WHERE nf.node_id = n.id), '[]') as flags_json,
              (SELECT COUNT(*) FROM edges WHERE from_node_id = n.id OR to_node_id = n.id) as edge_count
       FROM nodes n
       WHERE 1=1
     `;
     const params: any[] = [];
+
+    // Privacy filter
+    if (excludePrivate) {
+      query += ` AND n.is_private = 0`;
+    }
 
     // Filter by dimensions (SQLite JOIN with node_dimensions)
     if (dimensions && dimensions.length > 0) {
@@ -92,6 +122,25 @@ export class NodeService {
     if (search) {
       query += ` AND (n.title LIKE ? COLLATE NOCASE OR n.description LIKE ? COLLATE NOCASE OR n.notes LIKE ? COLLATE NOCASE)`;
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    // Flag filtering
+    if (flags && flags.length > 0) {
+      if (flagsMatch === 'all' && flags.length > 1) {
+        query += ` AND (
+          SELECT COUNT(DISTINCT nf.flag) FROM node_flags nf
+          WHERE nf.node_id = n.id
+          AND nf.flag IN (${flags.map(() => '?').join(',')})
+        ) = ?`;
+        params.push(...flags, flags.length);
+      } else {
+        query += ` AND EXISTS (
+          SELECT 1 FROM node_flags nf
+          WHERE nf.node_id = n.id
+          AND nf.flag IN (${flags.map(() => '?').join(',')})
+        )`;
+        params.push(...flags);
+      }
     }
 
     // Temporal filters
@@ -150,41 +199,46 @@ export class NodeService {
       params.push(offset);
     }
 
-    const result = sqlite.query<Node & { dimensions_json: string }>(query, params);
-    
-    // Parse dimensions_json and metadata back for compatibility
+    const result = sqlite.query<Node & { dimensions_json: string; flags_json: string }>(query, params);
+
+    // Parse dimensions_json, flags_json and metadata back for compatibility
     return result.rows.map(row => ({
       ...row,
       dimensions: JSON.parse(row.dimensions_json || '[]'),
+      flags: JSON.parse(row.flags_json || '[]'),
       metadata: row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : null,
     }));
   }
 
-  async getNodeById(id: number): Promise<Node | null> {
-    return this.getNodeByIdSQLite(id);
+  async getNodeById(id: number, opts: { excludePrivate?: boolean } = {}): Promise<Node | null> {
+    return this.getNodeByIdSQLite(id, opts);
   }
 
   // PostgreSQL path removed in SQLite-only consolidation
 
-  private async getNodeByIdSQLite(id: number): Promise<Node | null> {
+  private async getNodeByIdSQLite(id: number, opts: { excludePrivate?: boolean } = {}): Promise<Node | null> {
     const sqlite = getSQLiteClient();
+    const privacyClause = opts.excludePrivate ? ' AND n.is_private = 0' : '';
     const query = `
       SELECT n.id, n.title, n.description, n.notes, n.link, n.event_date, n.metadata, n.chunk,
-             n.chunk_status, n.embedding_updated_at, n.embedding_text,
+             n.chunk_status, n.embedding_updated_at, n.embedding_text, n.is_private,
              n.created_at, n.updated_at,
-             COALESCE((SELECT JSON_GROUP_ARRAY(d.dimension) 
-                       FROM node_dimensions d WHERE d.node_id = n.id), '[]') as dimensions_json
+             COALESCE((SELECT JSON_GROUP_ARRAY(d.dimension)
+                       FROM node_dimensions d WHERE d.node_id = n.id), '[]') as dimensions_json,
+             COALESCE((SELECT JSON_GROUP_ARRAY(nf.flag)
+                       FROM node_flags nf WHERE nf.node_id = n.id), '[]') as flags_json
       FROM nodes n
-      WHERE n.id = ?
+      WHERE n.id = ?${privacyClause}
     `;
-    const result = sqlite.query<Node & { dimensions_json: string }>(query, [id]);
-    
+    const result = sqlite.query<Node & { dimensions_json: string; flags_json: string }>(query, [id]);
+
     if (result.rows.length === 0) return null;
-    
+
     const row = result.rows[0];
     return {
       ...row,
       dimensions: JSON.parse(row.dimensions_json || '[]'),
+      flags: JSON.parse(row.flags_json || '[]'),
       metadata: row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : null,
     };
   }
@@ -266,7 +320,7 @@ export class NodeService {
   // PostgreSQL path removed in SQLite-only consolidation
 
   private async updateNodeSQLite(id: number, updates: Partial<Node>): Promise<Node> {
-    const { title, description, notes, link, event_date, dimensions, chunk, metadata } = updates;
+    const { title, description, notes, link, event_date, dimensions, chunk, metadata, is_private } = updates;
     const now = new Date().toISOString();
     const sqlite = getSQLiteClient();
 
@@ -293,11 +347,15 @@ export class NodeService {
         setFields.push('chunk_status = ?');
         params.push(updates.chunk_status ?? null);
       }
-      if (metadata !== undefined) { 
-        setFields.push('metadata = ?'); 
-        params.push(JSON.stringify(metadata)); 
+      if (metadata !== undefined) {
+        setFields.push('metadata = ?');
+        params.push(JSON.stringify(metadata));
       }
-      
+      if (is_private !== undefined) {
+        setFields.push('is_private = ?');
+        params.push(is_private);
+      }
+
       // Always update timestamp
       setFields.push('updated_at = ?');
       params.push(now, id); // id for WHERE clause
