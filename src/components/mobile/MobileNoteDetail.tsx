@@ -28,6 +28,7 @@ export default function MobileNoteDetail({
   const [notesDraft, setNotesDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [showHeaderTitle, setShowHeaderTitle] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -148,20 +149,36 @@ export default function MobileNoteDetail({
             </div>
 
             {/* Description */}
-            {node.description && (
-              <div style={{
-                marginTop: '18px',
-                fontSize: '15px',
-                color: 'var(--app-text-muted)',
-                lineHeight: 1.6,
-                padding: '14px 16px',
-                background: 'var(--app-panel)',
-                borderRadius: '14px',
-                border: '0.5px solid var(--app-border)',
-              }}>
-                {node.description}
-              </div>
-            )}
+            {node.description && (() => {
+              const PREVIEW_LENGTH = 120;
+              const isLong = node.description.length > PREVIEW_LENGTH;
+              const displayText = isLong && !showFullDescription
+                ? node.description.slice(0, PREVIEW_LENGTH).trimEnd() + '…'
+                : node.description;
+              return (
+                <div style={{
+                  marginTop: '18px',
+                  fontSize: '15px',
+                  color: 'var(--app-text-muted)',
+                  lineHeight: 1.6,
+                  padding: '14px 16px',
+                  background: 'var(--app-panel)',
+                  borderRadius: '14px',
+                  border: '0.5px solid var(--app-border)',
+                }}>
+                  {displayText}
+                  {isLong && (
+                    <button
+                      type="button"
+                      onClick={() => setShowFullDescription((v) => !v)}
+                      style={{ marginLeft: '6px', background: 'none', border: 'none', padding: 0, fontSize: '13px', color: 'var(--toolbar-accent)', cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      {showFullDescription ? 'Show less' : 'Show more'}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Notes content */}
             <div style={{
