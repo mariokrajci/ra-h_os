@@ -9,6 +9,7 @@ import FormattingToolbar from '@/components/focus/FormattingToolbar';
 import { parseNodeMarkers } from '@/tools/infrastructure/nodeFormatter';
 import { Node, NodeConnection, Chunk, Annotation } from '@/types/database';
 import DimensionTags from './dimensions/DimensionTags';
+import FlagPickerModal from './dimensions/FlagPickerModal';
 import { getNodeIcon } from '@/utils/nodeIcons';
 import { useDimensionIcons } from '@/context/DimensionIconsContext';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -83,7 +84,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   const [showReembedPrompt, setShowReembedPrompt] = useState<number | null>(null);
   const [priorityDimensions, setPriorityDimensions] = useState<string[]>([]);
   const [availableFlags, setAvailableFlags] = useState<Array<{ name: string; color: string }>>([]);
-  const [showFlagPicker, setShowFlagPicker] = useState(false);
+  const [showFlagModal, setShowFlagModal] = useState(false);
 
   const activeNodeId = activeTab;
   const currentNode = activeNodeId !== null ? nodesData[activeNodeId] : undefined;
@@ -2675,87 +2676,48 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 }}
                 disabled={false}
                 extraChips={<>
+                  {/* Add flag button — first, same style as dimension + button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fetch('/api/flags').then(r => r.json()).then(data => { if (data.success) setAvailableFlags(data.flags); }).catch(() => {});
+                      setShowFlagModal(true);
+                    }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '12px', color: 'var(--app-text-subtle)',
+                      background: 'transparent', border: '1px dashed var(--app-border)',
+                      cursor: 'pointer', padding: '1px 6px', borderRadius: '8px',
+                      transition: 'all 0.15s', lineHeight: 1,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--app-text-muted)'; e.currentTarget.style.borderColor = 'var(--app-toolbar-border)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--app-text-subtle)'; e.currentTarget.style.borderColor = 'var(--app-border)'; }}
+                    title="Add flag"
+                  >
+                    <Bookmark size={10} />
+                  </button>
+                  {/* Flag chips — same size as dimension chips */}
                   {(nodesData[activeTab]?.flags ?? []).map(flagName => {
                     const flagDef = availableFlags.find(f => f.name === flagName);
                     return (
                       <span
                         key={flagName}
                         style={{
-                          display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          display: 'inline-flex', alignItems: 'center', gap: '3px',
                           padding: '2px 6px', borderRadius: '8px', fontSize: '10px',
                           background: `${flagDef?.color ?? '#6b7280'}22`,
                           border: `1px solid ${flagDef?.color ?? '#6b7280'}`,
                           color: flagDef?.color ?? '#6b7280',
-                          cursor: 'pointer',
+                          cursor: 'pointer', transition: 'all 0.2s',
                         }}
-                        onClick={() => activeNodeId !== null && removeNodeFlag(activeNodeId, flagName)}
+                        onClick={(e) => { e.stopPropagation(); activeNodeId !== null && removeNodeFlag(activeNodeId, flagName); }}
                         title="Click to remove flag"
                       >
-                        <Bookmark size={9} />
                         {flagName}
+                        <span style={{ opacity: 0.6, fontSize: '14px', lineHeight: 1 }}>×</span>
                       </span>
                     );
                   })}
-                  <div style={{ position: 'relative' }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!showFlagPicker) {
-                          fetch('/api/flags').then(r => r.json()).then(data => { if (data.success) setAvailableFlags(data.flags); }).catch(() => {});
-                        }
-                        setShowFlagPicker(!showFlagPicker);
-                      }}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '12px', color: 'var(--app-text-subtle)',
-                        background: 'transparent', border: '1px dashed var(--app-border)',
-                        cursor: 'pointer', padding: '1px 6px', borderRadius: '8px',
-                        transition: 'all 0.15s', lineHeight: 1,
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.color = 'var(--app-text-muted)'; e.currentTarget.style.borderColor = 'var(--app-toolbar-border)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--app-text-subtle)'; e.currentTarget.style.borderColor = 'var(--app-border)'; }}
-                      title="Add flag"
-                    >
-                      <Bookmark size={10} />
-                    </button>
-                    {showFlagPicker && (
-                      <div style={{
-                        position: 'absolute', top: '100%', left: 0, marginTop: '4px',
-                        background: 'var(--app-panel-elevated)', border: '1px solid var(--app-border)',
-                        borderRadius: '6px', padding: '4px', zIndex: 100,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)', minWidth: '160px',
-                      }}>
-                        {availableFlags.filter(f => !(nodesData[activeTab]?.flags ?? []).includes(f.name)).length === 0 ? (
-                          <div style={{ padding: '8px 12px', fontSize: '12px', color: 'var(--app-text-muted)' }}>
-                            No flags yet. Create them in<br />
-                            <span style={{ color: 'var(--toolbar-accent)' }}>Settings → Flags</span>
-                          </div>
-                        ) : (
-                          availableFlags
-                            .filter(f => !(nodesData[activeTab]?.flags ?? []).includes(f.name))
-                            .map(flag => (
-                              <button
-                                key={flag.name}
-                                onClick={() => {
-                                  if (activeNodeId !== null) assignFlag(activeNodeId, flag.name);
-                                  setShowFlagPicker(false);
-                                }}
-                                style={{
-                                  display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-                                  padding: '6px 10px', background: 'transparent', border: 'none',
-                                  color: 'var(--app-text)', fontSize: '12px', cursor: 'pointer', borderRadius: '4px',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--app-hover)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                              >
-                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: flag.color, flexShrink: 0, display: 'inline-block' }} />
-                                {flag.name}
-                              </button>
-                            ))
-                        )}
-                      </div>
-                    )}
-                  </div>
                 </>}
               />
               </div>
@@ -3652,12 +3614,13 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
       />
     )}
     {/* Tab Context Menu */}
-    {showFlagPicker && (
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 99 }}
-        onClick={() => setShowFlagPicker(false)}
-      />
-    )}
+    <FlagPickerModal
+      isOpen={showFlagModal}
+      onClose={() => setShowFlagModal(false)}
+      onFlagSelect={(flag) => { if (activeNodeId !== null) assignFlag(activeNodeId, flag); }}
+      availableFlags={availableFlags}
+      assignedFlags={activeNodeId !== null ? (nodesData[activeNodeId]?.flags ?? []) : []}
+    />
 
     {contextMenu && (
       <div
