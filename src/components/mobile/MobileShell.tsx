@@ -42,22 +42,19 @@ function MobileBottomBar({
         className="app-button"
         style={{
           pointerEvents: 'auto',
+          width: '60px',
           height: '60px',
-          minWidth: '0',
-          width: 'min(72vw, 280px)',
           borderRadius: '999px',
-          padding: '0 20px',
-          background: 'color-mix(in srgb, var(--app-panel) 72%, transparent)',
+          background: 'color-mix(in srgb, var(--app-panel) 78%, transparent)',
           borderColor: 'color-mix(in srgb, var(--app-border) 72%, transparent)',
           backdropFilter: 'blur(20px)',
           boxShadow: '0 16px 36px rgba(0, 0, 0, 0.14)',
+          color: 'var(--app-text)',
         }}
         onClick={onOpenSearch}
+        aria-label="Search notes"
       >
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', color: 'var(--app-text-muted)', fontSize: '17px' }}>
-          <Search size={18} />
-          Search notes…
-        </span>
+        <Search size={22} />
       </button>
       <button
         type="button"
