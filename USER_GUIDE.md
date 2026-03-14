@@ -201,11 +201,11 @@ The AI-generated summary (up to 280 characters). It's created automatically when
 - **Regenerate:** Click the regenerate button to have the AI rewrite it. Estimated cost shown before you confirm.
 
 ### Notes tab
-AI-seeded editable synthesis. Supports full Markdown.
+Your editable synthesis layer. Supports full Markdown.
 
 - Click **Edit** to enter edit mode
 - Type freely — headers, lists, code blocks all work
-- For extracted sources, Notes may start with an AI-generated synthesis based on the Source content
+- For extracted sources, Notes stay empty until you write them yourself or explicitly generate them from the Source
 - Reference another node: type `@` followed by the node ID (the green number badge on any node). It becomes a clickable link.
 - **Tip:** Drag a node's green ID badge from any panel and drop it into the Notes editor to insert a reference automatically.
 - Click **Save** when done. Navigating away without saving will discard changes.
@@ -232,7 +232,7 @@ Raw content extracted from the source URL — YouTube transcript segments, PDF p
 - Click **Edit** to manually correct extraction errors
 - Each chunk shows its index — useful when tracing where a search result came from
 
-For large PDFs, the app may generate initial Notes from detected high-signal sections such as Abstract, Introduction, and Conclusion. If those sections are not detected reliably, it falls back to using the beginning and end of the extracted PDF text. This changes note generation only; it does not change how the PDF is rendered or how annotations behave in the Source tab.
+For large PDFs, the app may still analyze high-signal sections such as Abstract, Introduction, and Conclusion when you explicitly choose to generate Notes from Source. If those sections are not detected reliably, it falls back to using the beginning and end of the extracted PDF text. This affects only on-demand note generation; it does not change how the PDF is rendered or how annotations behave in the Source tab.
 
 ---
 

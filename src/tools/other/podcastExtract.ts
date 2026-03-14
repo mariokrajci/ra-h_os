@@ -102,16 +102,27 @@ export const podcastExtractTool = tool({
 
       // Create node immediately
       const baseUrl = (apiBaseUrl || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+      const createPayload: {
+        title: string;
+        description?: string;
+        link: string;
+        dimensions: string[];
+        metadata: typeof meta;
+      } = {
+        title: episodeTitle,
+        link: url,
+        dimensions: nodeDimensions,
+        metadata: meta,
+      };
+
+      if (ai.nodeDescription) {
+        createPayload.description = ai.nodeDescription;
+      }
+
       const createResponse = await fetch(`${baseUrl}/api/nodes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: episodeTitle,
-          description: ai.nodeDescription || `${meta.podcast_name} — ${episodeTitle}`,
-          link: url,
-          dimensions: nodeDimensions,
-          metadata: meta,
-        }),
+        body: JSON.stringify(createPayload),
       });
 
       const createResult = await createResponse.json().catch(() => null);

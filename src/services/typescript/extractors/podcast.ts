@@ -45,7 +45,7 @@ export interface ExtractionResult {
   metadata: PodcastEpisodeResult & {
     source: 'podcast_episode';
     source_status: 'pending' | 'available' | 'failed';
-    notes_status: 'pending' | 'available' | 'failed';
+    notes_status?: 'pending' | 'processing' | 'available' | 'failed';
     transcript_status: 'queued' | 'processing' | 'available' | 'unavailable';
     transcript_source?: string;
     transcript_confidence?: 'high' | 'medium' | 'low';

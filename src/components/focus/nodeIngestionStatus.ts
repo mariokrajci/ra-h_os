@@ -32,15 +32,15 @@ export function getNodeNotesStatus(metadata?: IngestionMetadata | null): NodeTab
     return {
       kind: 'processing',
       message: metadata?.transcript_status === 'queued'
-        ? 'Source queued. Notes will appear when processing finishes.'
-        : 'Notes are being generated...',
+        ? 'Source queued. Notes will stay empty until you write them or generate them.'
+        : 'Source is being prepared. Notes will stay empty until you write them or generate them.',
     };
   }
 
   if (metadata?.notes_status === 'failed' || metadata?.transcript_status === 'unavailable') {
     return {
       kind: 'error',
-      message: 'Notes could not be generated from this source.',
+      message: 'Source content could not be prepared for this node.',
     };
   }
 

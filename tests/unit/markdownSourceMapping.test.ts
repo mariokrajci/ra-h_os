@@ -134,4 +134,62 @@ describe('MappedMarkdownRenderer', () => {
     expect(html).not.toContain('&lt;/td&gt;');
   });
 
+  it('renders github task lists with checked and unchecked checkboxes', () => {
+    const markdown = [
+      '# Roadmap',
+      '',
+      '- [ ] Interactive agent selector web tool',
+      '- [x] Multi-agent workflow examples',
+    ].join('\n');
+
+    const html = renderToStaticMarkup(
+      React.createElement(MappedMarkdownRenderer, {
+        content: markdown,
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('checked=""');
+    expect(html).toContain('Interactive agent selector web tool');
+    expect(html).toContain('Multi-agent workflow examples');
+  });
+
+  it('renders embedded html ordered and unordered lists with their markers intact', () => {
+    const markdown = [
+      '<h1>🤝 Contributing</h1>',
+      '<p>We welcome contributions! Here\'s how you can help:</p>',
+      '<h2>Add a New Agent</h2>',
+      '<ol>',
+      '  <li>Fork the repository</li>',
+      '  <li>Create a new agent file in the appropriate category</li>',
+      '  <li>',
+      '    Follow the agent template structure:',
+      '    <ul>',
+      '      <li>Frontmatter with name, description, color</li>',
+      '      <li>Identity &amp; Memory section</li>',
+      '    </ul>',
+      '  </li>',
+      '  <li>Submit a PR with your agent</li>',
+      '</ol>',
+    ].join('\n');
+
+    const html = renderToStaticMarkup(
+      React.createElement(MappedMarkdownRenderer, {
+        content: markdown,
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).toContain('<ol');
+    expect(html).toContain('<ul');
+    expect(html).toContain('<li');
+    expect(html).toContain('Fork the repository');
+    expect(html).toContain('Frontmatter with name, description, color');
+    expect(html).not.toContain('&lt;ol');
+    expect(html).not.toContain('&lt;li');
+  });
+
 });

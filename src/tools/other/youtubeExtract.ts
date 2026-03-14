@@ -43,13 +43,6 @@ async function fetchYouTubeBasicMetadata(url: string): Promise<{ title: string; 
   };
 }
 
-function buildYouTubeDescription(title: string, channelName?: string): string {
-  if (channelName) {
-    return `YouTube video by ${channelName}: ${title.slice(0, 220)}`;
-  }
-  return `YouTube video: ${title.slice(0, 220)}`;
-}
-
 export const youtubeExtractTool = tool({
   description: 'Create a YouTube node immediately, then fetch transcript and notes in the background',
   inputSchema: z.object({
@@ -81,7 +74,6 @@ export const youtubeExtractTool = tool({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: nodeTitle,
-          description: buildYouTubeDescription(nodeTitle, basic.channelName),
           link: url,
           dimensions: trimmedDimensions,
           metadata: {

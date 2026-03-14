@@ -28,6 +28,39 @@ describe('websiteExtractTool node creation response handling', () => {
     vi.restoreAllMocks();
   });
 
+  it('lets the node API generate the initial description instead of sending a canned website placeholder', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          id: 321,
+          data: { dimensions: ['website'] },
+        }),
+        { status: 201, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await runWebsiteExtract('https://github.com/langflow-ai/openrag');
+
+    expect(result.success).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+    const body = requestInit?.body ? JSON.parse(String(requestInit.body)) : null;
+
+    expect(body).toMatchObject({
+      title: 'langflow-ai/openrag',
+      link: 'https://github.com/langflow-ai/openrag',
+      metadata: expect.objectContaining({
+        source: 'website',
+        hostname: 'github.com',
+      }),
+    });
+    expect(body).not.toHaveProperty('description');
+  });
+
   it('accepts successful create responses where id is at the top level', async () => {
     vi.stubGlobal(
       'fetch',

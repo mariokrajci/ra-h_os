@@ -3,7 +3,7 @@ import { autoEmbedQueue } from '@/services/embedding/autoEmbedQueue';
 import { extractWebsite } from '@/services/typescript/extractors/website';
 import { extractYouTube } from '@/services/typescript/extractors/youtube';
 import { extractPaper } from '@/services/typescript/extractors/paper';
-import { buildSourceNotesInput, generateSourceNotes } from './generateSourceNotes';
+import { buildSourceNotesInput } from './generateSourceNotes';
 
 type FinalizerSource = 'website' | 'youtube' | 'pdf';
 
@@ -11,6 +11,34 @@ interface FinalizerParams {
   nodeId: number;
   title: string;
   url: string;
+}
+
+function isPlaceholderTitle(title: string, sourceType: FinalizerSource): boolean {
+  const normalized = title.trim();
+  if (!normalized) return true;
+
+  if (sourceType === 'website') {
+    return /^Website:\s+/i.test(normalized) || /^[^/\s]+\/[^/\s]+$/.test(normalized);
+  }
+
+  if (sourceType === 'pdf') {
+    return /^PDF:\s+/i.test(normalized) || /^PDF Document$/i.test(normalized);
+  }
+
+  return false;
+}
+
+function pickPromotedTitle(
+  currentTitle: string,
+  extractedTitle: unknown,
+  sourceType: FinalizerSource,
+): string | undefined {
+  if (typeof extractedTitle !== 'string') return undefined;
+  const normalizedExtracted = extractedTitle.trim().replace(/\s+/g, ' ').slice(0, 160);
+  if (!normalizedExtracted) return undefined;
+  if (normalizedExtracted === currentTitle.trim()) return undefined;
+  if (!isPlaceholderTitle(currentTitle, sourceType)) return undefined;
+  return normalizedExtracted;
 }
 
 async function markFailed(nodeId: number, metadata: Record<string, unknown>) {
@@ -21,38 +49,6 @@ async function markFailed(nodeId: number, metadata: Record<string, unknown>) {
       notes_status: 'failed',
     },
   });
-}
-
-async function writeSource(nodeId: number, sourceText: string, metadata: Record<string, unknown>) {
-  await nodeService.updateNode(nodeId, {
-    chunk: sourceText,
-    chunk_status: 'not_chunked',
-    metadata: {
-      ...metadata,
-      source_status: 'available',
-      notes_status: 'processing',
-    },
-  });
-}
-
-async function writeNotes(
-  nodeId: number,
-  notes: string | null,
-  metadata: Record<string, unknown>,
-  reason: string,
-) {
-  await nodeService.updateNode(nodeId, {
-    notes: notes || undefined,
-    metadata: {
-      ...metadata,
-      source_status: 'available',
-      notes_status: notes ? 'available' : 'failed',
-    },
-  });
-
-  if (notes) {
-    autoEmbedQueue.enqueue(nodeId, { reason });
-  }
 }
 
 async function finalizeExtractedNode(
@@ -73,22 +69,29 @@ async function finalizeExtractedNode(
       return;
     }
 
-    const enrichedMetadata = {
+    const enrichedMetadata: Record<string, unknown> = {
       ...existingMetadata,
       ...(result.metadata || {}),
       source: existingMetadata.source || sourceType,
     };
 
-    await writeSource(params.nodeId, sourceText, enrichedMetadata);
+    const promotedTitle = pickPromotedTitle(node.title || params.title, enrichedMetadata.title, sourceType);
 
-    const notes = await generateSourceNotes({
-      title: params.title,
-      sourceType,
-      sourceText,
-      metadata: enrichedMetadata,
+    await nodeService.updateNode(params.nodeId, {
+      title: promotedTitle,
+      chunk: sourceText,
+      chunk_status: 'not_chunked',
+      metadata: {
+        ...(() => {
+          const { notes_status: _notesStatus, ...metadataWithoutNotesStatus } = enrichedMetadata as Record<string, unknown> & {
+            notes_status?: unknown;
+          };
+          return metadataWithoutNotesStatus;
+        })(),
+        source_status: 'available',
+      },
     });
-
-    await writeNotes(params.nodeId, notes, enrichedMetadata, `${sourceType}_source_ready`);
+    autoEmbedQueue.enqueue(params.nodeId, { reason: `${sourceType}_source_ready` });
   } catch (error) {
     console.error(`[${sourceType}] background finalization failed for node ${params.nodeId}:`, error);
     await markFailed(params.nodeId, existingMetadata);

@@ -23,6 +23,19 @@ interface ExtractionResult {
   url: string;
 }
 
+type RstReferenceMap = Map<string, string>;
+
+const GITHUB_README_COMMUNITY_LINE_PATTERNS: RegExp[] = [
+  /^\s*English\s*\/\s*中文\s*$/i,
+  /^\s*Join the Community\s*$/i,
+  /\b(Lark Group|WeChat Group|Discord|X\s*\(Twitter\)|Join Discord Server|Follow us|View QR Code)\b/i,
+  /\b(scan the qr code|join our community|sincerely invite every developer|future of ai agent context management)\b/i,
+];
+
+function isGitHubReadmeCommunityNoise(line: string): boolean {
+  return GITHUB_README_COMMUNITY_LINE_PATTERNS.some((pattern) => pattern.test(line.trim()));
+}
+
 const UI_NOISE_PATTERNS: RegExp[] = [
   /\b(sign in|log in|notifications|watch|fork|star)\b/i,
   /\b(pull requests?|issues?|releases?|packages|contributors?)\b/i,
@@ -73,6 +86,157 @@ export function sanitizeWebsiteText(raw: string): string {
   }
 
   return deduped.join('\n\n').slice(0, 120_000);
+}
+
+function buildRstReferenceMap(raw: string): RstReferenceMap {
+  const refs = new Map<string, string>();
+  const refRegex = /^\.\.\s+_([^:]+):\s+(https?:\/\/\S+)\s*$/gm;
+
+  for (const match of raw.matchAll(refRegex)) {
+    const label = match[1]?.trim();
+    const url = match[2]?.trim();
+    if (label && url) refs.set(label, url);
+  }
+
+  return refs;
+}
+
+function replaceRstReferenceLinks(line: string, refs: RstReferenceMap): string {
+  let output = line;
+
+  for (const [label, url] of refs.entries()) {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`(^|[\\s(])(${escapedLabel})_(?=[\\s).,:;!?]|$)`, 'g');
+    output = output.replace(pattern, `$1[$2](${url})`);
+  }
+
+  return output;
+}
+
+export function sanitizeGitHubReadmeRst(raw: string): string {
+  const refs = buildRstReferenceMap(raw);
+  const lines = raw.replace(/\r\n/g, '\n').split('\n');
+  const out: string[] = [];
+  let inCodeBlock = false;
+  let skipCommunitySection = false;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    const next = lines[i + 1] ?? '';
+    const nextTrimmed = next.trim();
+
+    if (!trimmed) {
+      if (skipCommunitySection) {
+        continue;
+      }
+      if (inCodeBlock) {
+        out.push('');
+      } else if (out[out.length - 1] !== '') {
+        out.push('');
+      }
+      continue;
+    }
+
+    if (/^\.\.\s+\|[^|]+\|\s+image::/i.test(trimmed)) {
+      while (i + 1 < lines.length && /^\s+:\w+:/i.test(lines[i + 1])) i += 1;
+      continue;
+    }
+
+    if (skipCommunitySection) {
+      if (/^[=~`\-^:#*+]{3,}\s*$/.test(nextTrimmed) && trimmed.length > 0) {
+        skipCommunitySection = false;
+      } else if (isGitHubReadmeCommunityNoise(trimmed)) {
+        continue;
+      } else {
+        continue;
+      }
+    }
+
+    if (/^\|[^|]+\|(?:\s+\|[^|]+\|)*\s*$/.test(trimmed)) {
+      continue;
+    }
+
+    if (/^\.\.\s+_[^:]+:\s+https?:\/\//i.test(trimmed)) {
+      continue;
+    }
+
+    if (isGitHubReadmeCommunityNoise(trimmed)) {
+      skipCommunitySection = true;
+      continue;
+    }
+
+    const codeDirectiveMatch = trimmed.match(/^\.\.\s+code::\s*([A-Za-z0-9_+-]+)?\s*$/i);
+    if (codeDirectiveMatch) {
+      const codeLanguage = codeDirectiveMatch[1]?.toLowerCase() || '';
+      out.push(`\`\`\`${codeLanguage}`);
+      inCodeBlock = true;
+      continue;
+    }
+
+    if (inCodeBlock) {
+      if (/^\s{4,}|\t/.test(line)) {
+        out.push(line.replace(/^(?:\s{4}|\t)/, ''));
+        continue;
+      }
+
+      out.push('```');
+      inCodeBlock = false;
+      i -= 1;
+      continue;
+    }
+
+    if (/^[=~`\-^:#*+]{3,}\s*$/.test(nextTrimmed) && trimmed.length > 0) {
+      const marker = nextTrimmed[0];
+      const headingLevel = marker === '=' ? '# ' : '## ';
+      out.push(`${headingLevel}${replaceRstReferenceLinks(trimmed, refs)}`);
+      i += 1;
+      continue;
+    }
+
+    let normalized = replaceRstReferenceLinks(line, refs)
+      .replace(/``([^`]+)``/g, '`$1`')
+      .replace(/^\.\.\s+note::\s*/i, '> ')
+      .replace(/^\.\.\s+warning::\s*/i, '> Warning: ');
+
+    if (/^\s*[-*+]\s+/.test(normalized)) {
+      normalized = normalized.replace(/^\s*([-*+])\s+/, '- ');
+    }
+
+    out.push(normalized);
+  }
+
+  if (inCodeBlock) {
+    out.push('```');
+  }
+
+  const normalized: string[] = [];
+  let previousBlank = false;
+  for (const line of out) {
+    const blank = line.trim().length === 0;
+    if (blank && previousBlank) continue;
+    normalized.push(line);
+    previousBlank = blank;
+  }
+
+  return normalized.join('\n').trim().slice(0, 200_000);
+}
+
+export function deriveGitHubReadmeTitle(repoSlug: string, markdown: string): string {
+  const headingMatch = markdown.match(/^\s*#\s+(.+?)\s*$/m);
+  const firstLineMatch = markdown.match(/^\s*([^\n#][^\n]{3,160})\s*$/m);
+  const candidate = (headingMatch?.[1] || firstLineMatch?.[1] || '').trim();
+
+  if (!candidate) {
+    return repoSlug;
+  }
+
+  const normalized = candidate
+    .replace(/\s+/g, ' ')
+    .replace(/^README\s*[:\-]\s*/i, '')
+    .trim();
+
+  return normalized || repoSlug;
 }
 
 export class WebsiteExtractor {
@@ -186,13 +350,16 @@ export class WebsiteExtractor {
     }
 
     const metadata: WebsiteMetadata = {
-      title: `${repo.owner}/${repo.repo}`,
+      title: deriveGitHubReadmeTitle(`${repo.owner}/${repo.repo}`, markdown),
       site_name: 'GitHub',
       extraction_method: 'github_readme_api',
       description: data.name ? `Repository README (${data.name})` : 'Repository README',
     };
 
-    const cleanedMarkdown = this.cleanMarkdown(markdown);
+    const isRstReadme = typeof data.name === 'string' && /\.rst$/i.test(data.name);
+    const cleanedMarkdown = isRstReadme
+      ? sanitizeGitHubReadmeRst(markdown)
+      : this.cleanMarkdown(markdown);
 
     return {
       content: this.formatContent(metadata, cleanedMarkdown),

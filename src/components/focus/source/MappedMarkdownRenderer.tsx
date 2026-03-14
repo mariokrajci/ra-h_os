@@ -31,6 +31,7 @@ interface MarkdownNode {
   lang?: string | null;
   depth?: number;
   ordered?: boolean;
+  checked?: boolean | null;
   children?: MarkdownNode[];
   position?: PositionLike;
   align?: Array<'left' | 'right' | 'center' | null> | null;
@@ -110,8 +111,115 @@ function normalizeEmbeddedHtmlMarkdown(content: string): string {
   }
 
   let normalized = content.replace(/<table[\s\S]*?<\/table>/gi, convertHtmlTableToMarkdown);
+  normalized = convertHtmlBlocksToMarkdown(normalized);
   normalized = normalizeInlineHtml(normalized);
   return normalized;
+}
+
+function convertHtmlBlocksToMarkdown(fragment: string): string {
+  if (!/<\/?(?:ol|ul|li|p|div|h[1-6])\b/i.test(fragment)) {
+    return fragment;
+  }
+
+  const tokens = fragment.match(/<\/?(?:ol|ul|li|p|div|h[1-6])\b[^>]*>|[^<]+/gi) ?? [fragment];
+  const out: string[] = [];
+  const listStack: Array<{ type: 'ol' | 'ul'; index: number }> = [];
+  let currentLine = '';
+  let activeHeadingDepth: number | null = null;
+
+  const flushLine = () => {
+    const trimmed = currentLine.trimEnd();
+    if (trimmed.trim().length > 0) {
+      out.push(trimmed);
+    }
+    currentLine = '';
+  };
+
+  const ensureBlankLine = () => {
+    if (out.length === 0 || out[out.length - 1] === '') return;
+    out.push('');
+  };
+
+  for (const token of tokens) {
+    const lower = token.toLowerCase();
+
+    if (/^<h[1-6]\b/.test(lower)) {
+      flushLine();
+      ensureBlankLine();
+      activeHeadingDepth = Number(lower.match(/^<h([1-6])\b/)?.[1] || 1);
+      currentLine = `${'#'.repeat(activeHeadingDepth)} `;
+      continue;
+    }
+
+    if (/^<\/h[1-6]>/.test(lower)) {
+      flushLine();
+      ensureBlankLine();
+      activeHeadingDepth = null;
+      continue;
+    }
+
+    if (/^<(p|div)\b/.test(lower)) {
+      flushLine();
+      ensureBlankLine();
+      continue;
+    }
+
+    if (/^<\/(p|div)>/.test(lower)) {
+      flushLine();
+      ensureBlankLine();
+      continue;
+    }
+
+    if (/^<ol\b/.test(lower)) {
+      flushLine();
+      ensureBlankLine();
+      listStack.push({ type: 'ol', index: 0 });
+      continue;
+    }
+
+    if (/^<\/ol>/.test(lower)) {
+      flushLine();
+      listStack.pop();
+      ensureBlankLine();
+      continue;
+    }
+
+    if (/^<ul\b/.test(lower)) {
+      flushLine();
+      ensureBlankLine();
+      listStack.push({ type: 'ul', index: 0 });
+      continue;
+    }
+
+    if (/^<\/ul>/.test(lower)) {
+      flushLine();
+      listStack.pop();
+      ensureBlankLine();
+      continue;
+    }
+
+    if (/^<li\b/.test(lower)) {
+      flushLine();
+      const depth = Math.max(0, listStack.length - 1);
+      const currentList = listStack[listStack.length - 1];
+      const prefix = currentList?.type === 'ol'
+        ? `${++currentList.index}. `
+        : '- ';
+      currentLine = `${'  '.repeat(depth)}${prefix}`;
+      continue;
+    }
+
+    if (/^<\/li>/.test(lower)) {
+      flushLine();
+      continue;
+    }
+
+    currentLine += token.replace(/\s+/g, ' ');
+  }
+
+  flushLine();
+
+  return out.join('\n');
 }
 
 function convertHtmlTableToMarkdown(tableHtml: string): string {
@@ -301,16 +409,21 @@ function renderNode(
           {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </ol>
       ) : (
-        <ul key={key} style={{ margin: 0, paddingLeft: '20px' }}>
+        <ul
+          key={key}
+          style={{
+            margin: 0,
+            paddingLeft: '20px',
+            listStyle: (node.children ?? []).some((child) => child.checked !== null && child.checked !== undefined)
+              ? 'none'
+              : undefined,
+          }}
+        >
           {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </ul>
       );
     case 'listItem':
-      return (
-        <li key={key} style={{ marginBottom: '4px' }}>
-          {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
-        </li>
-      );
+      return renderListItem(node, content, annotationRanges, activeRange, palette, key);
     case 'blockquote':
       return (
         <blockquote
@@ -360,6 +473,58 @@ function renderNode(
         ? <React.Fragment key={key}>{renderChildren(node.children, content, annotationRanges, activeRange, palette)}</React.Fragment>
         : null;
   }
+}
+
+function renderListItem(
+  node: MarkdownNode,
+  content: string,
+  annotationRanges: AnnotationHighlightRange[],
+  activeRange: TextRange | null | undefined,
+  palette: ReturnType<typeof getTextFallbackPalette>,
+  key: React.Key
+) {
+  const isTaskItem = node.checked !== null && node.checked !== undefined;
+  const children = renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette);
+
+  if (!isTaskItem) {
+    return (
+      <li key={key} style={{ marginBottom: '4px' }}>
+        {children}
+      </li>
+    );
+  }
+
+  return (
+    <li
+      key={key}
+      style={{
+        marginBottom: '8px',
+        listStyle: 'none',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '10px',
+        marginLeft: '-20px',
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={Boolean(node.checked)}
+        disabled
+        readOnly
+        aria-label={node.checked ? 'Completed task' : 'Incomplete task'}
+        style={{
+          marginTop: '0.28em',
+          width: '16px',
+          height: '16px',
+          accentColor: palette.accent,
+          flexShrink: 0,
+        }}
+      />
+      <div style={{ flex: 1 }}>
+        {children}
+      </div>
+    </li>
+  );
 }
 
 function themeFromPalette(

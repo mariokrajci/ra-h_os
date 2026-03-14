@@ -15,10 +15,6 @@ function getPdfTitle(url: string, providedTitle?: string): string {
   }
 }
 
-function buildPdfDescription(url: string, title: string): string {
-  return `PDF from ${new URL(url).hostname}: ${title.slice(0, 220)}`;
-}
-
 export const paperExtractTool = tool({
   description: 'Create a PDF node immediately, then extract the full text and notes in the background',
   inputSchema: z.object({
@@ -57,7 +53,6 @@ export const paperExtractTool = tool({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: nodeTitle,
-          description: buildPdfDescription(url, nodeTitle),
           link: url,
           dimensions: trimmedDimensions,
           metadata: {

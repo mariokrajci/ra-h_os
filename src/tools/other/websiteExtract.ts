@@ -38,14 +38,6 @@ function normalizeWebsiteTitle(url: string, extractedTitle?: string): string {
   return normalized.slice(0, 160);
 }
 
-function buildWebsiteDescription(url: string, title: string): string {
-  const hostname = new URL(url).hostname;
-  if (title.startsWith('Website: ')) {
-    return `Website source from ${hostname}`;
-  }
-  return `Website source: ${title.slice(0, 220)}`;
-}
-
 export const websiteExtractTool = tool({
   description: 'Create a website node immediately, then extract source content and notes in the background',
   inputSchema: z.object({
@@ -76,7 +68,6 @@ export const websiteExtractTool = tool({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: nodeTitle,
-          description: buildWebsiteDescription(url, nodeTitle),
           link: url,
           dimensions: trimmedDimensions,
           metadata: {

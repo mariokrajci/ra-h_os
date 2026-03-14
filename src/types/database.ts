@@ -34,8 +34,8 @@ export interface NodeMetadata {
   transcript_source?: string;
   transcript_url?: string;
   transcript_confidence?: 'high' | 'medium' | 'low';
-  source_status?: 'processing' | 'available' | 'failed';
-  notes_status?: 'processing' | 'available' | 'failed';
+  source_status?: 'pending' | 'processing' | 'available' | 'failed';
+  notes_status?: 'pending' | 'processing' | 'available' | 'failed';
   notes_generation_strategy?: 'full' | 'truncated' | 'pdf_sections' | 'book_sections';
   notes_generation_sections?: string[];
   file_type?: 'pdf' | 'epub';

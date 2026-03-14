@@ -16,7 +16,7 @@ describe('node ingestion status helpers', () => {
     });
     expect(getNodeNotesStatus(metadata)).toEqual({
       kind: 'processing',
-      message: 'Source queued. Notes will appear when processing finishes.',
+      message: 'Source queued. Notes will stay empty until you write them or generate them.',
     });
   });
 
@@ -33,7 +33,7 @@ describe('node ingestion status helpers', () => {
     });
     expect(getNodeNotesStatus(metadata)).toEqual({
       kind: 'processing',
-      message: 'Notes are being generated...',
+      message: 'Source is being prepared. Notes will stay empty until you write them or generate them.',
     });
   });
 
@@ -50,8 +50,18 @@ describe('node ingestion status helpers', () => {
     });
     expect(getNodeNotesStatus(metadata)).toEqual({
       kind: 'error',
-      message: 'Notes could not be generated from this source.',
+      message: 'Source content could not be prepared for this node.',
     });
+  });
+
+  it('returns null when source is available but notes are intentionally empty', () => {
+    const metadata = {
+      source: 'website',
+      source_status: 'available' as const,
+    };
+
+    expect(getNodeSourceStatus(metadata)).toBeNull();
+    expect(getNodeNotesStatus(metadata)).toBeNull();
   });
 
   it('returns null for non-source-backed nodes', () => {

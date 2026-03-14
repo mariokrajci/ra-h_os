@@ -2,22 +2,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   extractPaperMock,
+  extractWebsiteMock,
   getNodeByIdMock,
   updateNodeMock,
   enqueueMock,
-  generateSourceNotesMock,
   buildSourceNotesInputMock,
 } = vi.hoisted(() => ({
   extractPaperMock: vi.fn(),
+  extractWebsiteMock: vi.fn(),
   getNodeByIdMock: vi.fn(),
   updateNodeMock: vi.fn(),
   enqueueMock: vi.fn(),
-  generateSourceNotesMock: vi.fn(),
   buildSourceNotesInputMock: vi.fn(),
 }));
 
 vi.mock('@/services/typescript/extractors/paper', () => ({
   extractPaper: extractPaperMock,
+}));
+
+vi.mock('@/services/typescript/extractors/website', () => ({
+  extractWebsite: extractWebsiteMock,
 }));
 
 vi.mock('@/services/database', () => ({
@@ -34,21 +38,20 @@ vi.mock('@/services/embedding/autoEmbedQueue', () => ({
 }));
 
 vi.mock('@/services/ingestion/generateSourceNotes', () => ({
-  generateSourceNotes: generateSourceNotesMock,
   buildSourceNotesInput: buildSourceNotesInputMock,
 }));
 
-import { finalizePdfNode } from '@/services/ingestion/finalizeSourceNode';
+import { finalizePdfNode, finalizeWebsiteNode } from '@/services/ingestion/finalizeSourceNode';
 
 describe('finalizePdfNode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getNodeByIdMock.mockResolvedValue({
       id: 42,
+      title: 'PDF: 1234.5678',
       metadata: { source: 'pdf', existing: true },
     });
     updateNodeMock.mockResolvedValue(undefined);
-    generateSourceNotesMock.mockResolvedValue('generated notes');
     buildSourceNotesInputMock.mockImplementation(({ sourceText }: { sourceText: string }) => {
       if (sourceText.length > 100000) {
         return {
@@ -99,14 +102,57 @@ describe('finalizePdfNode', () => {
         metadata: expect.objectContaining({
           author: 'Metadata Author',
           source_status: 'available',
-          notes_status: 'processing',
         }),
       }),
     );
-    expect(generateSourceNotesMock).toHaveBeenCalledWith(
+    expect(updateNodeMock).toHaveBeenCalledOnce();
+    expect(updateNodeMock).toHaveBeenCalledWith(
+      42,
       expect.objectContaining({
+        title: 'Test Paper',
+        chunk: 'Extracted PDF text',
         metadata: expect.objectContaining({
           author: 'Metadata Author',
+          source_status: 'available',
+        }),
+      }),
+    );
+    expect(updateNodeMock.mock.calls[0]?.[1]?.metadata).not.toHaveProperty('notes_status');
+    expect(enqueueMock).toHaveBeenCalledWith(42, { reason: 'pdf_source_ready' });
+  });
+
+  it('promotes placeholder website titles to extracted titles', async () => {
+    getNodeByIdMock.mockResolvedValue({
+      id: 42,
+      title: 'Website: arcinstitute.org',
+      metadata: { source: 'website', existing: true },
+    });
+    extractWebsiteMock.mockResolvedValue({
+      content: 'Formatted content',
+      chunk: '# ARC Institute\n\nResearch content',
+      metadata: {
+        title: 'ARC Institute',
+        description: 'Research institute site',
+        extraction_method: 'cheerio',
+        site_name: 'ARC',
+      },
+      url: 'https://arcinstitute.org',
+    });
+
+    await finalizeWebsiteNode({
+      nodeId: 42,
+      title: 'Website: arcinstitute.org',
+      url: 'https://arcinstitute.org',
+    });
+
+    expect(updateNodeMock).toHaveBeenCalledWith(
+      42,
+      expect.objectContaining({
+        title: 'ARC Institute',
+        chunk: '# ARC Institute\n\nResearch content',
+        metadata: expect.objectContaining({
+          title: 'ARC Institute',
+          source_status: 'available',
         }),
       }),
     );
@@ -165,5 +211,6 @@ Last chapter body
         }),
       }),
     );
+    expect(enqueueMock).toHaveBeenCalledWith(42, { reason: 'pdf_source_ready' });
   });
 });
