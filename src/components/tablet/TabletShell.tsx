@@ -101,7 +101,7 @@ export default function TabletShell() {
                     background: active ? 'var(--app-selected)' : 'var(--app-panel)',
                   }}
                 >
-                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{node.title || `Untitled #${node.id}`}</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.title || `Untitled #${node.id}`}</div>
                   <div style={{
                     marginTop: '6px',
                     fontSize: '12px',
