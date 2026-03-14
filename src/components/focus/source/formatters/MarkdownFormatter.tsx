@@ -9,6 +9,7 @@ interface MarkdownFormatterProps {
   annotationRanges?: AnnotationHighlightRange[];
   activeRange?: TextRange | null;
   theme?: ReaderTheme;
+  suppressedLeadingHeadingTitle?: string;
 }
 
 export default function MarkdownFormatter({
@@ -16,6 +17,7 @@ export default function MarkdownFormatter({
   annotationRanges = [],
   activeRange,
   theme = 'warm',
+  suppressedLeadingHeadingTitle,
 }: MarkdownFormatterProps) {
   return (
     <MappedMarkdownRenderer
@@ -23,6 +25,7 @@ export default function MarkdownFormatter({
       annotationRanges={annotationRanges}
       activeRange={activeRange}
       theme={theme}
+      suppressedLeadingHeadingTitle={suppressedLeadingHeadingTitle}
     />
   );
 }

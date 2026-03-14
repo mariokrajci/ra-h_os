@@ -14,4 +14,10 @@ describe('pane chrome theme usage', () => {
     expect(splitHandle).toContain('var(--toolbar-accent)');
     expect(nodePane).toContain('var(--app-surface-subtle)');
   });
+
+  it('makes the node tab strip horizontally scrollable when many tabs are open', () => {
+    expect(nodePane).toContain('overflowX: \'auto\'');
+    expect(nodePane).toContain('overflowY: \'hidden\'');
+    expect(nodePane).toContain('WebkitOverflowScrolling: \'touch\'');
+  });
 });

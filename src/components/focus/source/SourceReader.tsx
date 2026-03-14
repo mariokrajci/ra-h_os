@@ -18,6 +18,7 @@ import {
 
 interface SourceReaderProps {
   content: string;
+  nodeTitle?: string;
   onTextSelect?: (text: string) => void;
   onSourceSelect?: (selection: SourceSelection) => void;
   annotations?: Annotation[];
@@ -33,6 +34,7 @@ interface SourceReaderProps {
  */
 export default function SourceReader({
   content,
+  nodeTitle,
   onTextSelect,
   onSourceSelect,
   annotations = [],
@@ -129,7 +131,15 @@ export default function SourceReader({
       case 'article':
         return <BookFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} theme={readerTheme} />;
       case 'markdown':
-        return <MarkdownFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} theme={readerTheme} />;
+        return (
+          <MarkdownFormatter
+            content={content}
+            annotationRanges={annotationRanges}
+            activeRange={activeRange}
+            theme={readerTheme}
+            suppressedLeadingHeadingTitle={nodeTitle}
+          />
+        );
       default:
         return <RawFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} theme={readerTheme} />;
     }

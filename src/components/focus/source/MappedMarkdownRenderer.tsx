@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { titlesMatch } from '@/components/focus/contentNormalization';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
@@ -15,6 +16,7 @@ interface MappedMarkdownRendererProps {
   annotationRanges?: AnnotationHighlightRange[];
   activeRange?: TextRange | null;
   theme?: ReaderTheme;
+  suppressedLeadingHeadingTitle?: string;
 }
 
 interface PositionLike {
@@ -41,10 +43,15 @@ export default function MappedMarkdownRenderer({
   annotationRanges = [],
   activeRange,
   theme = 'dark',
+  suppressedLeadingHeadingTitle,
 }: MappedMarkdownRendererProps) {
   const normalizedContent = normalizeEmbeddedHtmlMarkdown(content);
   const tree = parser.parse(normalizedContent) as MarkdownNode;
   const palette = getTextFallbackPalette(theme);
+  const renderedChildren = maybeSuppressLeadingHeading(
+    tree.children ?? [],
+    suppressedLeadingHeadingTitle
+  );
 
   return (
     <div
@@ -61,9 +68,40 @@ export default function MappedMarkdownRenderer({
         gap: '1.25em',
       }}
     >
-      {renderChildren(tree.children ?? [], normalizedContent, annotationRanges, activeRange, palette)}
+      {renderChildren(renderedChildren, normalizedContent, annotationRanges, activeRange, palette)}
     </div>
   );
+}
+
+function maybeSuppressLeadingHeading(nodes: MarkdownNode[], title?: string): MarkdownNode[] {
+  if (!title?.trim() || nodes.length === 0) {
+    return nodes;
+  }
+
+  const firstMeaningfulNodeIndex = nodes.findIndex((node) => node.type !== 'html');
+  if (firstMeaningfulNodeIndex === -1) {
+    return nodes;
+  }
+
+  const candidate = nodes[firstMeaningfulNodeIndex];
+  if (candidate.type !== 'heading') {
+    return nodes;
+  }
+
+  const headingText = collectNodeText(candidate).trim();
+  if (!titlesMatch(headingText, title)) {
+    return nodes;
+  }
+
+  return nodes.filter((_, index) => index !== firstMeaningfulNodeIndex);
+}
+
+function collectNodeText(node: MarkdownNode): string {
+  if (node.type === 'text') {
+    return node.value ?? '';
+  }
+
+  return (node.children ?? []).map(collectNodeText).join('');
 }
 
 function normalizeEmbeddedHtmlMarkdown(content: string): string {

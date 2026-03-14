@@ -93,75 +93,86 @@ export default function NodePane({
       overflow: 'hidden',
     }}>
       <PaneHeader slot={slot} onCollapse={onCollapse} onSwapPanes={onSwapPanes}>
-        {/* Tabs rendered inline */}
-        {openTabs.length === 0 ? (
-          <span style={{ fontSize: '12px', color: 'var(--app-text-subtle)' }}>No tabs open</span>
-        ) : (
-          openTabs.map((tabId) => {
-            const title = nodeTitles[tabId] || 'Loading...';
-            const isActiveTab = activeTab === tabId;
-            return (
-              <div
-                key={tabId}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = 'copyMove';
-                  e.dataTransfer.setData('application/x-rah-tab', JSON.stringify({ id: tabId, title, sourceSlot: slot }));
-                  e.dataTransfer.setData('text/plain', `[NODE:${tabId}:"${title}"]`);
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu({ x: e.clientX, y: e.clientY, tabId });
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  background: isActiveTab ? 'var(--app-surface-subtle)' : 'transparent',
-                  border: isActiveTab ? '1px solid var(--app-border)' : '1px solid transparent',
-                  borderRadius: '4px',
-                  cursor: 'grab',
-                  flexShrink: 0,
-                }}
-              >
-                <button
-                  onClick={() => onTabSelect(tabId)}
-                  style={{
-                    fontSize: '11px',
-                    color: isActiveTab ? 'var(--app-text)' : 'var(--app-text-muted)',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 0,
-                    whiteSpace: 'nowrap',
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          minWidth: 0,
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'thin',
+        }}>
+          {/* Tabs rendered inline */}
+          {openTabs.length === 0 ? (
+            <span style={{ fontSize: '12px', color: 'var(--app-text-subtle)' }}>No tabs open</span>
+          ) : (
+            openTabs.map((tabId) => {
+              const title = nodeTitles[tabId] || 'Loading...';
+              const isActiveTab = activeTab === tabId;
+              return (
+                <div
+                  key={tabId}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'copyMove';
+                    e.dataTransfer.setData('application/x-rah-tab', JSON.stringify({ id: tabId, title, sourceSlot: slot }));
+                    e.dataTransfer.setData('text/plain', `[NODE:${tabId}:"${title}"]`);
                   }}
-                >
-                  {truncateTitle(title)}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTabClose(tabId);
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenu({ x: e.clientX, y: e.clientY, tabId });
                   }}
                   style={{
-                    fontSize: '12px',
-                    color: 'var(--app-text-subtle)',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '0 2px',
-                    lineHeight: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    background: isActiveTab ? 'var(--app-surface-subtle)' : 'transparent',
+                    border: isActiveTab ? '1px solid var(--app-border)' : '1px solid transparent',
+                    borderRadius: '4px',
+                    cursor: 'grab',
+                    flexShrink: 0,
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-text)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--app-text-subtle)'; }}
                 >
-                  ×
-                </button>
-              </div>
-            );
-          })
-        )}
+                  <button
+                    onClick={() => onTabSelect(tabId)}
+                    style={{
+                      fontSize: '11px',
+                      color: isActiveTab ? 'var(--app-text)' : 'var(--app-text-muted)',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {truncateTitle(title)}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTabClose(tabId);
+                    }}
+                    style={{
+                      fontSize: '12px',
+                      color: 'var(--app-text-subtle)',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '0 2px',
+                      lineHeight: 1,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--app-text)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--app-text-subtle)'; }}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
       </PaneHeader>
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
