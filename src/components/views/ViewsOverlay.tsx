@@ -6,7 +6,7 @@ import type { Node } from '@/types/database';
 import { getNodeIcon } from '@/utils/nodeIcons';
 import { useDimensionIcons } from '@/context/DimensionIconsContext';
 import { usePersistentState } from '@/hooks/usePersistentState';
-import type { PendingNode } from '../layout/ThreePanelLayout';
+import type { PendingNode } from '../layout/AppShellProvider';
 
 type SortOrder = 'updated' | 'edges' | 'created' | 'custom';
 

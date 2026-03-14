@@ -21,7 +21,8 @@ export function shouldFetchFavicon(domain: string): boolean {
 }
 
 export function getFaviconUrl(domain: string, size: number = 16): string {
-  return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`;
+  const requestedSize = Math.max(16, Math.min(64, size * 2));
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=${requestedSize}`;
 }
 
 export function extractDomain(input?: string): string {

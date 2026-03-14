@@ -1,4 +1,5 @@
 import './globals.css';
+import { AppShellProvider } from '@/components/layout/AppShellProvider';
 import { AppThemeProvider } from '@/components/theme/AppThemeProvider';
 import { DimensionIconsProvider } from '@/context/DimensionIconsContext';
 
@@ -16,9 +17,11 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AppThemeProvider>
-          <DimensionIconsProvider>
-            {children}
-          </DimensionIconsProvider>
+          <AppShellProvider>
+            <DimensionIconsProvider>
+              {children}
+            </DimensionIconsProvider>
+          </AppShellProvider>
         </AppThemeProvider>
       </body>
     </html>

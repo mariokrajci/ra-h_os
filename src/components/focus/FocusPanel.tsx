@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, type DragEvent } from 'react';
-import { Eye, Trash2, Link, Loader, Database, RefreshCw, Pencil, X, Save, Plus, BookOpen } from 'lucide-react';
+import { Eye, Trash2, Link, Loader, Database, RefreshCw, Pencil, X, Save, Plus, BookOpen, ExternalLink } from 'lucide-react';
 import { parseAndRenderContent } from '@/components/helpers/NodeLabelRenderer';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
 import AnnotationToolbar, { AnnotationColor } from '@/components/annotations/AnnotationToolbar';
@@ -19,6 +19,7 @@ import { getQuotaWarningMessage, isInsufficientQuotaError } from '@/services/emb
 import { getNodeNotesStatus, getNodeSourceStatus } from './nodeIngestionStatus';
 import { applyBookMatchCandidate, getBookMatchCandidates } from '@/components/panes/library/bookMatch';
 import { BookMetadataTab } from './book/BookMetadataTab';
+import { stripLeadingDuplicateTitle } from './contentNormalization';
 
 interface PopularDimension {
   dimension: string;
@@ -86,6 +87,14 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   const currentNode = activeNodeId !== null ? nodesData[activeNodeId] : undefined;
   const notesIngestionStatus = getNodeNotesStatus(currentNode?.metadata);
   const sourceIngestionStatus = getNodeSourceStatus(currentNode?.metadata);
+  const normalizedNotesContent = useMemo(
+    () => stripLeadingDuplicateTitle(currentNode?.notes || '', currentNode?.title),
+    [currentNode?.notes, currentNode?.title]
+  );
+  const normalizedSourceContent = useMemo(
+    () => stripLeadingDuplicateTitle(currentNode?.chunk || '', currentNode?.title),
+    [currentNode?.chunk, currentNode?.title]
+  );
 
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
 
@@ -163,19 +172,17 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   // Connections section collapsed state (default closed)
   const [edgeSearchOpen, setEdgeSearchOpen] = useState(false);
   
-  // Title expanded state for click-to-expand full title
-  const [titleExpanded, setTitleExpanded] = useState<{ [key: number]: boolean }>({});
-
   // Description regeneration state
   const [regeneratingDescription, setRegeneratingDescription] = useState<number | null>(null);
 
-  // Content tab state: 'notes', 'desc', or 'source'
-  const [activeContentTab, setActiveContentTab] = useState<'notes' | 'desc' | 'edges' | 'source' | 'metadata'>('desc');
+  // Content tab state: 'notes', 'edges', 'source', or 'metadata'
+  const [activeContentTab, setActiveContentTab] = useState<'notes' | 'edges' | 'source' | 'metadata'>('notes');
 
   // Desc (description) edit mode state
   const [descEditMode, setDescEditMode] = useState(false);
   const [descEditValue, setDescEditValue] = useState('');
   const [descSaving, setDescSaving] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   // Notes edit mode state (separate from inline editing)
   const [notesEditMode, setNotesEditMode] = useState(false);
@@ -365,6 +372,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     setNotesEditValue('');
     setDescEditMode(false);
     setDescEditValue('');
+    setDescExpanded(false);
     setSourceEditMode(false);
     setSourceEditValue('');
     setMetadataEditMode(false);
@@ -374,7 +382,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
 
   useEffect(() => {
     if (activeContentTab === 'metadata' && !isBookNode) {
-      setActiveContentTab('desc');
+      setActiveContentTab('notes');
     }
   }, [activeContentTab, isBookNode]);
 
@@ -2285,155 +2293,195 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
         ) : nodesData[activeTab] ? (
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             {/* URL Row - Above Title */}
+            {/* Node utility row */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              justifyContent: 'space-between',
+              gap: '12px',
               marginBottom: '8px',
               paddingLeft: '4px'
             }}>
-              {/* Embedding status - only show when embedding or error */}
-              {(() => {
-                const node = nodesData[activeTab];
-                const chunkStatus = node?.chunk_status ?? null;
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flex: 1,
+                minWidth: 0
+              }}>
+                {/* Node ID - Draggable */}
+                <span
+                  draggable
+                  onDragStart={(e: DragEvent<HTMLSpanElement>) => {
+                    const title = nodesData[activeTab]?.title || 'Untitled';
+                    e.dataTransfer.effectAllowed = 'copyMove';
+                    e.dataTransfer.setData('application/x-rah-node', JSON.stringify({ id: activeTab, title }));
+                    e.dataTransfer.setData('application/node-info', JSON.stringify({ id: activeTab, title, dimensions: nodesData[activeTab]?.dimensions || [] }));
+                    e.dataTransfer.setData('text/plain', `[NODE:${activeTab}:"${title}"]`);
+                  }}
+                  style={{
+                    display: 'inline-block',
+                    background: 'var(--toolbar-accent)',
+                    color: 'var(--app-accent-contrast)',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    flexShrink: 0,
+                    cursor: 'grab'
+                  }}
+                  title="Drag to chat to reference this node"
+                >
+                  {activeTab}
+                </span>
 
-                if (embeddingNode === activeTab || chunkStatus === 'chunking') {
-                  return (
-                    <Loader size={12} className="animate-spin" style={{ color: '#facc15', flexShrink: 0 }} />
-                  );
-                }
+                {nodesData[activeTab] && (
+                  <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', color: 'var(--app-text-subtle)' }}>
+                    {getNodeIcon(nodesData[activeTab], dimensionIcons, 16)}
+                  </span>
+                )}
 
-                if (chunkStatus === 'error') {
-                  return (
-                    <button
-                      onClick={() => embedContent(activeTab)}
+                {/* Embedding status - only show when embedding or error */}
+                {(() => {
+                  const node = nodesData[activeTab];
+                  const chunkStatus = node?.chunk_status ?? null;
+
+                  if (embeddingNode === activeTab || chunkStatus === 'chunking') {
+                    return (
+                      <Loader size={12} className="animate-spin" style={{ color: '#facc15', flexShrink: 0 }} />
+                    );
+                  }
+
+                  if (chunkStatus === 'error') {
+                    return (
+                      <button
+                        onClick={() => embedContent(activeTab)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '2px 6px',
+                          fontSize: '10px',
+                          color: '#ef4444',
+                          background: 'transparent',
+                          border: '1px solid #7f1d1d',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          flexShrink: 0
+                        }}
+                        title="Embedding failed - click to retry"
+                      >
+                        <Database size={10} />
+                        Retry
+                      </button>
+                    );
+                  }
+
+                  return null;
+                })()}
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {editingField === 'link' ? (
+                    <input
+                      ref={inputRef as React.RefObject<HTMLInputElement>}
+                      type="url"
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onBlur={handleBlur}
+                      disabled={savingField === 'link'}
                       style={{
+                        color: 'var(--app-info-text)',
+                        fontSize: '11px',
+                        background: 'transparent',
+                        border: '1px solid var(--app-border)',
+                        borderRadius: '4px',
+                        padding: '4px 6px',
+                        fontFamily: 'inherit',
+                        width: '100%',
+                        outline: 'none'
+                      }}
+                      placeholder="Enter URL..."
+                    />
+                  ) : nodesData[activeTab].link ? (
+                    <a
+                      href={nodesData[activeTab].link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey) {
+                          e.preventDefault();
+                          startEdit('link', nodesData[activeTab].link || '');
+                        }
+                      }}
+                      style={{
+                        color: 'var(--app-text-muted)',
+                        textDecoration: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '4px',
-                        padding: '2px 6px',
-                        fontSize: '10px',
-                        color: '#ef4444',
-                        background: 'transparent',
-                        border: '1px solid #7f1d1d',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        flexShrink: 0
+                        fontSize: '11px',
+                        minWidth: 0,
+                        whiteSpace: 'nowrap',
                       }}
-                      title="Embedding failed - click to retry"
+                      title={`${nodesData[activeTab].link} (Cmd+Click to edit)`}
                     >
-                      <Database size={10} />
-                      Retry
-                    </button>
-                  );
-                }
-
-                return null;
-              })()}
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {editingField === 'link' ? (
-                  <input
-                    ref={inputRef as React.RefObject<HTMLInputElement>}
-                    type="url"
-                    value={editingValue}
-                    onChange={(e) => setEditingValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onBlur={handleBlur}
-                    disabled={savingField === 'link'}
-                    style={{
-                      color: 'var(--app-info-text)',
-                      fontSize: '11px',
-                      background: 'transparent',
-                      border: '1px solid var(--app-border)',
-                      borderRadius: '4px',
-                      padding: '4px 6px',
-                      fontFamily: 'inherit',
-                      width: '100%',
-                      outline: 'none'
-                    }}
-                    placeholder="Enter URL..."
-                  />
-                ) : nodesData[activeTab].link ? (
-                  <a
-                    href={nodesData[activeTab].link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      if (e.metaKey || e.ctrlKey) {
-                        e.preventDefault();
-                        startEdit('link', nodesData[activeTab].link || '');
-                      }
-                    }}
-                    style={{
-                      color: 'var(--app-info-text)',
-                      fontSize: '11px',
-                      textDecoration: 'none',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: 'block'
-                    }}
-                    title={`${nodesData[activeTab].link} (Cmd+Click to edit)`}
-                  >
-                    {nodesData[activeTab].link}
-                  </a>
-                ) : (
-                  <span
-                    onClick={() => startEdit('link', '')}
-                    style={{
-                      color: 'var(--app-text-subtle)',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      fontStyle: 'italic'
-                    }}
-                  >
-                    Click to add URL
-                  </span>
-                )}
+                      <ExternalLink size={10} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {(() => { try { return new URL(nodesData[activeTab].link!).hostname; } catch { return nodesData[activeTab].link; } })()}
+                      </span>
+                    </a>
+                  ) : null}
+                </div>
               </div>
+
+              {/* Delete Button */}
+              <button
+                onClick={() => confirmDeleteNode(activeTab)}
+                disabled={deletingNode === activeTab}
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: deletingNode === activeTab ? 'var(--app-danger-text)' : 'var(--app-text-subtle)',
+                  background: 'transparent',
+                  border: '1px solid var(--app-border)',
+                  borderRadius: '6px',
+                  cursor: deletingNode === activeTab ? 'wait' : 'pointer',
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                  marginTop: '-12px',
+                  marginRight: '-8px',
+                }}
+                onMouseEnter={(e) => {
+                  if (deletingNode !== activeTab) {
+                    e.currentTarget.style.color = '#dc2626';
+                    e.currentTarget.style.borderColor = '#dc2626';
+                    e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (deletingNode !== activeTab) {
+                    e.currentTarget.style.color = 'var(--app-text-subtle)';
+                    e.currentTarget.style.borderColor = 'var(--app-border)';
+                    e.currentTarget.style.background = 'transparent';
+                  }
+                }}
+                title="Delete node"
+              >
+                {deletingNode === activeTab ? '...' : <Trash2 size={12} />}
+              </button>
             </div>
 
-            {/* Title Row - Node ID, Title, Connections, Trash */}
+            {/* Title row */}
             <div style={{
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               gap: '8px',
               marginBottom: '8px'
             }}>
-              {/* Node ID - Draggable */}
-              <span
-                draggable
-                onDragStart={(e: DragEvent<HTMLSpanElement>) => {
-                  const title = nodesData[activeTab]?.title || 'Untitled';
-                  e.dataTransfer.effectAllowed = 'copyMove';
-                  e.dataTransfer.setData('application/x-rah-node', JSON.stringify({ id: activeTab, title }));
-                  e.dataTransfer.setData('application/node-info', JSON.stringify({ id: activeTab, title, dimensions: nodesData[activeTab]?.dimensions || [] }));
-                  e.dataTransfer.setData('text/plain', `[NODE:${activeTab}:"${title}"]`);
-                }}
-                style={{
-                  display: 'inline-block',
-                  background: 'var(--toolbar-accent)',
-                  color: 'var(--app-accent-contrast)',
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  flexShrink: 0,
-                  cursor: 'grab'
-                }}
-                title="Drag to chat to reference this node"
-              >
-                {activeTab}
-              </span>
-
-              {/* Node type icon */}
-              {nodesData[activeTab] && (
-                <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-                  {getNodeIcon(nodesData[activeTab], dimensionIcons, 18)}
-                </span>
-              )}
-
               {editingField === 'title' ? (
                 <input
                   ref={inputRef as React.RefObject<HTMLInputElement>}
@@ -2459,16 +2507,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 />
               ) : (
                 <h1
-                  onClick={() => {
-                    if (titleExpanded[activeTab]) {
-                      startEdit('title', nodesData[activeTab].title || '');
-                    } else {
-                      setTitleExpanded(prev => ({ ...prev, [activeTab]: true }));
-                      setTimeout(() => {
-                        setTitleExpanded(prev => ({ ...prev, [activeTab]: false }));
-                      }, 3000);
-                    }
-                  }}
+                  onClick={() => startEdit('title', nodesData[activeTab].title || '')}
                   style={{
                     fontSize: '20px',
                     fontWeight: 'bold',
@@ -2483,14 +2522,9 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                     transition: 'border-color 0.2s',
                     flex: 1,
                     minWidth: 0,
-                    ...(titleExpanded[activeTab] ? {
-                      whiteSpace: 'normal',
-                      wordWrap: 'break-word'
-                    } : {
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    })
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = 'var(--app-border)';
@@ -2498,89 +2532,12 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'transparent';
                   }}
-                  title={titleExpanded[activeTab] ? undefined : (nodesData[activeTab].title || 'Untitled')}
+                  title={nodesData[activeTab].title || 'Untitled'}
                 >
                   {nodesData[activeTab].title || 'Untitled'}
                   {savingField === 'title' && <span style={{ color: 'var(--app-text-subtle)', fontSize: '10px', marginLeft: '6px' }}>saving...</span>}
                 </h1>
               )}
-
-              {/* Connections Button — opens Edges tab */}
-              <button
-                onClick={() => setActiveContentTab('edges')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  fontSize: '10px',
-                  fontWeight: 500,
-                  color: activeContentTab === 'edges' ? 'var(--toolbar-accent)' : 'var(--app-text-muted)',
-                  background: activeContentTab === 'edges' ? 'var(--app-accent-soft)' : 'transparent',
-                  border: '1px solid',
-                  borderColor: activeContentTab === 'edges' ? 'var(--app-accent-border)' : 'var(--app-border)',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  flexShrink: 0
-                }}
-                onMouseEnter={(e) => {
-                  if (activeContentTab !== 'edges') {
-                    e.currentTarget.style.color = 'var(--toolbar-accent)';
-                    e.currentTarget.style.borderColor = 'var(--app-toolbar-border)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (activeContentTab !== 'edges') {
-                    e.currentTarget.style.color = 'var(--app-text-muted)';
-                    e.currentTarget.style.borderColor = 'var(--app-border)';
-                  }
-                }}
-                title="Connections"
-              >
-                <Link size={12} />
-                {activeTab && edgesData[activeTab] && edgesData[activeTab].length > 0 && (
-                  <span style={{ fontWeight: 600 }}>
-                    {edgesData[activeTab].length}
-                  </span>
-                )}
-              </button>
-
-              {/* Delete Button */}
-              <button
-                onClick={() => confirmDeleteNode(activeTab)}
-                disabled={deletingNode === activeTab}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '4px',
-                  color: deletingNode === activeTab ? 'var(--app-danger-text)' : 'var(--app-text-subtle)',
-                  background: 'transparent',
-                  border: '1px solid var(--app-border)',
-                  borderRadius: '4px',
-                  cursor: deletingNode === activeTab ? 'wait' : 'pointer',
-                  transition: 'all 0.2s',
-                  flexShrink: 0
-                }}
-                onMouseEnter={(e) => {
-                  if (deletingNode !== activeTab) {
-                    e.currentTarget.style.color = '#dc2626';
-                    e.currentTarget.style.borderColor = '#dc2626';
-                    e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (deletingNode !== activeTab) {
-                    e.currentTarget.style.color = 'var(--app-text-subtle)';
-                    e.currentTarget.style.borderColor = 'var(--app-border)';
-                    e.currentTarget.style.background = 'transparent';
-                  }
-                }}
-                title="Delete node"
-              >
-                {deletingNode === activeTab ? '...' : <Trash2 size={12} />}
-              </button>
             </div>
 
             {/* Dimensions Section */}
@@ -2642,7 +2599,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
               </div>
             </div>
 
-            {/* Notes | Desc | Source Tabs */}
+            {/* Notes | Connections | Source Tabs */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               {/* Tab Bar */}
               <div style={{
@@ -2652,22 +2609,6 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 marginBottom: '12px',
                 borderBottom: '1px solid var(--app-border)'
               }}>
-                <button
-                  onClick={() => { setActiveContentTab('desc'); setNotesEditMode(false); setSourceEditMode(false); setMetadataEditMode(false); setPendingAnnotation(null); }}
-                  className={`app-tab${activeContentTab === 'desc' ? ' is-active' : ''}`}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '11px',
-                    fontWeight: activeContentTab === 'desc' ? 600 : 400,
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    marginBottom: '-1px'
-                  }}
-                >
-                  Desc
-                </button>
                 <button
                   onClick={() => { setActiveContentTab('notes'); setDescEditMode(false); setSourceEditMode(false); setMetadataEditMode(false); setPendingAnnotation(null); }}
                   className={`app-tab${activeContentTab === 'notes' ? ' is-active' : ''}`}
@@ -2698,7 +2639,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                     marginBottom: '-1px'
                   }}
                 >
-                  Edges{activeTab && edgesData[activeTab]?.length ? ` (${edgesData[activeTab].length})` : ''}
+                  Connections{activeTab && edgesData[activeTab]?.length ? ` (${edgesData[activeTab].length})` : ''}
                 </button>
                 <button
                   onClick={() => { setActiveContentTab('source'); setDescEditMode(false); setNotesEditMode(false); setMetadataEditMode(false); setEdgeSearchOpen(false); setPendingAnnotation(null); }}
@@ -2735,64 +2676,9 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                   </button>
                 )}
                 <div style={{ flex: 1 }} />
-                {/* Action buttons for Desc tab */}
-                {activeContentTab === 'desc' && !descEditMode && (
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
-                    <button
-                      onClick={() => activeTab && regenerateDescription(activeTab)}
-                      disabled={regeneratingDescription === activeTab}
-                      className="app-button app-button--secondary app-button--compact app-button--icon"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 8px',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                      }}
-                      title="Regenerate description with AI"
-                    >
-                      <RefreshCw size={12} style={{ animation: regeneratingDescription === activeTab ? 'spin 1s linear infinite' : 'none' }} />
-                      Regenerate
-                    </button>
-                    <button
-                      onClick={startDescEdit}
-                      className="app-button app-button--secondary app-button--compact app-button--icon"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 8px',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                      }}
-                      title="Edit description"
-                    >
-                      <Pencil size={12} />
-                      Edit
-                    </button>
-                  </div>
-                )}
                 {/* Action buttons for Notes tab */}
                 {activeContentTab === 'notes' && !notesEditMode && (
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
-                    <button
-                      onClick={createLinkedNote}
-                      disabled={creatingNote}
-                      className="app-button app-button--accent app-button--compact app-button--icon"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 8px',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                      }}
-                      title="Create a new linked node"
-                    >
-                      {creatingNote ? <Loader size={12} className="animate-spin" /> : <Plus size={12} />}
-                      Node
-                    </button>
                     <button
                       onClick={startNotesEdit}
                       className="app-button app-button--secondary app-button--compact app-button--icon"
@@ -2851,170 +2737,113 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 )}
               </div>
 
-              {/* Desc Tab Content */}
-              {activeContentTab === 'desc' && (
+              {/* Notes Tab Content */}
+              {activeContentTab === 'notes' && (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {/* Description preview — compact, above notes body */}
                   {descEditMode ? (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ marginBottom: '12px', flexShrink: 0 }}>
                       <div style={{
-                        fontSize: '11px',
-                        color: '#f59e0b',
-                        marginBottom: '8px',
-                        padding: '8px',
-                        background: '#1a1500',
-                        borderRadius: '4px',
-                        border: '1px solid #3d3500'
+                        fontSize: '11px', color: '#f59e0b',
+                        marginBottom: '6px', padding: '5px 8px',
+                        background: '#1a1500', borderRadius: '4px', border: '1px solid #3d3500'
                       }}>
-                        Used as context for AI. Clearly describe what this node is in 280 chars or less.
+                        Used as context for AI. 280 chars or less.
                       </div>
-                      {/* Editor */}
-                      <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ position: 'relative' }}>
                         <textarea
                           value={descEditValue}
-                          onChange={(e) => {
-                            const newValue = e.target.value.slice(0, 280);
-                            setDescEditValue(newValue);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') {
-                              cancelDescEdit();
-                            }
-                          }}
+                          onChange={(e) => setDescEditValue(e.target.value.slice(0, 280))}
+                          onKeyDown={(e) => { if (e.key === 'Escape') cancelDescEdit(); }}
                           disabled={descSaving}
-                          style={{
-                            ...FOCUS_PANEL_BODY_TEXTAREA_STYLE,
-                            flex: 1,
-                            minHeight: '120px',
-                          }}
-                          placeholder="Write a brief description of this node (max 280 chars)..."
+                          style={{ ...FOCUS_PANEL_BODY_TEXTAREA_STYLE, minHeight: '72px', width: '100%', paddingBottom: '22px' }}
+                          placeholder="Brief description (max 280 chars)..."
                           maxLength={280}
+                          autoFocus
                         />
                         <span style={{
-                          position: 'absolute',
-                          bottom: '12px',
-                          right: '12px',
-                          fontSize: '10px',
-                          color: descEditValue.length >= 260 ? '#f59e0b' : '#555'
+                          position: 'absolute', bottom: '8px', right: '10px',
+                          fontSize: '10px', color: descEditValue.length >= 260 ? '#f59e0b' : '#555'
                         }}>
                           {descEditValue.length}/280
                         </span>
                       </div>
-                      {/* Save/Cancel/Sync buttons */}
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginTop: '12px'
-                      }}>
-                        {/* Sync to Source button - left side */}
-                        <div>
-                          <button
-                            onClick={syncDescToSource}
-                            disabled={descSaving}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 10px',
-                              fontSize: '10px',
-                              color: '#f59e0b',
-                              background: 'transparent',
-                              border: '1px solid #3d3500',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}
-                            title="Copy description to source and re-embed"
-                          >
-                            {descSaving ? <Loader size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                            Sync to Source
-                          </button>
-                        </div>
-                        {/* Save/Cancel - right side */}
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                        <button
+                          onClick={syncDescToSource}
+                          disabled={descSaving}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            padding: '4px 8px', fontSize: '10px', color: '#f59e0b',
+                            background: 'transparent', border: '1px solid #3d3500', borderRadius: '4px', cursor: 'pointer'
+                          }}
+                          title="Copy description to source and re-embed"
+                        >
+                          {descSaving ? <Loader size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                          Sync to Source
+                        </button>
+                        <div style={{ display: 'flex', gap: '6px' }}>
                           <button
                             onClick={cancelDescEdit}
                             disabled={descSaving}
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 12px',
-                              fontSize: '11px',
-                              color: '#888',
-                              background: 'transparent',
-                              border: '1px solid #2a2a2a',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
+                              display: 'flex', alignItems: 'center', gap: '3px',
+                              padding: '4px 10px', fontSize: '11px', color: '#888',
+                              background: 'transparent', border: '1px solid #2a2a2a', borderRadius: '4px', cursor: 'pointer'
                             }}
                           >
-                            <X size={14} />
-                            Cancel
+                            <X size={11} /> Cancel
                           </button>
                           <button
                             onClick={saveDesc}
                             disabled={descSaving}
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '6px 12px',
-                              fontSize: '11px',
-                              color: '#000',
-                              background: '#22c55e',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontWeight: 600
+                              display: 'flex', alignItems: 'center', gap: '3px',
+                              padding: '4px 10px', fontSize: '11px', color: '#000',
+                              background: '#22c55e', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600
                             }}
                           >
-                            {descSaving ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
+                            {descSaving ? <Loader size={11} className="animate-spin" /> : <Save size={11} />}
                             Save
                           </button>
                         </div>
                       </div>
                     </div>
-                  ) : nodesData[activeTab]?.description ? (
-                    <div
-                      style={{
-                        ...FOCUS_PANEL_BODY_TEXT_STYLE,
-                        padding: '4px',
-                        flex: 1,
-                        overflow: 'auto'
-                      }}
-                    >
-                      {nodesData[activeTab].description}
-                    </div>
-                  ) : (
-                    <div
-                      onClick={startDescEdit}
-                      style={{
-                        color: '#555',
-                        fontSize: '12px',
-                        fontStyle: 'italic',
-                        cursor: 'pointer',
-                        padding: '8px',
-                        minHeight: '100px',
-                        border: '1px dashed #1a1a1a',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'transparent',
-                        flex: 1,
-                        transition: 'border-color 0.15s'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2a2a2a'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; }}
-                    >
-                      Click to add a description...
-                    </div>
-                  )}
-                </div>
-              )}
+                  ) : nodesData[activeTab]?.description ? (() => {
+                    const desc = nodesData[activeTab].description!;
+                    const PREVIEW_LEN = 120;
+                    const isLong = desc.length > PREVIEW_LEN;
+                    const displayText = isLong && !descExpanded
+                      ? desc.slice(0, PREVIEW_LEN).trimEnd() + '…'
+                      : desc;
+                    return (
+                      <div style={{
+                        marginBottom: '12px', flexShrink: 0,
+                        fontSize: '12px', color: 'var(--app-text-muted)', lineHeight: 1.5,
+                        padding: '6px 8px', borderRadius: '4px',
+                        background: 'var(--app-panel)', border: '1px solid var(--app-border)',
+                      }}>
+                        {displayText}
+                        <span style={{ marginLeft: '4px', whiteSpace: 'nowrap' }}>
+                          {isLong && (
+                            <button
+                              onClick={() => setDescExpanded(v => !v)}
+                              style={{ background: 'none', border: 'none', padding: 0, fontSize: '11px', color: 'var(--toolbar-accent)', cursor: 'pointer', fontWeight: 500 }}
+                            >
+                              {descExpanded ? 'Show less' : 'Show more'}
+                            </button>
+                          )}
+                          <button
+                            onClick={startDescEdit}
+                            style={{ background: 'none', border: 'none', padding: '0 0 0 8px', fontSize: '11px', color: 'var(--app-text-subtle)', cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                        </span>
+                      </div>
+                    );
+                  })() : null}
 
-              {/* Notes Tab Content */}
-              {activeContentTab === 'notes' && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   {notesEditMode ? (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                       {/* Editor */}
@@ -3244,55 +3073,77 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       )}
                     </div>
                   ) : nodesData[activeTab]?.notes ? (
-                    <div
-                      style={{
-                        ...FOCUS_PANEL_BODY_TEXT_STYLE,
-                        padding: '4px',
-                        flex: 1,
-                        overflow: 'auto'
-                      }}
-                    >
-                      <MarkdownWithNodeTokens
-                        content={nodesData[activeTab].notes || ''}
-                        onNodeClick={onNodeClick || onTabSelect}
-                        annotations={activeNodeId !== null && annotationsData[activeNodeId]
-                          ? Object.fromEntries(annotationsData[activeNodeId].map(a => [a.id, a]))
-                          : {}}
-                        onJumpToSource={handleJumpToSource}
-                        onDeleteAnnotation={deleteAnnotation}
-                      />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+                      <div
+                        style={{
+                          ...FOCUS_PANEL_BODY_TEXT_STYLE,
+                          padding: '4px',
+                          flex: 1,
+                        }}
+                      >
+                        <MarkdownWithNodeTokens
+                          content={normalizedNotesContent}
+                          onNodeClick={onNodeClick || onTabSelect}
+                          annotations={activeNodeId !== null && annotationsData[activeNodeId]
+                            ? Object.fromEntries(annotationsData[activeNodeId].map(a => [a.id, a]))
+                            : {}}
+                          onJumpToSource={handleJumpToSource}
+                          onDeleteAnnotation={deleteAnnotation}
+                        />
+                      </div>
+                      <div style={{ padding: '16px 4px 4px', borderTop: '1px solid var(--app-border)', marginTop: '12px' }}>
+                        <button
+                          onClick={createLinkedNote}
+                          disabled={creatingNote}
+                          className="app-button app-button--secondary app-button--compact app-button--icon"
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 10px', fontSize: '11px', borderRadius: '4px' }}
+                          title="Create a new linked node"
+                        >
+                          {creatingNote ? <Loader size={12} className="animate-spin" /> : <Plus size={12} />}
+                          Create related node
+                        </button>
+                      </div>
                     </div>
                   ) : notesIngestionStatus ? (
                     renderPendingState(notesIngestionStatus)
                   ) : (
-                    <div
-                      onClick={startNotesEdit}
-                      style={{
-                        color: '#555',
-                        fontSize: '12px',
-                        fontStyle: 'italic',
-                        cursor: 'pointer',
-                        padding: '8px',
-                        minHeight: '200px',
-                        border: '1px dashed #1a1a1a',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'transparent',
-                        flex: 1,
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#2a2a2a';
-                        e.currentTarget.style.color = '#666';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#1a1a1a';
-                        e.currentTarget.style.color = '#555';
-                      }}
-                    >
-                      Click to add notes...
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
+                      <button
+                        onClick={startNotesEdit}
+                        className="app-button"
+                        style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Pencil size={12} />
+                        Write notes
+                      </button>
+                      {nodesData[activeTab]?.chunk && (
+                        <button
+                          onClick={() => setActiveContentTab('source')}
+                          className="app-button app-button--secondary"
+                          style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          View source
+                        </button>
+                      )}
+                      {nodesData[activeTab]?.chunk && (
+                        <button
+                          disabled
+                          className="app-button app-button--secondary"
+                          style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.4 }}
+                          title="Coming soon"
+                        >
+                          Generate notes from source
+                        </button>
+                      )}
+                      <button
+                        onClick={createLinkedNote}
+                        disabled={creatingNote}
+                        className="app-button app-button--secondary"
+                        style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        {creatingNote ? <Loader size={12} className="animate-spin" /> : <Plus size={12} />}
+                        Create related node
+                      </button>
                     </div>
                   )}
                 </div>
@@ -3489,6 +3340,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                           sourceReaderMode === 'reader' ? (
                             <SourceReader
                               content={nodesData[activeTab].chunk}
+                              nodeTitle={nodesData[activeTab]?.title || undefined}
                               onTextSelect={onTextSelect ? (text) => onTextSelect(activeTab, nodesData[activeTab]?.title || 'Untitled', text) : undefined}
                               onSourceSelect={(selection) => {
                                 setPendingAnnotation({
@@ -3519,7 +3371,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                                 minHeight: '100%',
                               }}
                             >
-                              {nodesData[activeTab].chunk}
+                              {normalizedSourceContent}
                             </div>
                           )
                         ) : sourceIngestionStatus ? (

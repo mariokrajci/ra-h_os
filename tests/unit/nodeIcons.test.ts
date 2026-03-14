@@ -14,8 +14,9 @@ describe('nodeIcons favicon guards', () => {
     expect(shouldFetchFavicon('www.nytimes.com')).toBe(true);
   });
 
-  test('uses a shared google favicon endpoint', () => {
-    expect(getFaviconUrl('github.com', 18)).toBe('https://www.google.com/s2/favicons?domain=github.com&sz=18');
+  test('requests a sharper shared google favicon asset than the rendered size', () => {
+    expect(getFaviconUrl('github.com', 18)).toBe('https://www.google.com/s2/favicons?domain=github.com&sz=36');
+    expect(getFaviconUrl('github.com', 12)).toBe('https://www.google.com/s2/favicons?domain=github.com&sz=24');
   });
 
   test('detects fixed icon kinds for known links', () => {

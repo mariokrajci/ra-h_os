@@ -198,22 +198,8 @@ export default function DimensionTags({
           marginBottom: '8px',
           cursor: (shouldShowExpandButton && !isExpanded) ? 'pointer' : 'default',
           position: 'relative',
-          minHeight: dimensions.length === 0 ? '24px' : 'auto'
         }}
       >
-        {/* Show placeholder when no dimensions */}
-        {dimensions.length === 0 && !disabled && (
-          <span style={{
-            fontSize: '11px',
-            color: 'var(--app-text-subtle)',
-            fontStyle: 'italic',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}>
-            No dimensions
-          </span>
-        )}
 
         {displayedDimensions.map((dimension, index) => {
           const isPriority = priorityDimensions.includes(dimension);
@@ -236,8 +222,8 @@ export default function DimensionTags({
                 alignItems: 'center',
                 gap: '3px',
                 fontSize: '10px',
-                color: isPriority ? 'var(--toolbar-accent)' : 'var(--app-text)',
-                background: isPriority ? 'var(--app-accent-soft)' : 'var(--app-panel-elevated)',
+                color: isPriority ? 'var(--toolbar-accent)' : 'var(--app-text-muted)',
+                background: isPriority ? 'var(--app-accent-soft)' : 'transparent',
                 border: isPriority ? '1px solid var(--app-accent-border)' : '1px solid var(--app-border)',
                 borderRadius: '8px',
                 padding: '2px 6px',
@@ -349,7 +335,7 @@ export default function DimensionTags({
           </div>
         )}
         
-        {/* Add dimension button - Opens modal */}
+        {/* Add dimension button - chip styled */}
         {!disabled && (
           <button
             onClick={(e) => {
@@ -359,44 +345,28 @@ export default function DimensionTags({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '8px',
-              fontSize: '11px',
-              fontWeight: 600,
-              color: 'var(--toolbar-accent)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              background: 'var(--app-surface-strong)',
-              border: '1px solid var(--app-border)',
+              justifyContent: 'center',
+              fontSize: '12px',
+              color: 'var(--app-text-subtle)',
+              background: 'transparent',
+              border: '1px dashed var(--app-border)',
               cursor: 'pointer',
-              padding: '8px 12px',
+              padding: '1px 6px',
               borderRadius: '8px',
-              transition: 'all 0.2s'
+              transition: 'all 0.15s',
+              lineHeight: 1,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--app-hover)';
+              e.currentTarget.style.color = 'var(--app-text-muted)';
               e.currentTarget.style.borderColor = 'var(--app-toolbar-border)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'var(--app-surface-strong)';
+              e.currentTarget.style.color = 'var(--app-text-subtle)';
               e.currentTarget.style.borderColor = 'var(--app-border)';
             }}
             title="Add dimension"
           >
-            <span style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '16px',
-              height: '16px',
-              borderRadius: '50%',
-              background: 'var(--toolbar-accent)',
-              color: 'var(--app-accent-contrast)',
-              fontSize: '12px',
-              lineHeight: 1,
-              fontWeight: 300,
-              flexShrink: 0
-            }}>+</span>
-            Add
+            +
           </button>
         )}
       </div>

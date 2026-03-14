@@ -2,11 +2,36 @@
 
 > How to navigate and use RA-OS's interface.
 
-**How it works:** RA-OS uses a 2-panel layout: browse nodes on the left, work with focused content on the right. Settings give you access to skills, database views, logs, tools, and MCP setup.
+**How it works:** RA-OS uses a responsive app shell. On desktop and larger screens it keeps the pane-based workspace. On phones it switches to a capture-and-retrieval interface with a notes list home screen and full-screen navigation.
 
 ---
 
-## 2-Panel Layout
+## Layout Modes
+
+### Phone
+
+Phone mode is optimized for capture and retrieval:
+
+- default screen is the notes list, sorted by last edited unless the user changes sort
+- persistent bottom actions are limited to `Search` and `Add`
+- tapping a note opens a full-screen detail view
+- search and add are dedicated full-screen flows
+- advanced areas like map, table/database, logs, and other admin-heavy surfaces are intentionally de-emphasized
+
+### Desktop / Large Screen
+
+Desktop keeps the pane workspace for graph browsing, editing, and supporting tools.
+
+### Tablet
+
+Tablet now uses a simpler master-detail shell:
+
+- notes list stays visible on the left
+- note detail opens on the right
+- search and add remain quick-access actions from the list pane
+- it avoids the full split-pane/pane-switching complexity of desktop
+
+## Desktop Workspace
 
 ```
 ┌─────────────┬─────────────────────────┐
@@ -23,7 +48,7 @@
 
 ---
 
-## Left Panel: Nodes
+## Desktop Left Panel: Nodes
 
 Browse and manage your knowledge base.
 
@@ -97,7 +122,33 @@ Save filter + view combinations:
 
 ---
 
-## Right Panel: Focus
+## Phone Screens
+
+### Notes List
+
+- Default home screen
+- Sorted by `updated_at desc` unless the user changes sort
+- Shows title, preview, and updated time
+- Pending capture items appear near the top while quick-add work is still processing
+
+### Note Detail
+
+- Full-screen reading view with back navigation
+- Minimal actions instead of desktop tabs and pane chrome
+- Supports lightweight note editing
+- Secondary information such as metadata, source preview, and connection count stays compact
+
+### Search
+
+- Full-screen search route instead of a modal
+- Optimized for fast retrieval
+
+### Add
+
+- Full-screen capture flow
+- Reuses the existing quick-add pipeline for notes, links, and supported uploads
+
+## Desktop Right Panel: Focus
 
 Active workspace for the node(s) you're working with.
 
