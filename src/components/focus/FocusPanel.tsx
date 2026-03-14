@@ -3185,20 +3185,10 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                         }}
                         disabled={sourceSaving}
                         style={{
-                          color: '#ccc',
-                          fontSize: '12px',
-                          lineHeight: '1.5',
-                          background: 'transparent',
-                          border: '1px solid #2a2a2a',
-                          borderRadius: '4px',
-                          padding: '12px',
-                          fontFamily: 'monospace',
-                          width: '100%',
+                          ...FOCUS_PANEL_BODY_TEXTAREA_STYLE,
                           flex: 1,
                           minHeight: '200px',
-                          resize: 'none',
-                          outline: 'none',
-                          overflow: 'auto'
+                          fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, \"Liberation Mono\", monospace',
                         }}
                         placeholder="Add source content for embedding..."
                       />
