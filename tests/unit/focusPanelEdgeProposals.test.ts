@@ -107,7 +107,7 @@ describe('FocusPanel edge proposals', () => {
           node: {
             id: 1,
             title: 'Active note',
-            description: 'By Simon Willison, this note mentions OpenAI.',
+            description: 'A note about language models and AI tooling.',
             notes: 'Notes',
             dimensions: [],
             metadata: {},
@@ -232,7 +232,7 @@ describe('FocusPanel edge proposals', () => {
     await flush();
 
     await act(async () => {
-      findButton(container, 'Edges')?.click();
+      findButton(container, 'Connections')?.click();
     });
 
     expect(container.textContent).toContain('Suggested connections');
@@ -267,7 +267,7 @@ describe('FocusPanel edge proposals', () => {
     await flush();
 
     await act(async () => {
-      findButton(container, 'Edges')?.click();
+      findButton(container, 'Connections')?.click();
     });
 
     await act(async () => {
