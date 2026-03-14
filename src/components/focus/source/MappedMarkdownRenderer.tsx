@@ -214,6 +214,20 @@ function convertHtmlBlocksToMarkdown(fragment: string): string {
       continue;
     }
 
+    if (listStack.length === 0 && activeHeadingDepth === null) {
+      flushLine();
+
+      for (const line of token.split('\n')) {
+        const trimmed = line.trimEnd();
+        if (trimmed.trim().length > 0) {
+          out.push(trimmed);
+        } else {
+          ensureBlankLine();
+        }
+      }
+      continue;
+    }
+
     currentLine += token.replace(/\s+/g, ' ');
   }
 
@@ -246,11 +260,24 @@ function convertHtmlTableToMarkdown(tableHtml: string): string {
 
 function extractTableCells(rowHtml: string): string[] {
   return Array.from(rowHtml.matchAll(/<(td|th)\b[^>]*>([\s\S]*?)<\/\1>/gi)).map((match) =>
-    normalizeInlineHtml(match[2])
+    normalizeTableCellContent(match[2])
       .replace(/\n+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
   );
+}
+
+function normalizeTableCellContent(cellHtml: string): string {
+  const htmlWithFlattenedLists = cellHtml
+    .replace(/<\/?(ul|ol)\b[^>]*>/gi, '')
+    .replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_match, inner) => {
+      const item = normalizeInlineHtml(inner).replace(/\s+/g, ' ').trim();
+      return item ? ` ${item}; ` : ' ';
+    });
+
+  return normalizeInlineHtml(htmlWithFlattenedLists)
+    .replace(/\s*;\s*$/g, '')
+    .replace(/\s*;\s*/g, '; ');
 }
 
 function normalizeInlineHtml(fragment: string): string {

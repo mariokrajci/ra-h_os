@@ -192,4 +192,56 @@ describe('MappedMarkdownRenderer', () => {
     expect(html).not.toContain('&lt;li');
   });
 
+  it('preserves surrounding markdown when github readmes mix blockquotes with html tables and list items', () => {
+    const markdown = [
+      '# Generative AI on Google Cloud',
+      '',
+      '> **[Gemini 3.1 Pro](https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-1-pro) has been released!**',
+      '>',
+      '> Here are the latest notebooks and demos using the new model:',
+      '>',
+      '> - [Intro to Gemini 3.1 Pro](gemini/getting-started/intro_gemini_3_1_pro.ipynb)',
+      '',
+      'This repository contains notebooks and sample apps.',
+      '',
+      '## Using this repository',
+      '',
+      '<table>',
+      '  <tr>',
+      '    <th></th>',
+      '    <th>Description</th>',
+      '  </tr>',
+      '  <tr>',
+      '    <td>[<code>vision/</code>](vision/)</td>',
+      '    <td>',
+      '      Use this folder for Imagen workflows.',
+      '      <li>Image generation</li>',
+      '      <li>Image editing</li>',
+      '    </td>',
+      '  </tr>',
+      '</table>',
+      '',
+      '## Related Repositories',
+      '',
+      '- [Agent Starter Pack](https://github.com/GoogleCloudPlatform/agent-starter-pack)',
+    ].join('\n');
+
+    const html = renderToStaticMarkup(
+      React.createElement(MappedMarkdownRenderer, {
+        content: markdown,
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).toContain('<h1');
+    expect(html).toContain('<blockquote');
+    expect(html).toContain('<h2');
+    expect(html).toContain('<table');
+    expect(html).toContain('Image generation; Image editing');
+    expect(html).toContain('Agent Starter Pack');
+    expect(html).not.toContain('&gt; &gt;');
+    expect(html).not.toContain('## Using this repository |');
+  });
+
 });
