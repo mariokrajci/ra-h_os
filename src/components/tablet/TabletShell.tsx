@@ -102,7 +102,15 @@ export default function TabletShell() {
                   }}
                 >
                   <div style={{ fontSize: '14px', fontWeight: 600 }}>{node.title || `Untitled #${node.id}`}</div>
-                  <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--app-text-muted)' }}>
+                  <div style={{
+                    marginTop: '6px',
+                    fontSize: '12px',
+                    color: 'var(--app-text-muted)',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}>
                     {getMobileNotePreview(node)}
                   </div>
                 </button>
