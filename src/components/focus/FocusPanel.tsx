@@ -2704,7 +2704,12 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                 {/* Add flag button — always visible */}
                 <div style={{ position: 'relative' }}>
                   <button
-                    onClick={() => setShowFlagPicker(!showFlagPicker)}
+                    onClick={() => {
+                      if (!showFlagPicker) {
+                        fetch('/api/flags').then(r => r.json()).then(data => { if (data.success) setAvailableFlags(data.flags); }).catch(() => {});
+                      }
+                      setShowFlagPicker(!showFlagPicker);
+                    }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '4px',
                       fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
