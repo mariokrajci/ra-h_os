@@ -21,7 +21,7 @@ export const getNodesByIdTool = tool({
     const nodes = await Promise.all(
       uniqueIds.map(async id => {
         try {
-          const node = await nodeService.getNodeById(id);
+          const node = await nodeService.getNodeById(id, { excludePrivate: true });
           if (!node) return null;
           const preview = includeNotesPreview
             ? (node.notes || node.description || '')

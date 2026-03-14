@@ -27,7 +27,7 @@ function fetchAutoContextRows(limit: number): AutoContextSummary[] {
           FROM nodes n
           LEFT JOIN edges e
             ON (e.from_node_id = n.id OR e.to_node_id = n.id)
-         WHERE 1=1
+         WHERE n.is_private = 0
          GROUP BY n.id
          ORDER BY edge_count DESC, n.updated_at DESC
          LIMIT ?

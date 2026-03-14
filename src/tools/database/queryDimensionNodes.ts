@@ -20,6 +20,7 @@ export const queryDimensionNodesTool = tool({
         limit,
         offset,
         sortBy: 'edges',
+        excludePrivate: true,
       });
 
       if (!nodes || nodes.length === 0) {

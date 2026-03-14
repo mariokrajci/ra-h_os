@@ -25,7 +25,7 @@ export const queryNodesTool = tool({
       const searchTerm = filters.search?.trim();
       if (searchTerm && /^\d+$/.test(searchTerm)) {
         const nodeId = Number(searchTerm);
-        const node = await nodeService.getNodeById(nodeId);
+        const node = await nodeService.getNodeById(nodeId, { excludePrivate: true });
         if (!node) {
           return {
             success: true,
@@ -77,6 +77,7 @@ export const queryNodesTool = tool({
         createdBefore: filters.createdBefore,
         eventAfter: filters.eventAfter,
         eventBefore: filters.eventBefore,
+        excludePrivate: true,
       });
 
       const nodes = await Promise.race<Node[] | undefined>([nodesPromise, timeoutPromise]);
