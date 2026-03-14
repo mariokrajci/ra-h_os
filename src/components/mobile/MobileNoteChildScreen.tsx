@@ -6,6 +6,14 @@ import type { Node, NodeConnection } from '@/types/database';
 
 type ChildScreen = 'source' | 'metadata' | 'connections';
 
+function formatMobileDate(value: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
 export default function MobileNoteChildScreen({
   child,
   node,
@@ -84,8 +92,8 @@ export default function MobileNoteChildScreen({
           <div style={{ display: 'grid', gap: '0' }}>
             <div style={{ borderTop: '0.5px solid var(--app-border)' }}>
               {[
-                { label: 'Updated', value: node ? new Date(node.updated_at).toLocaleString() : '—' },
-                { label: 'Created', value: node ? new Date(node.created_at).toLocaleString() : '—' },
+                { label: 'Updated', value: node ? formatMobileDate(node.updated_at) : '—' },
+                { label: 'Created', value: node ? formatMobileDate(node.created_at) : '—' },
                 { label: 'Link', value: node?.link || 'None' },
               ].map((row) => (
                 <div

@@ -488,13 +488,13 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           display: flex;
           flex-direction: column;
           gap: 0;
-          background: #111111;
+          background: var(--app-panel);
           border-radius: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          border: 1px solid var(--app-border);
           overflow: hidden;
           box-shadow:
-            0 0 0 1px rgba(255, 255, 255, 0.03),
-            0 24px 80px -12px rgba(0, 0, 0, 0.8),
+            0 0 0 1px var(--app-hairline),
+            0 24px 80px -12px var(--app-overlay),
             0 0 60px -10px rgba(34, 197, 94, 0.06);
           animation: qaIn 250ms cubic-bezier(0.16, 1, 0.3, 1);
           width: ${isControlled ? '600px' : 'auto'};
@@ -507,7 +507,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
         }
 
         .qa-input-area.dragging {
-          background: rgba(34, 197, 94, 0.03);
+          background: var(--app-accent-soft);
         }
 
         .qa-drag-overlay {
@@ -531,7 +531,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           padding: 20px 22px;
           background: transparent;
           border: none;
-          color: #e5e5e5;
+          color: var(--app-text);
           font-size: 15px;
           font-family: inherit;
           outline: none;
@@ -541,7 +541,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
         }
 
         .qa-textarea::placeholder {
-          color: #444;
+          color: var(--app-text-subtle);
         }
 
         .qa-file-row {
@@ -549,13 +549,13 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           align-items: center;
           gap: 10px;
           padding: 16px 20px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+          border-bottom: 1px solid var(--app-hairline);
         }
 
         .qa-file-name {
           flex: 1;
           min-width: 0;
-          color: #e5e5e5;
+          color: var(--app-text);
           font-size: 13px;
           font-weight: 500;
           overflow: hidden;
@@ -564,7 +564,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
         }
 
         .qa-file-size {
-          color: #555;
+          color: var(--app-text-subtle);
           font-size: 11px;
           flex-shrink: 0;
         }
@@ -573,7 +573,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           padding: 4px;
           background: transparent;
           border: none;
-          color: #555;
+          color: var(--app-text-subtle);
           cursor: pointer;
           border-radius: 4px;
           display: flex;
@@ -586,10 +586,10 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
 
         .qa-error {
           padding: 10px 20px;
-          color: #ef4444;
+          color: var(--app-danger-text);
           font-size: 12px;
-          background: rgba(239, 68, 68, 0.06);
-          border-bottom: 1px solid rgba(239, 68, 68, 0.1);
+          background: var(--app-danger-bg);
+          border-bottom: 1px solid var(--app-danger-border);
         }
 
         .qa-footer {
@@ -597,11 +597,11 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           align-items: center;
           justify-content: space-between;
           padding: 12px 14px 12px 18px;
-          border-top: 1px solid rgba(255, 255, 255, 0.04);
+          border-top: 1px solid var(--app-hairline);
         }
 
         .qa-book-matches {
-          border-top: 1px solid rgba(255, 255, 255, 0.04);
+          border-top: 1px solid var(--app-hairline);
           padding: 12px 14px;
           display: flex;
           flex-direction: column;
@@ -619,7 +619,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
 
         .qa-book-title {
           font-size: 11px;
-          color: #8b8b8b;
+          color: var(--app-text-muted);
           letter-spacing: 0.02em;
           text-transform: uppercase;
           font-weight: 600;
@@ -627,12 +627,12 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
 
         .qa-book-meta {
           font-size: 10px;
-          color: #666;
+          color: var(--app-text-subtle);
         }
 
         .qa-book-error {
           font-size: 11px;
-          color: #b06a6a;
+          color: var(--app-danger-text);
         }
 
         .qa-book-grid {
@@ -645,8 +645,8 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           display: flex;
           gap: 8px;
           align-items: stretch;
-          border: 1px solid #252525;
-          background: #141414;
+          border: 1px solid var(--app-border);
+          background: var(--app-panel-elevated);
           border-radius: 8px;
           padding: 8px;
           cursor: pointer;
@@ -655,7 +655,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
         }
 
         .qa-book-card:hover {
-          border-color: #2f2f2f;
+          border-color: var(--app-accent-border);
         }
 
         .qa-book-card.active {
@@ -669,11 +669,11 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           height: 48px;
           border-radius: 4px;
           overflow: hidden;
-          background: #1d1d1d;
+          background: var(--app-input);
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #777;
+          color: var(--app-text-subtle);
           font-size: 12px;
           font-weight: 600;
         }
@@ -694,7 +694,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
 
         .qa-book-copy-title {
           font-size: 11px;
-          color: #d6d6d6;
+          color: var(--app-text);
           line-height: 1.3;
           overflow: hidden;
           display: -webkit-box;
@@ -704,7 +704,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
 
         .qa-book-copy-author {
           font-size: 10px;
-          color: #8a8a8a;
+          color: var(--app-text-muted);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -733,7 +733,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
         }
 
         .qa-type-pill:hover {
-          border-color: rgba(255, 255, 255, 0.22) !important;
+          border-color: var(--app-accent-border) !important;
         }
 
         .qa-type-pill-main {
@@ -741,7 +741,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
         }
 
         .qa-type-pill-sub {
-          color: #666;
+          color: var(--app-text-subtle);
           font-size: 9px;
           letter-spacing: 0.02em;
           text-transform: none;
@@ -749,7 +749,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
 
         .qa-hint {
           font-size: 11px;
-          color: #3a3a3a;
+          color: var(--app-text-muted);
           display: flex;
           align-items: center;
           gap: 4px;
@@ -759,16 +759,16 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           display: inline-flex;
           align-items: center;
           padding: 1px 5px;
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--app-input);
           border-radius: 3px;
           font-size: 10px;
           font-family: inherit;
-          color: #444;
+          color: var(--app-text-subtle);
         }
 
         .qa-hint-sep {
           margin: 0 1px;
-          color: #333;
+          color: var(--app-text-subtle);
         }
 
         .qa-submit {
@@ -778,10 +778,10 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           align-items: center;
           justify-content: center;
           padding: 0;
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--app-input);
           border: none;
           border-radius: 10px;
-          color: #333;
+          color: var(--app-text-subtle);
           cursor: default;
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
@@ -840,7 +840,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
           .qa-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: var(--app-overlay);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             display: flex;

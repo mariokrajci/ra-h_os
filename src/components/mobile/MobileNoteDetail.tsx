@@ -6,6 +6,14 @@ import { ChevronLeft } from 'lucide-react';
 import MarkdownWithNodeTokens from '@/components/helpers/MarkdownWithNodeTokens';
 import { useMobileNodeDetail } from './useMobileNodeDetail';
 
+function formatMobileDate(value: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
 export default function MobileNoteDetail({
   nodeId,
   refreshToken,
@@ -27,6 +35,7 @@ export default function MobileNoteDetail({
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [generatingFromSource, setGeneratingFromSource] = useState(false);
   const [showHeaderTitle, setShowHeaderTitle] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -63,6 +72,26 @@ export default function MobileNoteDetail({
       console.error('Failed to save notes:', error);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function generateNotesFromSource() {
+    if (!node?.chunk?.trim()) return;
+    setGeneratingFromSource(true);
+    try {
+      const response = await fetch(`/api/nodes/${nodeId}/generate-notes-from-source`, {
+        method: 'POST',
+      });
+      const result = await response.json();
+      if (result.success && result.node) {
+        setNode(result.node);
+      } else {
+        throw new Error(result.error || 'Failed to generate notes from source');
+      }
+    } catch (error) {
+      console.error('Failed to generate notes from source:', error);
+    } finally {
+      setGeneratingFromSource(false);
     }
   }
 
@@ -145,7 +174,7 @@ export default function MobileNoteDetail({
             </h1>
 
             <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--app-text-subtle)' }}>
-              Edited {new Date(node.updated_at).toLocaleString()}
+              Edited {formatMobileDate(node.updated_at)}
             </div>
 
             {/* Description */}
@@ -227,11 +256,11 @@ export default function MobileNoteDetail({
                     <button
                       type="button"
                       className="app-button app-button--ghost"
-                      style={{ padding: '12px 16px', borderRadius: '12px', textAlign: 'left', fontSize: '15px', fontWeight: 500, opacity: 0.45 }}
-                      disabled
-                      title="Coming soon"
+                      style={{ padding: '12px 16px', borderRadius: '12px', textAlign: 'left', fontSize: '15px', fontWeight: 500 }}
+                      disabled={generatingFromSource}
+                      onClick={() => void generateNotesFromSource()}
                     >
-                      Generate notes from source
+                      {generatingFromSource ? 'Generating notes…' : 'Generate notes from source'}
                     </button>
                   )}
                 </div>

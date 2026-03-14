@@ -1166,6 +1166,28 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
 
   // Create linked note state
   const [creatingNote, setCreatingNote] = useState(false);
+  const [generatingNotesFromSource, setGeneratingNotesFromSource] = useState(false);
+
+  const generateNotesFromSource = async () => {
+    if (!activeTab || !nodesData[activeTab]?.chunk?.trim()) return;
+    setGeneratingNotesFromSource(true);
+    try {
+      const response = await fetch(`/api/nodes/${activeTab}/generate-notes-from-source`, {
+        method: 'POST',
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success || !result?.node) {
+        throw new Error(result?.error || 'Failed to generate notes from source');
+      }
+      setNodesData(prev => ({ ...prev, [activeTab]: result.node }));
+      setActiveContentTab('notes');
+    } catch (error) {
+      console.error('Failed to generate notes from source:', error);
+      alert(error instanceof Error ? error.message : 'Failed to generate notes from source.');
+    } finally {
+      setGeneratingNotesFromSource(false);
+    }
+  };
 
   const syncToSource = async () => {
     if (!activeTab) return;
@@ -3127,12 +3149,13 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       )}
                       {nodesData[activeTab]?.chunk && (
                         <button
-                          disabled
+                          onClick={generateNotesFromSource}
+                          disabled={generatingNotesFromSource}
                           className="app-button app-button--secondary"
-                          style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.4 }}
-                          title="Coming soon"
+                          style={{ padding: '10px 14px', borderRadius: '6px', textAlign: 'left', fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}
                         >
-                          Generate notes from source
+                          {generatingNotesFromSource ? <Loader size={12} className="animate-spin" /> : null}
+                          {generatingNotesFromSource ? 'Generating notes…' : 'Generate notes from source'}
                         </button>
                       )}
                       <button
