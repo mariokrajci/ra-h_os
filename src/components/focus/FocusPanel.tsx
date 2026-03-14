@@ -169,7 +169,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
   // Description regeneration state
   const [regeneratingDescription, setRegeneratingDescription] = useState<number | null>(null);
 
-  // Content tab state: 'notes', 'desc', or 'source'
+  // Content tab state: 'notes', 'edges', 'source', or 'metadata'
   const [activeContentTab, setActiveContentTab] = useState<'notes' | 'edges' | 'source' | 'metadata'>('notes');
 
   // Desc (description) edit mode state
