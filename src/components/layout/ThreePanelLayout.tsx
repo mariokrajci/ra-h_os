@@ -761,6 +761,12 @@ export default function ThreePanelLayout() {
               }
               setSlotB(prev => prev ? ({ ...prev, nodeTabs: newTabs, activeNodeTab: newActiveTab }) : null);
             }}
+            onCloseAllTabs={slot === 'A' ? () => {
+              setSlotA(prev => prev ? ({ ...prev, nodeTabs: [], activeNodeTab: null }) : { type: 'node', nodeTabs: [], activeNodeTab: null });
+            } : () => {
+              if (!slotB) return;
+              setSlotB(prev => prev ? ({ ...prev, nodeTabs: [], activeNodeTab: null }) : null);
+            }}
             onNodeClick={(nodeId) => {
               handleNodeSelect(nodeId, false);
               setActivePane(slot);

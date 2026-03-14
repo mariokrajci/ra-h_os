@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import FocusPanel from '@/components/focus/FocusPanel';
 import PaneHeader from './PaneHeader';
 import { NodePaneProps, PaneType } from './types';
+import { XCircle } from 'lucide-react';
 
 // Simple truncate for tab titles
 function truncateTitle(title: string, maxLength = 20): string {
@@ -21,6 +22,7 @@ export default function NodePane({
   activeTab,
   onTabSelect,
   onTabClose,
+  onCloseAllTabs,
   onNodeClick,
   onReorderTabs,
   refreshTrigger,
@@ -93,15 +95,17 @@ export default function NodePane({
       overflow: 'hidden',
     }}>
       <PaneHeader slot={slot} onCollapse={onCollapse} onSwapPanes={onSwapPanes}>
-        <div style={{
+        <div className="app-hide-scrollbar" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
           minWidth: 0,
+          flex: 1,
           overflowX: 'auto',
           overflowY: 'hidden',
           WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'thin',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
         }}>
           {/* Tabs rendered inline */}
           {openTabs.length === 0 ? (
@@ -173,6 +177,19 @@ export default function NodePane({
             })
           )}
         </div>
+        {openTabs.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            <button
+              onClick={() => onCloseAllTabs?.()}
+              className="app-button app-button--ghost app-button--compact"
+              title="Close all open nodes"
+              aria-label="Close all open nodes"
+              style={{ padding: '6px' }}
+            >
+              <XCircle size={14} />
+            </button>
+          </div>
+        )}
       </PaneHeader>
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>

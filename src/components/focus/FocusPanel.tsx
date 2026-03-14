@@ -3166,12 +3166,12 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                       <div style={{
                         fontSize: '11px',
-                        color: '#f59e0b',
+                        color: 'var(--app-text)',
                         marginBottom: '8px',
                         padding: '8px',
-                        background: '#1a1500',
+                        background: 'color-mix(in srgb, var(--app-panel) 84%, #f59e0b 16%)',
                         borderRadius: '4px',
-                        border: '1px solid #3d3500'
+                        border: '1px solid color-mix(in srgb, var(--app-border) 70%, #f59e0b 30%)'
                       }}>
                         Editing source changes what search uses. This is the raw content that gets embedded.
                       </div>
@@ -3188,6 +3188,8 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                           ...FOCUS_PANEL_BODY_TEXTAREA_STYLE,
                           flex: 1,
                           minHeight: '200px',
+                          fontSize: '13px',
+                          lineHeight: '1.65',
                           fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, \"Liberation Mono\", monospace',
                         }}
                         placeholder="Add source content for embedding..."

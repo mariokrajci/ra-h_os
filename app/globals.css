@@ -178,6 +178,15 @@ html, body {
   background-color: var(--app-hover);
 }
 
+.app-hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Semantic theme primitives */
 .app-panel,
 .app-panel-elevated,

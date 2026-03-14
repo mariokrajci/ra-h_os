@@ -58,6 +58,7 @@ export interface NodePaneProps extends BasePaneProps {
   activeTab: number | null;
   onTabSelect: (nodeId: number) => void;
   onTabClose: (nodeId: number) => void;
+  onCloseAllTabs?: () => void;
   onNodeClick?: (nodeId: number) => void;
   onReorderTabs?: (fromIndex: number, toIndex: number) => void;
   refreshTrigger?: number;
