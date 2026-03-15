@@ -22,7 +22,8 @@ export type SettingsTab =
   | 'context'
   | 'agents'
   | 'preferences'
-  | 'flags';
+  | 'flags'
+  | 'bookmarklet';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -36,6 +37,89 @@ const THEME_OPTIONS: ThemeMode[] = ['system', 'light', 'dark'];
 
 function formatThemeLabel(mode: ThemeMode): string {
   return mode.charAt(0).toUpperCase() + mode.slice(1);
+}
+
+function BookmarkletTab() {
+  const [appUrl, setAppUrl] = useState('http://localhost:3000');
+
+  useEffect(() => {
+    setAppUrl(window.location.origin);
+  }, []);
+
+  const snippet = `javascript:(function(){var s=document.createElement('script');s.src='${appUrl}/bookmarklet.js?_='+Date.now();document.head.appendChild(s);})();`;
+
+  return (
+    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '560px' }}>
+      <div>
+        <div style={{ fontSize: '24px', fontWeight: 600, color: 'var(--app-text)', marginBottom: '6px' }}>
+          Browser Bookmarklet
+        </div>
+        <div style={{ fontSize: '14px', color: 'var(--app-text-muted)', lineHeight: 1.6 }}>
+          Send any page or selected text to RA-OS with one click. Drag the button below to your bookmarks bar to install.
+        </div>
+      </div>
+
+      <div>
+        <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-text-subtle)', marginBottom: '8px' }}>
+          App URL
+        </div>
+        <input
+          type="text"
+          value={appUrl}
+          onChange={(e) => setAppUrl(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            fontSize: '14px',
+            borderRadius: '8px',
+            border: '1px solid var(--app-border)',
+            background: 'var(--app-input)',
+            color: 'var(--app-text)',
+            boxSizing: 'border-box',
+          }}
+        />
+      </div>
+
+      <div>
+        <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-text-subtle)', marginBottom: '8px' }}>
+          Install
+        </div>
+        <a
+          href={snippet}
+          onClick={(e) => e.preventDefault()}
+          draggable
+          style={{
+            display: 'inline-block',
+            padding: '10px 20px',
+            borderRadius: '8px',
+            background: 'var(--app-accent)',
+            color: '#fff',
+            fontSize: '14px',
+            fontWeight: 600,
+            textDecoration: 'none',
+            cursor: 'grab',
+            userSelect: 'none',
+          }}
+        >
+          Save to RA-OS
+        </a>
+        <div style={{ fontSize: '12px', color: 'var(--app-text-muted)', marginTop: '8px' }}>
+          Drag this to your bookmarks bar. Click on any page to save it.
+        </div>
+      </div>
+
+      <div>
+        <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-text-subtle)', marginBottom: '8px' }}>
+          How it works
+        </div>
+        <div style={{ fontSize: '14px', color: 'var(--app-text-muted)', lineHeight: 1.7 }}>
+          <div>• <strong>No selection:</strong> sends the current URL (auto-detected as article, YouTube, podcast, etc.)</div>
+          <div>• <strong>Text selected:</strong> sends the selection as a note, with the page URL and title as source</div>
+          <div>• <strong>ChatGPT / Claude / Gemini:</strong> selection is treated as a chat transcript and summarized</div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsModalProps) {
@@ -211,6 +295,9 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             <div onClick={() => setActiveTab('flags')} className={navItemClassName('flags')}>
               Flags
             </div>
+            <div onClick={() => setActiveTab('bookmarklet')} className={navItemClassName('bookmarklet')}>
+              Bookmarklet
+            </div>
             <div
               style={{
                 padding: '12px 24px',
@@ -292,6 +379,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
               {activeTab === 'agents' && 'External Agents'}
               {activeTab === 'preferences' && 'Preferences'}
               {activeTab === 'flags' && 'Flags'}
+              {activeTab === 'bookmarklet' && 'Bookmarklet'}
             </h2>
             <button
               onClick={onClose}
@@ -327,6 +415,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             {activeTab === 'agents' && <ExternalAgentsPanel />}
             {activeTab === 'preferences' && preferencesContent}
             {activeTab === 'flags' && <FlagsViewer />}
+            {activeTab === 'bookmarklet' && <BookmarkletTab />}
           </div>
         </div>
       </div>
