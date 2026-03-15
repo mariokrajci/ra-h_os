@@ -357,58 +357,13 @@ async function handleChatTranscriptQuickAdd(rawInput: string, task: string, apiB
     }
   }
 
-  const summaryResult = await summarizeTranscript(transcript);
-  const baseSummary = summaryResult.summary?.trim() || 'Captured chat transcript. Review the raw transcript for full detail.';
-
-  const intentLine = summaryResult.intent?.trim();
-  const progressLine = summaryResult.progress?.trim();
-  const stickingPoints = summaryResult.stickingPoints || [];
-
-  const highlightSection = (summaryResult.highlights?.length ?? 0) > 0
-    ? ['Highlights:', ...summaryResult.highlights!.map((item) => `- ${item}`)].join('\n')
-    : null;
-
-  const followUpSection = (summaryResult.openQuestions?.length ?? 0) > 0
-    ? ['Open Questions:', ...summaryResult.openQuestions!.map((item) => `- ${item}`)].join('\n')
-    : null;
-
-  const stickingSection = stickingPoints.length > 0
-    ? ['Where things felt stuck:', ...stickingPoints.map((item) => `- ${item}`)].join('\n')
-    : null;
-
-  const contentParts = [
-    `Overview:\n${baseSummary}`,
-  ];
-
-  if (intentLine) {
-    contentParts.push(`What you were trying to do:\n${intentLine}`);
-  }
-  if (progressLine) {
-    contentParts.push(`Where you made progress:\n${progressLine}`);
-  }
-  if (stickingSection) {
-    contentParts.push(stickingSection);
-  }
-  if (highlightSection) contentParts.push(highlightSection);
-  if (followUpSection) contentParts.push(followUpSection);
-  const content = contentParts.join('\n\n');
-
-  const title = deriveChatTitle(transcript, summaryResult.subject);
+  const title = sourceTitle?.trim() || deriveChatTitle(transcript);
   const wordCount = transcript.split(/\s+/).filter(Boolean).length;
 
   const metadata = {
     source: 'quick-add-chat',
-    summary_subject: summaryResult.subject,
-    summary_intent: summaryResult.intent,
-    summary_progress: summaryResult.progress,
-    highlights: summaryResult.highlights ?? [],
-    open_questions: summaryResult.openQuestions ?? [],
-    participants: summaryResult.participants ?? [],
-    sticking_points: summaryResult.stickingPoints ?? [],
     transcript_length_chars: transcript.length,
     transcript_length_words: wordCount,
-    transcript_truncated_for_summary: summaryResult.truncated ?? false,
-    summary_generated_at: new Date().toISOString(),
   };
 
   const response = await fetch(`${apiBaseUrl}/api/nodes`, {
@@ -416,7 +371,6 @@ async function handleChatTranscriptQuickAdd(rawInput: string, task: string, apiB
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       title,
-      notes: content,
       chunk: transcript,
       ...(sourceUrl ? { link: sourceUrl } : {}),
       metadata: {
