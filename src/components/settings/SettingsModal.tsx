@@ -41,12 +41,20 @@ function formatThemeLabel(mode: ThemeMode): string {
 
 function BookmarkletTab() {
   const [appUrl, setAppUrl] = useState('http://localhost:3000');
+  const [copied, setCopied] = useState(false);
+  const anchorRef = React.useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     setAppUrl(window.location.origin);
   }, []);
 
   const snippet = `javascript:(function(){var s=document.createElement('script');s.src='${appUrl}/bookmarklet.js?_='+Date.now();document.head.appendChild(s);})();`;
+
+  useEffect(() => {
+    if (anchorRef.current) {
+      anchorRef.current.setAttribute('href', snippet);
+    }
+  }, [snippet]);
 
   return (
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '560px' }}>
@@ -84,27 +92,59 @@ function BookmarkletTab() {
         <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-text-subtle)', marginBottom: '8px' }}>
           Install
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <a
+            ref={anchorRef}
+            onClick={(e) => e.preventDefault()}
+            draggable
+            className="app-button app-button--pill app-button--secondary"
+            style={{
+              display: 'inline-block',
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: 600,
+              textDecoration: 'none',
+              cursor: 'grab',
+              userSelect: 'none',
+            }}
+          >
+            Save to RA-OS
+          </a>
+          <button
+            className="app-button app-button--pill app-button--secondary"
+            style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 600 }}
+            onClick={() => {
+              navigator.clipboard.writeText(snippet).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              });
+            }}
+          >
+            {copied ? 'Copied!' : 'Copy URL'}
+          </button>
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--app-text-muted)', marginTop: '8px' }}>
+          Drag to bookmarks bar, or copy the URL and paste it as a new bookmark manually.
+        </div>
+      </div>
+
+      <div>
+        <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-text-subtle)', marginBottom: '8px' }}>
+          Chrome Extension
+        </div>
+        <div style={{ fontSize: '14px', color: 'var(--app-text-muted)', lineHeight: 1.6, marginBottom: '12px' }}>
+          More powerful than the bookmarklet — captures full ChatGPT conversations and works without a bookmarks bar.
+        </div>
         <a
-          href={snippet}
-          onClick={(e) => e.preventDefault()}
-          draggable
-          style={{
-            display: 'inline-block',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            background: 'var(--app-accent)',
-            color: '#fff',
-            fontSize: '14px',
-            fontWeight: 600,
-            textDecoration: 'none',
-            cursor: 'grab',
-            userSelect: 'none',
-          }}
+          href="/api/bookmarklet/download"
+          download="ra-os-extension.zip"
+          className="app-button app-button--pill app-button--secondary"
+          style={{ display: 'inline-block', padding: '10px 20px', fontSize: '14px', fontWeight: 600, textDecoration: 'none' }}
         >
-          Save to RA-OS
+          Download Extension (.zip)
         </a>
         <div style={{ fontSize: '12px', color: 'var(--app-text-muted)', marginTop: '8px' }}>
-          Drag this to your bookmarks bar. Click on any page to save it.
+          Unzip, then load via Chrome → chrome://extensions → Developer mode → Load unpacked.
         </div>
       </div>
 
