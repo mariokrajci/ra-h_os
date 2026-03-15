@@ -4,11 +4,13 @@ import { enqueueQuickAdd, QuickAddMode } from '@/services/agents/quickAdd';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { input, mode, description, bookSelection } = body as {
+    const { input, mode, description, bookSelection, sourceUrl, sourceTitle } = body as {
       input?: unknown;
       mode?: unknown;
       description?: unknown;
       bookSelection?: unknown;
+      sourceUrl?: unknown;
+      sourceTitle?: unknown;
     };
 
     if (typeof input !== 'string' || input.trim().length === 0) {
@@ -23,6 +25,10 @@ export async function POST(request: NextRequest) {
 
     const normalizedDescription: string | undefined =
       typeof description === 'string' && description.trim() ? description.trim() : undefined;
+    const normalizedSourceUrl: string | undefined =
+      typeof sourceUrl === 'string' && sourceUrl.trim() ? sourceUrl.trim() : undefined;
+    const normalizedSourceTitle: string | undefined =
+      typeof sourceTitle === 'string' && sourceTitle.trim() ? sourceTitle.trim() : undefined;
     const normalizedBookSelection = (() => {
       if (!bookSelection || typeof bookSelection !== 'object') return undefined;
       const selection = bookSelection as Record<string, unknown>;
@@ -43,6 +49,8 @@ export async function POST(request: NextRequest) {
       description: normalizedDescription,
       baseUrl: request.nextUrl.origin,
       bookSelection: normalizedBookSelection?.title ? normalizedBookSelection : undefined,
+      sourceUrl: normalizedSourceUrl,
+      sourceTitle: normalizedSourceTitle,
     });
 
     return NextResponse.json({ success: true, delegation });
