@@ -110,9 +110,36 @@ function normalizeEmbeddedHtmlMarkdown(content: string): string {
     return content;
   }
 
-  let normalized = content.replace(/<table[\s\S]*?<\/table>/gi, convertHtmlTableToMarkdown);
+  // Extract <details> blocks before the main pipeline — the block tokenizer would
+  // corrupt their structure since it doesn't know about <details>/<summary>.
+  // We reinsert them afterward with internal blank lines collapsed so remark
+  // parses each block as a single html node (CommonMark html blocks end at blank lines).
+  const detailsBlocks: string[] = [];
+  let normalized = content.replace(/<details[\s\S]*?<\/details>/gi, (block) => {
+    const idx = detailsBlocks.length;
+    detailsBlocks.push(block);
+    return `\n\nDETAILS_PLACEHOLDER_${idx}\n\n`;
+  });
+
+  // Pre-process GFM table rows before the block tokenizer runs.
+  // The tokenizer splits on any `<`, so inline tags like <a> inside table cells
+  // would fragment row into multiple tokens, each flushed as its own line.
+  // Running normalizeInlineHtml on table rows first converts those tags to markdown
+  // so the tokenizer sees clean pipe-delimited rows with no `<` to trip on.
+  normalized = normalized.replace(/^(\|.+)$/gm, (row) => normalizeInlineHtml(row));
+
+  normalized = normalized.replace(/<table[\s\S]*?<\/table>/gi, convertHtmlTableToMarkdown);
   normalized = convertHtmlBlocksToMarkdown(normalized);
   normalized = normalizeInlineHtml(normalized);
+
+  // Reinsert <details> blocks
+  if (detailsBlocks.length > 0) {
+    normalized = normalized.replace(/DETAILS_PLACEHOLDER_(\d+)/g, (_, idx) => {
+      const block = detailsBlocks[parseInt(idx, 10)];
+      return '\n\n' + block.replace(/\n{2,}/g, '\n') + '\n\n';
+    });
+  }
+
   return normalized;
 }
 
@@ -451,7 +478,47 @@ function renderNode(
     }
     case 'listItem':
       return renderListItem(node, content, annotationRanges, activeRange, palette, key);
-    case 'blockquote':
+    case 'blockquote': {
+      const ALERT_CONFIG = {
+        NOTE:      { color: '#1f6feb', label: 'Note' },
+        TIP:       { color: '#3fb950', label: 'Tip' },
+        IMPORTANT: { color: '#8957e5', label: 'Important' },
+        WARNING:   { color: '#d29922', label: 'Warning' },
+        CAUTION:   { color: '#f85149', label: 'Caution' },
+      } as const;
+      const firstParagraph = node.children?.find(c => c.type === 'paragraph');
+      const firstText = firstParagraph?.children?.[0];
+      const alertMatch = firstText?.type === 'text' && firstText.value
+        ? firstText.value.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*/i)
+        : null;
+      if (alertMatch) {
+        const type = alertMatch[1].toUpperCase() as keyof typeof ALERT_CONFIG;
+        const config = ALERT_CONFIG[type];
+        const alertChildren = node.children?.map((child, ci) => {
+          if (ci !== 0 || child.type !== 'paragraph') return child;
+          return {
+            ...child,
+            children: child.children
+              ?.map((t, ti) =>
+                ti === 0 && t.type === 'text'
+                  ? { ...t, value: (t.value ?? '').replace(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*/i, '') }
+                  : t
+              )
+              .filter(t => !(t.type === 'text' && !t.value?.trim())),
+          };
+        }) ?? [];
+        return (
+          <div
+            key={key}
+            style={{ borderLeft: `4px solid ${config.color}`, paddingLeft: '12px', margin: '4px 0' }}
+          >
+            <div style={{ color: config.color, fontWeight: 600, marginBottom: '4px', fontSize: '0.875em', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {config.label}
+            </div>
+            {renderChildren(alertChildren, content, annotationRanges, activeRange, palette)}
+          </div>
+        );
+      }
       return (
         <blockquote
           key={key}
@@ -460,6 +527,7 @@ function renderNode(
           {renderChildren(node.children ?? [], content, annotationRanges, activeRange, palette)}
         </blockquote>
       );
+    }
     case 'table':
       return renderTable(node, content, annotationRanges, activeRange, palette, key);
     case 'tableRow':
@@ -495,6 +563,33 @@ function renderNode(
       return <br key={key} />;
     case 'thematicBreak':
       return <hr key={key} style={{ width: '100%', borderColor: palette.rule }} />;
+    case 'html': {
+      const val = (node.value || '').trim();
+      if (!/<details\b/i.test(val)) return null;
+      const summaryMatch = val.match(/<summary[^>]*>([\s\S]*?)<\/summary>/i);
+      const summaryText = summaryMatch
+        ? summaryMatch[1].replace(/<[^>]+>/g, '').trim()
+        : 'Details';
+      const bodyHtml = val
+        .replace(/^<details[^>]*>\s*/i, '')
+        .replace(/<summary[^>]*>[\s\S]*?<\/summary>\s*/i, '')
+        .replace(/\s*<\/details>\s*$/i, '')
+        .trim();
+      const bodyTree = parser.parse(normalizeInlineHtml(bodyHtml)) as MarkdownNode;
+      return (
+        <details
+          key={key}
+          style={{ margin: '4px 0', borderLeft: `2px solid ${palette.rule}`, paddingLeft: '12px' }}
+        >
+          <summary style={{ cursor: 'pointer', fontWeight: 600, color: palette.heading }}>
+            {summaryText}
+          </summary>
+          <div style={{ marginTop: '8px' }}>
+            {renderChildren(bodyTree.children ?? [], bodyHtml, [], null, palette)}
+          </div>
+        </details>
+      );
+    }
     default:
       return node.children
         ? <React.Fragment key={key}>{renderChildren(node.children, content, annotationRanges, activeRange, palette)}</React.Fragment>
