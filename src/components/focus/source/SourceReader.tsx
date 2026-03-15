@@ -19,6 +19,7 @@ import {
 interface SourceReaderProps {
   content: string;
   nodeTitle?: string;
+  sourceUrl?: string;
   onTextSelect?: (text: string) => void;
   onSourceSelect?: (selection: SourceSelection) => void;
   annotations?: Annotation[];
@@ -35,6 +36,7 @@ interface SourceReaderProps {
 export default function SourceReader({
   content,
   nodeTitle,
+  sourceUrl,
   onTextSelect,
   onSourceSelect,
   annotations = [],
@@ -49,7 +51,7 @@ export default function SourceReader({
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Detect content type (memoized for performance)
-  const contentType = useMemo(() => detectContentType(content), [content]);
+  const contentType = useMemo(() => detectContentType(content, sourceUrl), [content, sourceUrl]);
   const contentTypeLabel = getContentTypeLabel(contentType);
   const readerTheme = resolvedTheme === 'light' ? 'warm' : 'dark';
 

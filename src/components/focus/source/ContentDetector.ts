@@ -13,15 +13,13 @@ const TIMESTAMP_PATTERNS = [
   /^\[\d+(?:\.\d+)?s\]\s+\S/,                // [0.1s] text
 ];
 
-// Simple book detection - look for explicit chapter markers
-// We no longer try to parse numbered sections (too unreliable)
+// Book detection - only strong, unambiguous markers
+// INTRODUCTION and APPENDIX removed: too common in technical docs and READMEs
 const BOOK_INDICATORS = [
   /\b(CHAPTER|Chapter)\s+\d+/i,
   /\b(Part|PART)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X|\d+)\b/i,
   /\bTable\s+of\s+Contents\b/i,
   /\bPREFACE\b/,
-  /\bINTRODUCTION\b/,
-  /\bAPPENDIX\b/,
 ];
 
 // Markdown syntax markers
@@ -37,10 +35,18 @@ const MARKDOWN_MARKERS = [
 ];
 
 /**
- * Detect the content type of raw source content
+ * Detect the content type of raw source content.
+ * Pass sourceUrl to enable URL-based hints (e.g. GitHub repos are always markdown).
  */
-export function detectContentType(content: string): ContentType {
+export function detectContentType(content: string, sourceUrl?: string): ContentType {
   if (!content || content.length < 50) return 'raw';
+
+  // GitHub repos always serve markdown README files
+  try {
+    if (sourceUrl && new URL(sourceUrl).hostname === 'github.com') return 'markdown';
+  } catch {
+    // ignore invalid URLs
+  }
 
   const lines = content.split('\n').slice(0, 50); // Check first 50 lines
   const nonEmptyLines = lines.map((line) => line.trim()).filter(Boolean);
@@ -52,16 +58,13 @@ export function detectContentType(content: string): ContentType {
   const transcriptDensity = nonEmptyLines.length > 0 ? timestampLines.length / nonEmptyLines.length : 0;
   if (timestampLines.length >= 3 && transcriptDensity >= 0.25) return 'transcript';
 
-  // 2. Check for book indicators (explicit markers like "Chapter", "Table of Contents")
-  const bookIndicatorCount = BOOK_INDICATORS.filter(pattern => pattern.test(content)).length;
-  if (bookIndicatorCount >= 2) return 'book';
-  
-  // Also consider very long content as book-like (>20K chars)
-  if (content.length > 20000 && bookIndicatorCount >= 1) return 'book';
-
-  // 3. Check for markdown patterns
+  // 2. Check for markdown patterns (before book — well-formatted markdown is unlikely to be a book)
   const markdownScore = calculateMarkdownScore(content);
   if (markdownScore > 0.3) return 'markdown';
+
+  // 3. Check for book indicators — require 2+ strong signals
+  const bookIndicatorCount = BOOK_INDICATORS.filter(pattern => pattern.test(content)).length;
+  if (bookIndicatorCount >= 2) return 'book';
 
   // 4. Check for article structure (paragraphs with clear breaks)
   const paragraphs = content.split(/\n\n+/).filter(p => p.trim().length > 100);
