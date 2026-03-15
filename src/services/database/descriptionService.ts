@@ -158,22 +158,21 @@ function buildDescriptionPrompt(input: DescriptionInput): string {
 
   return `Write a description for this knowledge node. Max 280 characters.
 
-Say WHAT this literally is and WHY it matters. Be concrete and specific — like you're telling a friend what this thing is in one breath.
+Lead with the core claim, finding, or insight. The description should surface what is interesting or useful — not restate what the title or metadata already say.
 
 RULES:
-1) Name the format only when it adds meaning: "Podcast episode where…", "Blog post arguing…", "Your note on…", "Research paper showing…", "Idea that…"
-2) Name people by role — channel/host is the creator, title figures are guests/subjects. Use the Creator hint if available.
-3) State the actual claim, finding, or insight from the content — not a vague summary of the topic.
-4) End with why it's interesting or important — one concrete phrase.
-5) ABSOLUTELY FORBIDDEN — these words will be rejected: "discusses", "explores", "examines", "talks about", "is about", "delves into", "emphasizing the need for". State things directly instead.
-6) Do NOT waste characters on container labels like "GitHub repository for", "website for", or "PDF about" unless they are genuinely needed for disambiguation.
+1) Be 100% additive — every word must be information not already in the title, author, source type, or dimensions. Never restate or rephrase what those fields already say.
+2) State the actual claim, finding, or insight — not a vague topic summary.
+3) End with why it matters — one concrete phrase.
+4) FORBIDDEN words (will be rejected): "discusses", "explores", "examines", "talks about", "is about", "delves into", "emphasizing the need for". State things directly.
+5) No format labels or container names — "Podcast episode where", "Blog post about", "GitHub repo for", "[Name] GitHub repository" are all wasted characters. Metadata already captures the type.
 
-GOOD: "Karpathy blog post — AI agents make software fluid, ripping functionality from repos instead of taking dependencies. Signals the end of monolithic libraries."
-GOOD: "Dwarkesh Patel interview with Anthropic CEO Dario Amodei — argues we're nearing the end of exponential AI scaling. Key signal for what comes next."
-GOOD: "Your note — morning optimism consistently reverses to evening pessimism. Not energy — the belief itself flips. Pattern worth tracking."
-BAD: "By Dario Amodei — discusses reaching the limits of exponential growth in AI, emphasizing the need for a critical perspective on future advancements."
-BAD: "This article explores ideas about how software is changing."
-BAD: "GitHub repository for Promptfoo — a tool for prompt management."
+GOOD: "Every AI breakthrough in 70 years came from scaling compute, not hand-crafted knowledge. Invest in learning methods, not domain expertise."
+GOOD: "Goal-directed search reliably kills discovery — novelty requires crossing unpredictable stepping stones. Implications for how to structure research and careers."
+GOOD: "Optimism at 8am reliably flips to pessimism by 8pm. Not energy — the underlying belief changes. Pattern worth tracking."
+BAD: "A post that explores how AI research has changed over the decades and what it means for the future." (vague, no claim)
+BAD: "Book about how planning affects creativity and discovery in science and art." (container label, no insight)
+BAD: "RuView GitHub repository — offers a comprehensive framework for visualizing social media data." (container label)
 
 Return ONLY the description text. Nothing else.
 
