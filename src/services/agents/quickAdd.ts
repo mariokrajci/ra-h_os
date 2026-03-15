@@ -21,6 +21,8 @@ export interface QuickAddInput {
   mode?: QuickAddMode;
   description?: string;
   baseUrl?: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
   bookSelection?: {
     title: string;
     author?: string;
@@ -206,6 +208,8 @@ async function handleNoteQuickAdd(
   apiBaseUrl: string,
   command?: BookCommandParseResult,
   bookSelection?: QuickAddInput['bookSelection'],
+  sourceUrl?: string,
+  sourceTitle?: string,
 ): Promise<string> {
   const trimmedInput = rawInput.trim();
   if (!trimmedInput) {
@@ -226,9 +230,11 @@ async function handleNoteQuickAdd(
   const nodePayload: Record<string, unknown> = {
     title,
     ...(content ? { notes: content } : {}),
+    ...(sourceUrl ? { link: sourceUrl } : {}),
     ...(isBookCommand ? { dimensions: ['books'] } : {}),
     metadata: {
       source: 'quick-add-note',
+      ...(sourceTitle ? { source_title: sourceTitle } : {}),
       refined_at: new Date().toISOString(),
       ...(isBookCommand ? {
         content_kind: 'book',
@@ -296,7 +302,7 @@ async function handleNoteQuickAdd(
   });
 }
 
-async function handleChatTranscriptQuickAdd(rawInput: string, task: string, apiBaseUrl: string): Promise<string> {
+async function handleChatTranscriptQuickAdd(rawInput: string, task: string, apiBaseUrl: string, sourceUrl?: string, sourceTitle?: string): Promise<string> {
   const transcript = rawInput.trim();
   if (!transcript) {
     throw new Error('Input is required to import a chat transcript');
@@ -363,7 +369,11 @@ async function handleChatTranscriptQuickAdd(rawInput: string, task: string, apiB
       title,
       notes: content,
       chunk: transcript,
-      metadata,
+      ...(sourceUrl ? { link: sourceUrl } : {}),
+      metadata: {
+        ...metadata,
+        ...(sourceTitle ? { source_title: sourceTitle } : {}),
+      },
     }),
   });
 
@@ -406,7 +416,7 @@ function resolveApiBaseUrl(baseUrl?: string): string {
   return 'http://localhost:3000';
 }
 
-export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl, bookSelection }: QuickAddInput): Promise<QuickAddResult> {
+export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl, bookSelection, sourceUrl, sourceTitle }: QuickAddInput): Promise<QuickAddResult> {
   const routing = resolveQuickAddRouting(rawInput, mode);
   const inputType = routing.inputType;
   if (rawInput.trim().startsWith('/')) {
@@ -438,9 +448,9 @@ export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl, bo
     try {
       let summary: string;
       if (inputType === 'note') {
-        summary = await handleNoteQuickAdd(routing.normalizedInput, task, description, apiBaseUrl, routing.command, bookSelection);
+        summary = await handleNoteQuickAdd(routing.normalizedInput, task, description, apiBaseUrl, routing.command, bookSelection, sourceUrl, sourceTitle);
       } else if (inputType === 'chat') {
-        summary = await handleChatTranscriptQuickAdd(rawInput, task, apiBaseUrl);
+        summary = await handleChatTranscriptQuickAdd(rawInput, task, apiBaseUrl, sourceUrl, sourceTitle);
       } else {
         summary = await handleExtractionQuickAdd(inputType as ExtractionQuickAddType, rawInput, task, apiBaseUrl);
       }
