@@ -69,7 +69,11 @@ async function fetchChatGPTConversation() {
 
       if (msg && !isHidden && (role === 'user' || role === 'assistant')) {
         const parts = msg.content?.parts ?? [];
-        const text = parts.filter((p) => typeof p === 'string').join('').trim();
+        const text = parts
+          .filter((p) => typeof p === 'string')
+          .join('')
+          .replace(/cite(turn\d+search\d+)+/g, '')
+          .trim();
         if (text) {
           const label = role === 'user' ? '**You:**' : '**ChatGPT:**';
           messages.push(`${label} ${text}`);

@@ -97,6 +97,23 @@ describe('parseChatGPTConversation', () => {
     expect(parseChatGPTConversation(emptyFixture)).toBeNull();
   });
 
+  it('strips citation artifacts from assistant messages', () => {
+    const fixture: ChatGPTConversation = {
+      mapping: {
+        'root': { id: 'root', parent: null, children: ['msg'], message: null },
+        'msg': {
+          id: 'msg', parent: 'root', children: [],
+          message: {
+            author: { role: 'assistant', metadata: {} },
+            content: { content_type: 'text', parts: ['Many definitions use **50 to 100 years old**. citeturn893384search0turn893384search2'] },
+            metadata: {},
+          },
+        },
+      },
+    };
+    expect(parseChatGPTConversation(fixture)).toBe('**ChatGPT:** Many definitions use **50 to 100 years old**.');
+  });
+
   it('handles messages with multiple content parts', () => {
     const fixture: ChatGPTConversation = {
       mapping: {

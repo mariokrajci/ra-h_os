@@ -33,14 +33,18 @@ export function parseChatGPTConversation(data: ChatGPTConversation): string | nu
 
   while (currentId && !visited.has(currentId)) {
     visited.add(currentId);
-    const node = nodes[currentId];
+    const node: ChatGPTNode = nodes[currentId];
     const msg = node?.message;
     const isHidden = msg?.metadata?.is_visually_hidden_from_conversation;
     const role = msg?.author?.role;
 
     if (msg && !isHidden && (role === 'user' || role === 'assistant')) {
       const parts = msg.content?.parts ?? [];
-      const text = parts.filter((p) => typeof p === 'string').join('').trim();
+      const text = parts
+        .filter((p) => typeof p === 'string')
+        .join('')
+        .replace(/cite(turn\d+search\d+)+/g, '')
+        .trim();
       if (text) {
         const label = role === 'user' ? '**You:**' : '**ChatGPT:**';
         messages.push(`${label} ${text}`);
