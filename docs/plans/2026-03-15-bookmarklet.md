@@ -4,7 +4,7 @@
 
 **Goal:** Add a hosted-loader browser bookmarklet that sends the current page URL or selected text to `/api/quick-add`, with a toast confirmation, configurable via a new Settings tab.
 
-**Architecture:** The bookmark itself is a one-liner that fetches `/public/bookmarklet.js` from the app. That script detects selection vs. URL, builds a payload with `sourceUrl`/`sourceTitle` for text selections, and POSTs to `/api/quick-add`. The backend gains two optional fields (`sourceUrl`, `sourceTitle`) threaded through to node creation.
+**Architecture:** The bookmark itself is a one-liner that fetches `/public/bookmarklet.js` from the app. That script detects selection vs. URL, builds a payload with `sourceUrl`/`sourceTitle` for text selections, and POSTs to `/api/quick-add`. The backend gains two optional fields (`sourceUrl`, `sourceTitle`) threaded through to node creation. When `sourceUrl` is present and a node with that `link` already exists, the new selection is appended to `notes` (with a `---` separator) rather than creating a new node — enabling incremental highlighting from the same page.
 
 **Tech Stack:** Next.js 15, TypeScript, Vitest, plain browser JS (no bundler for bookmarklet.js)
 
@@ -644,11 +644,288 @@ git commit -m "feat: add Bookmarklet settings tab with install UI"
 
 ---
 
+### Task 5: Append to existing node when `sourceUrl` matches
+
+**Files:**
+- Modify: `src/services/database/nodes.ts` (add `getNodeByLink`)
+- Modify: `src/services/agents/quickAdd.ts` (use it in `handleNoteQuickAdd` and `handleChatTranscriptQuickAdd`)
+- Test: `tests/unit/quick-add-append.test.ts`
+
+**Step 1: Write the failing tests**
+
+Create `tests/unit/quick-add-append.test.ts`:
+
+```typescript
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+const fetchMock = vi.fn();
+vi.stubGlobal('fetch', fetchMock);
+vi.stubGlobal('setImmediate', (fn: () => void) => fn());
+
+vi.mock('@/services/agents/toolResultUtils', () => ({ summarizeToolExecution: vi.fn(() => '') }));
+vi.mock('@/tools/other/youtubeExtract', () => ({ youtubeExtractTool: { execute: vi.fn() } }));
+vi.mock('@/tools/other/websiteExtract', () => ({ websiteExtractTool: { execute: vi.fn() } }));
+vi.mock('@/tools/other/paperExtract', () => ({ paperExtractTool: { execute: vi.fn() } }));
+vi.mock('@/tools/other/podcastExtract', () => ({ podcastExtractTool: { execute: vi.fn() } }));
+vi.mock('@/tools/infrastructure/nodeFormatter', () => ({ formatNodeForChat: vi.fn(() => '') }));
+vi.mock('@/services/agents/transcriptSummarizer', () => ({
+  summarizeTranscript: vi.fn(() => ({ summary: 'summary', subject: 'test' })),
+}));
+vi.mock('@/services/events', () => ({ eventBroadcaster: { broadcast: vi.fn() } }));
+vi.mock('@/services/ingestion/bookMetadata', () => ({ fetchBookMetadata: vi.fn(() => null) }));
+vi.mock('@/services/ingestion/bookCommand', () => ({
+  parseBookCommand: vi.fn(() => ({ kind: 'none' })),
+}));
+vi.mock('@/services/ingestion/bookEnrichmentQueue', () => ({ bookEnrichmentQueue: { enqueue: vi.fn() } }));
+vi.mock('@/services/analytics/bookTelemetry', () => ({ logBookTelemetry: vi.fn() }));
+vi.mock('@/services/ingestion/bookCoverCache', () => ({ cacheBookCoverForNode: vi.fn() }));
+
+// Mock nodeService with getNodeByLink
+const getNodeByLinkMock = vi.fn();
+vi.mock('@/services/database/nodes', () => ({
+  nodeService: { getNodeByLink: getNodeByLinkMock },
+}));
+
+import { enqueueQuickAdd } from '@/services/agents/quickAdd';
+
+describe('enqueueQuickAdd append behavior', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: { id: 1 } }),
+    });
+  });
+
+  it('PATCHes existing node when sourceUrl matches an existing link', async () => {
+    getNodeByLinkMock.mockResolvedValue({
+      id: 42,
+      title: 'Existing Article',
+      notes: 'First highlight',
+      link: 'https://example.com/article',
+    });
+
+    await enqueueQuickAdd({
+      rawInput: 'Second highlight',
+      mode: 'note',
+      sourceUrl: 'https://example.com/article',
+      sourceTitle: 'Example Article',
+      baseUrl: 'http://localhost:3000',
+    });
+
+    // Should PATCH, not POST to /api/nodes
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/nodes/42',
+      expect.objectContaining({ method: 'PATCH' })
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.notes).toBe('First highlight\n\n---\n\nSecond highlight');
+  });
+
+  it('creates a new node when sourceUrl does not match any existing node', async () => {
+    getNodeByLinkMock.mockResolvedValue(null);
+
+    await enqueueQuickAdd({
+      rawInput: 'New highlight',
+      mode: 'note',
+      sourceUrl: 'https://example.com/new-article',
+      sourceTitle: 'New Article',
+      baseUrl: 'http://localhost:3000',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/nodes',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('creates a new node when no sourceUrl is provided (skip dedup)', async () => {
+    await enqueueQuickAdd({
+      rawInput: 'A plain note',
+      mode: 'note',
+      baseUrl: 'http://localhost:3000',
+    });
+
+    expect(getNodeByLinkMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/nodes',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('appends to existing chat node when sourceUrl matches', async () => {
+    getNodeByLinkMock.mockResolvedValue({
+      id: 7,
+      title: 'ChatGPT: previous chat',
+      notes: 'Previous summary',
+      link: 'https://chatgpt.com/c/abc123',
+    });
+
+    await enqueueQuickAdd({
+      rawInput: 'User: hello\nAssistant: hi',
+      mode: 'chat',
+      sourceUrl: 'https://chatgpt.com/c/abc123',
+      sourceTitle: 'ChatGPT conversation',
+      baseUrl: 'http://localhost:3000',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/nodes/7',
+      expect.objectContaining({ method: 'PATCH' })
+    );
+  });
+});
+```
+
+**Step 2: Run tests to verify they fail**
+
+```bash
+npx vitest run tests/unit/quick-add-append.test.ts
+```
+
+Expected: FAIL — `getNodeByLink` doesn't exist yet.
+
+**Step 3: Add `getNodeByLink` to the database service**
+
+In `src/services/database/nodes.ts`, add this method to the `NodeService` class, after `getNodeById`:
+
+```typescript
+async getNodeByLink(link: string): Promise<Node | null> {
+  const db = getSQLiteClient();
+  const row = db.prepare(`
+    SELECT
+      n.*,
+      COALESCE(
+        json_group_array(DISTINCT nd.dimension) FILTER (WHERE nd.dimension IS NOT NULL),
+        '[]'
+      ) AS dimensions,
+      COALESCE(
+        json_group_array(DISTINCT nf.flag_id) FILTER (WHERE nf.flag_id IS NOT NULL),
+        '[]'
+      ) AS flags
+    FROM nodes n
+    LEFT JOIN node_dimensions nd ON n.id = nd.node_id
+    LEFT JOIN node_flags nf ON n.id = nf.node_id
+    WHERE n.link = ?
+    GROUP BY n.id
+    LIMIT 1
+  `).get(link) as Record<string, unknown> | undefined;
+
+  if (!row) return null;
+  return this.parseNodeRow(row);
+}
+```
+
+Note: check what the existing `getNodeById` method uses for `parseNodeRow` — use the same helper to ensure consistent JSON parsing of `dimensions`/`flags`.
+
+**Step 4: Update `handleNoteQuickAdd` to check for existing node**
+
+At the top of `handleNoteQuickAdd` (after the null check at line 211), add:
+
+```typescript
+// Append to existing node if sourceUrl matches
+if (sourceUrl) {
+  const existing = await nodeService.getNodeByLink(sourceUrl);
+  if (existing) {
+    const updatedNotes = existing.notes
+      ? `${existing.notes}\n\n---\n\n${trimmedInput}`
+      : trimmedInput;
+    const response = await fetch(`${apiBaseUrl}/api/nodes/${existing.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: updatedNotes }),
+    });
+    if (!response.ok) throw new Error('Failed to append to existing node');
+    const nodeReference = formatNodeForChat({ id: existing.id, title: existing.title });
+    return buildStructuredSummary({
+      task,
+      action: 'updateNode',
+      resultMessage: `Appended highlight to ${nodeReference}.`,
+      nodeReference,
+    });
+  }
+}
+```
+
+Add `nodeService` to the imports at the top of the file:
+```typescript
+import { nodeService } from '@/services/database/nodes';
+```
+
+**Step 5: Update `handleChatTranscriptQuickAdd` with the same append check**
+
+At the top of `handleChatTranscriptQuickAdd` (after the null check), add:
+
+```typescript
+// Append to existing node if sourceUrl matches
+if (sourceUrl) {
+  const existing = await nodeService.getNodeByLink(sourceUrl);
+  if (existing) {
+    const summaryResult = await summarizeTranscript(transcript);
+    const newContent = summaryResult.summary?.trim() || transcript.slice(0, 500);
+    const updatedNotes = existing.notes
+      ? `${existing.notes}\n\n---\n\n${newContent}`
+      : newContent;
+    const response = await fetch(`${apiBaseUrl}/api/nodes/${existing.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: updatedNotes }),
+    });
+    if (!response.ok) throw new Error('Failed to append to existing chat node');
+    const nodeReference = formatNodeForChat({ id: existing.id, title: existing.title });
+    return buildStructuredSummary({
+      task,
+      action: 'updateNode',
+      resultMessage: `Appended to chat node ${nodeReference}.`,
+      nodeReference,
+    });
+  }
+}
+```
+
+Also update the function signature to accept `sourceUrl`:
+```typescript
+async function handleChatTranscriptQuickAdd(
+  rawInput: string,
+  task: string,
+  apiBaseUrl: string,
+  sourceUrl?: string,
+  sourceTitle?: string,
+): Promise<string>
+```
+
+**Step 6: Run tests to verify they pass**
+
+```bash
+npx vitest run tests/unit/quick-add-append.test.ts
+```
+
+Expected: PASS (4 tests)
+
+**Step 7: Run full test suite**
+
+```bash
+npx vitest run
+```
+
+Expected: all tests pass.
+
+**Step 8: Commit**
+
+```bash
+git add src/services/database/nodes.ts src/services/agents/quickAdd.ts tests/unit/quick-add-append.test.ts
+git commit -m "feat: append selections to existing node when sourceUrl matches"
+```
+
+---
+
 ## Done
 
-All four tasks complete. End-to-end manual test:
+All five tasks complete. End-to-end manual test:
 
 1. Go to Settings → Bookmarklet
 2. Drag "Save to RA-OS" to bookmarks bar
 3. Navigate to a YouTube video — click the bookmark — verify node appears in app
 4. Navigate to a ChatGPT chat — Cmd+A — click bookmark — verify summarized node appears
+5. Navigate to an article — select a paragraph — click bookmark — verify note created with source URL
+6. On the same article — select a second paragraph — click bookmark — verify it appended to the same node (not a new one)
