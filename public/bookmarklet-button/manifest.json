@@ -1,0 +1,19 @@
+{
+    "manifest_version": 3,
+    "name": "RA-H_OS",
+    "version": "1.2",
+    "description": "Runs a custom script on demand in the current tab.",
+    "permissions": [
+        "scripting",
+        "activeTab"
+    ],
+    "host_permissions": [
+        "http://192.168.0.100:3001/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_title": "Run Bookmarklet"
+    }
+}
