@@ -4,6 +4,7 @@ import { extractWebsite } from '@/services/typescript/extractors/website';
 import { extractYouTube } from '@/services/typescript/extractors/youtube';
 import { extractPaper } from '@/services/typescript/extractors/paper';
 import { buildSourceNotesInput } from './generateSourceNotes';
+import { generateDescription } from '@/services/database/descriptionService';
 
 type FinalizerSource = 'website' | 'youtube' | 'pdf';
 
@@ -77,7 +78,7 @@ async function finalizeExtractedNode(
 
     const promotedTitle = pickPromotedTitle(node.title || params.title, enrichedMetadata.title, sourceType);
 
-    await nodeService.updateNode(params.nodeId, {
+    const updatedNode = await nodeService.updateNode(params.nodeId, {
       title: promotedTitle,
       chunk: sourceText,
       chunk_status: 'not_chunked',
@@ -92,6 +93,20 @@ async function finalizeExtractedNode(
       },
     });
     autoEmbedQueue.enqueue(params.nodeId, { reason: `${sourceType}_source_ready` });
+
+    // Generate description now that content is available
+    try {
+      const description = await generateDescription({
+        title: updatedNode.title || params.title,
+        notes: sourceText,
+        link: params.url,
+        metadata: enrichedMetadata as { source?: string; channel_name?: string; author?: string; site_name?: string },
+        dimensions: updatedNode.dimensions || [],
+      });
+      await nodeService.updateNode(params.nodeId, { description });
+    } catch (err) {
+      console.error(`[${sourceType}] description generation failed for node ${params.nodeId}:`, err);
+    }
   } catch (error) {
     console.error(`[${sourceType}] background finalization failed for node ${params.nodeId}:`, error);
     await markFailed(params.nodeId, existingMetadata);
