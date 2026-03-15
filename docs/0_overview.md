@@ -31,6 +31,7 @@ RA-OS is a minimal knowledge graph UI with MCP server integration. It provides a
 - PDF extraction
 - Graph visualization (Map view)
 - BYO API keys
+- Browser capture via bookmarklet or Chrome extension (articles, YouTube, ChatGPT, and more)
 
 ## What's NOT Included
 

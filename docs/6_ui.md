@@ -218,6 +218,7 @@ Global search modal with 4-tier relevance:
 | **Context** | Context/system information viewer |
 | **Agents** | External agent (MCP) configuration |
 | **Preferences** | Theme selection and appearance settings |
+| **Bookmarklet** | Install browser capture (bookmarklet or Chrome extension) |
 
 ### Appearance
 
@@ -225,6 +226,54 @@ Global search modal with 4-tier relevance:
 - The app defaults to your OS color scheme until you override it
 - The left toolbar uses stronger contrast in dark mode so actions and active panes are easier to distinguish
 - Settings content panels now inherit the active theme, including Logs, Database, Skills, API keys, Context, and External Agents
+
+---
+
+## Browser Capture
+
+Save any page to RA-OS with one click from your browser. Two install options are available from **Settings → Bookmarklet**.
+
+### Bookmarklet
+
+A hosted-loader bookmark — the bookmark contains a tiny snippet that fetches the latest logic from your app each time it's clicked.
+
+**Install:**
+1. Go to Settings → Bookmarklet
+2. Set the App URL (defaults to current origin)
+3. Drag the **Save to RA-OS** button to your bookmarks bar — or click **Copy URL** and paste it as the URL of a new bookmark manually (required for Arc and other non-traditional browsers)
+
+### Chrome Extension
+
+A more capable option that works without a bookmarks bar and supports full ChatGPT conversation capture.
+
+**Install:**
+1. Download or locate the extension folder at `public/bookmarklet-button/`
+2. Open `chrome://extensions` in your browser
+3. Enable **Developer mode**
+4. Click **Load unpacked** and select the folder
+5. The RA-H_OS button appears in your toolbar
+
+**To update after code changes:** go to `chrome://extensions` and click the reload button on the extension. No re-upload needed unless `manifest.json` changed.
+
+### How capture works
+
+| Scenario | Behaviour |
+|----------|-----------|
+| No selection | Sends the current URL — auto-detected as article, YouTube, podcast, etc. |
+| Text selected | Saves the selection as a note with the page URL and title as source |
+| Text selected on ChatGPT | Saved as a chat transcript |
+| ChatGPT tab (extension only) | Fetches the full conversation via ChatGPT's internal API, formatted with speaker labels |
+
+### Incremental highlighting
+
+If you save content from the same URL more than once, subsequent saves **append** to the existing node's notes rather than creating a new one. This lets you build up highlights from an article or video incrementally.
+
+- Full transcripts (YouTube, podcasts) go to the **Source** tab (`chunk` field)
+- Your highlights go to the **Notes** tab — kept separate, no conflict
+
+### Notes are generated on demand
+
+Chat transcripts and other captures do **not** auto-generate AI notes. The raw content is stored in Source. Use the **Generate notes from source** button in the Focus panel when you want an AI summary.
 
 ---
 
