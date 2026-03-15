@@ -214,6 +214,33 @@ export class NodeService {
     return this.getNodeByIdSQLite(id, opts);
   }
 
+  async getNodeByLink(link: string): Promise<Node | null> {
+    const sqlite = getSQLiteClient();
+    const query = `
+      SELECT n.id, n.title, n.description, n.notes, n.link, n.event_date, n.metadata, n.chunk,
+             n.chunk_status, n.embedding_updated_at, n.embedding_text, n.is_private,
+             n.created_at, n.updated_at,
+             COALESCE((SELECT JSON_GROUP_ARRAY(d.dimension)
+                       FROM node_dimensions d WHERE d.node_id = n.id), '[]') as dimensions_json,
+             COALESCE((SELECT JSON_GROUP_ARRAY(nf.flag)
+                       FROM node_flags nf WHERE nf.node_id = n.id), '[]') as flags_json
+      FROM nodes n
+      WHERE n.link = ?
+      LIMIT 1
+    `;
+    const result = sqlite.query<Node & { dimensions_json: string; flags_json: string }>(query, [link]);
+
+    if (result.rows.length === 0) return null;
+
+    const row = result.rows[0];
+    return {
+      ...row,
+      dimensions: JSON.parse(row.dimensions_json || '[]'),
+      flags: JSON.parse(row.flags_json || '[]'),
+      metadata: row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : null,
+    };
+  }
+
   // PostgreSQL path removed in SQLite-only consolidation
 
   private async getNodeByIdSQLite(id: number, opts: { excludePrivate?: boolean } = {}): Promise<Node | null> {

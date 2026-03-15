@@ -57,6 +57,8 @@ describe('enqueueQuickAdd with sourceUrl/sourceTitle', () => {
       sourceTitle: 'ChatGPT conversation',
       baseUrl: 'http://localhost:3000',
     });
+    // Chat path has getNodeByLink + summarizeTranscript before fetch; flush extra microtask turn.
+    await Promise.resolve();
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body.link).toBe('https://chatgpt.com/c/abc123');

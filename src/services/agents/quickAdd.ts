@@ -1,3 +1,4 @@
+import { nodeService } from '@/services/database/nodes';
 import { summarizeToolExecution } from './toolResultUtils';
 import { youtubeExtractTool } from '@/tools/other/youtubeExtract';
 import { websiteExtractTool } from '@/tools/other/websiteExtract';
@@ -216,6 +217,29 @@ async function handleNoteQuickAdd(
     throw new Error('Input is required to create a note');
   }
 
+  // Append to existing node if sourceUrl matches
+  if (sourceUrl) {
+    const existing = await nodeService.getNodeByLink(sourceUrl);
+    if (existing) {
+      const updatedNotes = existing.notes
+        ? `${existing.notes}\n\n---\n\n${trimmedInput}`
+        : trimmedInput;
+      const response = await fetch(`${apiBaseUrl}/api/nodes/${existing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: updatedNotes }),
+      });
+      if (!response.ok) throw new Error('Failed to append to existing node');
+      const nodeReference = formatNodeForChat({ id: existing.id, title: existing.title });
+      return buildStructuredSummary({
+        task,
+        action: 'updateNode',
+        resultMessage: `Appended highlight to ${nodeReference}.`,
+        nodeReference,
+      });
+    }
+  }
+
   const isBookCommand = command?.kind === 'book';
   const content = isBookCommand ? '' : trimmedInput;
   const title = isBookCommand ? command.title || deriveNoteTitle(trimmedInput) : deriveNoteTitle(trimmedInput);
@@ -306,6 +330,31 @@ async function handleChatTranscriptQuickAdd(rawInput: string, task: string, apiB
   const transcript = rawInput.trim();
   if (!transcript) {
     throw new Error('Input is required to import a chat transcript');
+  }
+
+  // Append to existing node if sourceUrl matches
+  if (sourceUrl) {
+    const existing = await nodeService.getNodeByLink(sourceUrl);
+    if (existing) {
+      const summaryResult = await summarizeTranscript(transcript);
+      const newContent = summaryResult.summary?.trim() || transcript.slice(0, 500);
+      const updatedNotes = existing.notes
+        ? `${existing.notes}\n\n---\n\n${newContent}`
+        : newContent;
+      const response = await fetch(`${apiBaseUrl}/api/nodes/${existing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: updatedNotes }),
+      });
+      if (!response.ok) throw new Error('Failed to append to existing chat node');
+      const nodeReference = formatNodeForChat({ id: existing.id, title: existing.title });
+      return buildStructuredSummary({
+        task,
+        action: 'updateNode',
+        resultMessage: `Appended to chat node ${nodeReference}.`,
+        nodeReference,
+      });
+    }
   }
 
   const summaryResult = await summarizeTranscript(transcript);
