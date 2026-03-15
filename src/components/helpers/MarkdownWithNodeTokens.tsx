@@ -82,6 +82,7 @@ interface MarkdownWithNodeTokensProps {
   onJumpToSource?: (text: string, matchIndex: number) => void;
   onDeleteAnnotation?: (id: number) => void;
   highlightQuery?: string;
+  onToggleCheckbox?: (index: number) => void;
 }
 
 function escapeRegExp(value: string): string {
@@ -213,6 +214,7 @@ export default function MarkdownWithNodeTokens({
   onJumpToSource,
   onDeleteAnnotation,
   highlightQuery = '',
+  onToggleCheckbox,
 }: MarkdownWithNodeTokensProps) {
   if (!content) return null;
 
@@ -325,6 +327,9 @@ export default function MarkdownWithNodeTokens({
     });
   };
 
+  // Counter incremented each time a task-list <li> is rendered (reset per render pass)
+  const checkboxCounter = { current: 0 };
+
   // Shared ReactMarkdown components object (extracted to avoid duplication across sections)
   const markdownComponents = {
     h1: ({ children }: any) => (
@@ -367,11 +372,33 @@ export default function MarkdownWithNodeTokens({
         {processChildren(children, 'ol')}
       </ol>
     ),
-    li: ({ children }: any) => (
-      <li style={{ marginBottom: '4px' }}>
-        {processChildren(children, 'li')}
-      </li>
-    ),
+    li: ({ children, checked }: any) => {
+      if (checked !== null && checked !== undefined) {
+        const index = checkboxCounter.current++;
+        const filteredChildren = React.Children.toArray(children).filter(
+          child => !(React.isValidElement(child) && (child as React.ReactElement).type === 'input')
+        );
+        return (
+          <li style={{ listStyleType: 'none', marginBottom: '4px', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+            <input
+              type="checkbox"
+              checked={!!checked}
+              readOnly={!onToggleCheckbox}
+              onChange={onToggleCheckbox ? () => onToggleCheckbox(index) : undefined}
+              style={{ cursor: onToggleCheckbox ? 'pointer' : 'default', marginTop: '3px', flexShrink: 0 }}
+            />
+            <span style={{ opacity: checked ? 0.6 : 1, textDecoration: checked ? 'line-through' : 'none' }}>
+              {processChildren(filteredChildren, `li-cb-${index}`)}
+            </span>
+          </li>
+        );
+      }
+      return (
+        <li style={{ marginBottom: '4px' }}>
+          {processChildren(children, 'li')}
+        </li>
+      );
+    },
     table: ({ children }: any) => (
       <div style={{ overflowX: 'auto', marginTop: '8px', marginBottom: '10px' }}>
         <table className="app-table markdown-table" style={{ fontSize: 'inherit' }}>

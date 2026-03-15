@@ -1024,6 +1024,35 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     setNotesEditMode(true);
   };
 
+  // Toggle Nth checkbox in notes (- [ ] / - [x]) and save
+  const handleToggleCheckbox = async (index: number) => {
+    if (activeNodeId === null) return;
+    const notes = nodesData[activeNodeId]?.notes || '';
+    let count = 0;
+    const toggled = notes.replace(/^(\s*-\s+\[)([ xX])(\])/gm, (match, pre, state, post) => {
+      if (count === index) {
+        count++;
+        return `${pre}${state.trim() === '' ? 'x' : ' '}${post}`;
+      }
+      count++;
+      return match;
+    });
+    if (toggled === notes) return;
+    setNodesData(prev => ({ ...prev, [activeNodeId]: { ...prev[activeNodeId], notes: toggled } }));
+    try {
+      const res = await fetch(`/api/nodes/${activeNodeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: toggled }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      const result = await res.json();
+      if (result.node) setNodesData(prev => ({ ...prev, [activeNodeId]: result.node }));
+    } catch {
+      setNodesData(prev => ({ ...prev, [activeNodeId]: { ...prev[activeNodeId], notes } }));
+    }
+  };
+
   // Save source (chunk) with explicit Save button
   const saveSource = async () => {
     if (!activeTab) return;
@@ -3213,6 +3242,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                             : {}}
                           onJumpToSource={handleJumpToSource}
                           onDeleteAnnotation={deleteAnnotation}
+                          onToggleCheckbox={handleToggleCheckbox}
                         />
                       </div>
                       <div style={{ padding: '16px 4px 4px', borderTop: '1px solid var(--app-border)', marginTop: '12px' }}>
@@ -3480,6 +3510,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                             <SourceReader
                               content={nodesData[activeTab].chunk}
                               nodeTitle={nodesData[activeTab]?.title || undefined}
+                              sourceUrl={nodesData[activeTab]?.link || undefined}
                               onTextSelect={onTextSelect ? (text) => onTextSelect(activeTab, nodesData[activeTab]?.title || 'Untitled', text) : undefined}
                               onSourceSelect={(selection) => {
                                 setPendingAnnotation({
@@ -3492,7 +3523,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                                 });
                               }}
                               annotations={activeNodeId !== null ? (annotationsData[activeNodeId] ?? []) : []}
-                              highlightedText={localHighlight?.text ?? (highlightedPassage?.nodeId === activeTab ? highlightedPassage.selectedText : null)}
+                              highlightedText={localHighlight?.text ?? null}
                               highlightMatchIndex={localHighlight?.matchIndex ?? 0}
                             />
                           ) : (

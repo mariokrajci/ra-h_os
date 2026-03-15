@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Bold, Italic, Heading1, Heading2, Heading3, Code2 } from 'lucide-react';
+import { Bold, Italic, Heading1, Heading2, Heading3, Code2, CheckSquare } from 'lucide-react';
 
 interface FormattingToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -12,7 +12,7 @@ interface FormattingToolbarProps {
 
 export default function FormattingToolbar({ textareaRef, value, onChange, inline = false }: FormattingToolbarProps) {
   const applyFormatting = (
-    type: 'h1' | 'h2' | 'h3' | 'bold' | 'italic' | 'code'
+    type: 'h1' | 'h2' | 'h3' | 'bold' | 'italic' | 'code' | 'checkbox'
   ) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -71,6 +71,12 @@ export default function FormattingToolbar({ textareaRef, value, onChange, inline
           newText = value.substring(0, start) + '**' + value.substring(end);
           newCursorPos = start + 1;
         }
+        break;
+      }
+      case 'checkbox': {
+        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+        newText = value.substring(0, lineStart) + '- [ ] ' + value.substring(lineStart);
+        newCursorPos = start + 6;
         break;
       }
       case 'code': {
@@ -195,6 +201,16 @@ export default function FormattingToolbar({ textareaRef, value, onChange, inline
         title="Code block (```bash)"
       >
         <Code2 size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={() => applyFormatting('checkbox')}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={buttonStyle}
+        title="Checkbox (- [ ] )"
+      >
+        <CheckSquare size={14} />
       </button>
     </div>
   );
