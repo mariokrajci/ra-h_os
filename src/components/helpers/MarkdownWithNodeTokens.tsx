@@ -327,10 +327,8 @@ export default function MarkdownWithNodeTokens({
     });
   };
 
-  // Counter incremented each time a task-list <li> is rendered (reset per render pass)
-  const checkboxCounter = { current: 0 };
-
   // Shared ReactMarkdown components object (extracted to avoid duplication across sections)
+  // NOTE: li is NOT included here — it is built per-section below to carry section offset.
   const markdownComponents = {
     h1: ({ children }: any) => (
       <h1 style={{ fontSize: '1.5em', fontWeight: 'bold', marginTop: '16px', marginBottom: '8px', color: 'var(--app-text)' }}>
@@ -362,8 +360,8 @@ export default function MarkdownWithNodeTokens({
         {processChildren(children, 'em')}
       </em>
     ),
-    ul: ({ children }: any) => (
-      <ul style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: 'disc' }}>
+    ul: ({ children, className }: any) => (
+      <ul style={{ marginLeft: '20px', marginTop: '8px', marginBottom: '8px', listStyleType: className === 'contains-task-list' ? 'none' : 'disc' }}>
         {processChildren(children, 'ul')}
       </ul>
     ),
@@ -372,33 +370,6 @@ export default function MarkdownWithNodeTokens({
         {processChildren(children, 'ol')}
       </ol>
     ),
-    li: ({ children, checked }: any) => {
-      if (checked !== null && checked !== undefined) {
-        const index = checkboxCounter.current++;
-        const filteredChildren = React.Children.toArray(children).filter(
-          child => !(React.isValidElement(child) && (child as React.ReactElement).type === 'input')
-        );
-        return (
-          <li style={{ listStyleType: 'none', marginBottom: '4px', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-            <input
-              type="checkbox"
-              checked={!!checked}
-              readOnly={!onToggleCheckbox}
-              onChange={onToggleCheckbox ? () => onToggleCheckbox(index) : undefined}
-              style={{ cursor: onToggleCheckbox ? 'pointer' : 'default', marginTop: '3px', flexShrink: 0 }}
-            />
-            <span style={{ opacity: checked ? 0.6 : 1, textDecoration: checked ? 'line-through' : 'none' }}>
-              {processChildren(filteredChildren, `li-cb-${index}`)}
-            </span>
-          </li>
-        );
-      }
-      return (
-        <li style={{ marginBottom: '4px' }}>
-          {processChildren(children, 'li')}
-        </li>
-      );
-    },
     table: ({ children }: any) => (
       <div style={{ overflowX: 'auto', marginTop: '8px', marginBottom: '10px' }}>
         <table className="app-table markdown-table" style={{ fontSize: 'inherit' }}>
@@ -450,6 +421,77 @@ export default function MarkdownWithNodeTokens({
   const sections = contentWithPlaceholders.split(/%%ANNOTATION_PLACEHOLDER_\d+%%/);
   const annotationMatchesArr = [...contentWithPlaceholders.matchAll(/%%ANNOTATION_PLACEHOLDER_(\d+)%%/g)];
 
+  // --- Checkbox offset map (StrictMode-safe) ---
+  // Compute the character offset (within contentWithPlaceholders) of every task-list line.
+  // Using character offsets from the AST node (node.position.start.offset, which is
+  // section-local) instead of a mutable render-time counter avoids double-invocation
+  // issues in React StrictMode where each component function runs twice per render.
+  const checkboxOffsets: number[] = [];
+  {
+    let pos = 0;
+    for (const line of contentWithPlaceholders.split('\n')) {
+      if (/^\s*-\s+\[[ xX]\]/.test(line)) checkboxOffsets.push(pos);
+      pos += line.length + 1; // +1 for the \n
+    }
+  }
+
+  // Character offset where each section starts within contentWithPlaceholders.
+  const sectionStartOffsets: number[] = [];
+  {
+    let pos = 0;
+    for (let i = 0; i < sections.length; i++) {
+      sectionStartOffsets.push(pos);
+      pos += sections[i].length;
+      if (annotationMatchesArr[i]) pos += annotationMatchesArr[i][0].length;
+    }
+  }
+
+  // Build a li renderer for a given section.
+  // In react-markdown v10, task list `li` elements receive className="task-list-item"
+  // and a disabled <input type="checkbox"> embedded in children — NOT a `checked` prop.
+  // We detect by className, extract checked state from the source text at the node's
+  // position offset (deterministic, StrictMode-safe), and swap in an interactive input.
+  const makeSectionLi = (sectionStartOffset: number) =>
+    ({ children, className, node }: any) => {
+      if (className === 'task-list-item') {
+        // Resolve which checkbox this is by source offset
+        const nodeOffset: number = node?.position?.start?.offset ?? -1;
+        const globalOffset = nodeOffset >= 0 ? sectionStartOffset + nodeOffset : -1;
+        const checkboxIndex = globalOffset >= 0 ? checkboxOffsets.indexOf(globalOffset) : -1;
+
+        // Read checked state from source text (avoids parsing children structure)
+        const isChecked = globalOffset >= 0
+          ? /^\s*-\s+\[x\]/i.test(contentWithPlaceholders.slice(globalOffset))
+          : false;
+
+        // Remove the disabled <input type="checkbox"> injected by mdast-util-to-hast
+        const filteredChildren = React.Children.toArray(children).filter(
+          child => !(React.isValidElement(child) && (child as React.ReactElement<any>).type === 'input'
+            && (child as React.ReactElement<any>).props.type === 'checkbox')
+        );
+
+        return (
+          <li style={{ listStyleType: 'none', marginBottom: '4px', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={onToggleCheckbox && checkboxIndex >= 0 ? () => onToggleCheckbox(checkboxIndex) : undefined}
+              readOnly={!onToggleCheckbox || checkboxIndex < 0}
+              style={{ cursor: onToggleCheckbox && checkboxIndex >= 0 ? 'pointer' : 'default', marginTop: '3px', flexShrink: 0 }}
+            />
+            <div style={{ opacity: isChecked ? 0.6 : 1, textDecoration: isChecked ? 'line-through' : 'none' }}>
+              {processChildren(filteredChildren, `li-cb-${checkboxIndex}`)}
+            </div>
+          </li>
+        );
+      }
+      return (
+        <li style={{ marginBottom: '4px' }}>
+          {processChildren(children, 'li')}
+        </li>
+      );
+    };
+
   return (
     <>
       <style>{`
@@ -457,11 +499,13 @@ export default function MarkdownWithNodeTokens({
           background: var(--app-table-stripe);
         }
       `}</style>
-      {sections.map((section, sectionIdx) => (
+      {sections.map((section, sectionIdx) => {
+        const sectionComponents = { ...markdownComponents, li: makeSectionLi(sectionStartOffsets[sectionIdx]) };
+        return (
         <React.Fragment key={sectionIdx}>
           {section.trim() && (
             <div className="app-prose">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={sectionComponents}>
                 {section}
               </ReactMarkdown>
             </div>
@@ -483,7 +527,8 @@ export default function MarkdownWithNodeTokens({
             );
           })()}
         </React.Fragment>
-      ))}
+        );
+      })}
     </>
   );
 }

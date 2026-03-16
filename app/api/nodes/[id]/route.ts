@@ -14,6 +14,7 @@ async function updateNodeHandler(
 ) {
   const { id } = await params;
   const nodeId = parseInt(id, 10);
+  const quiet = request.nextUrl.searchParams.get('quiet') === '1';
   
   if (isNaN(nodeId)) {
     return NextResponse.json({
@@ -59,13 +60,9 @@ async function updateNodeHandler(
     } else {
       delete updates.chunk_status;
     }
-  } else if (!isPodcastEpisode && !existingChunk.trim() && hasSufficientContent(incomingNotes)) {
-    updates.chunk = incomingNotes;
-    updates.chunk_status = 'not_chunked';
-    shouldQueueEmbed = true;
   }
 
-  const node = await nodeService.updateNode(nodeId, updates);
+  const node = await nodeService.updateNode(nodeId, updates, { skipBroadcast: quiet });
 
   if (shouldQueueEmbed) {
     autoEmbedQueue.enqueue(nodeId, { reason: 'node_updated' });

@@ -340,13 +340,13 @@ export class NodeService {
     return createdNode;
   }
 
-  async updateNode(id: number, updates: Partial<Node>): Promise<Node> {
-    return this.updateNodeSQLite(id, updates);
+  async updateNode(id: number, updates: Partial<Node>, options?: { skipBroadcast?: boolean }): Promise<Node> {
+    return this.updateNodeSQLite(id, updates, options);
   }
 
   // PostgreSQL path removed in SQLite-only consolidation
 
-  private async updateNodeSQLite(id: number, updates: Partial<Node>): Promise<Node> {
+  private async updateNodeSQLite(id: number, updates: Partial<Node>, options?: { skipBroadcast?: boolean }): Promise<Node> {
     const { title, description, notes, link, event_date, dimensions, chunk, metadata, is_private } = updates;
     const now = new Date().toISOString();
     const sqlite = getSQLiteClient();
@@ -408,11 +408,13 @@ export class NodeService {
       throw new Error(`Node with ID ${id} not found`);
     }
 
-    // Broadcast node update event
-    eventBroadcaster.broadcast({
-      type: 'NODE_UPDATED',
-      data: { nodeId: id, node: updatedNode }
-    });
+    // Broadcast node update event (skipped for silent/quiet updates like checkbox toggles)
+    if (!options?.skipBroadcast) {
+      eventBroadcaster.broadcast({
+        type: 'NODE_UPDATED',
+        data: { nodeId: id, node: updatedNode }
+      });
+    }
 
     return updatedNode;
   }

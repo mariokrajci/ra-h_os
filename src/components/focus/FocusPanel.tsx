@@ -1040,14 +1040,12 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     if (toggled === notes) return;
     setNodesData(prev => ({ ...prev, [activeNodeId]: { ...prev[activeNodeId], notes: toggled } }));
     try {
-      const res = await fetch(`/api/nodes/${activeNodeId}`, {
+      const res = await fetch(`/api/nodes/${activeNodeId}?quiet=1`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: toggled }),
       });
       if (!res.ok) throw new Error('Failed to save');
-      const result = await res.json();
-      if (result.node) setNodesData(prev => ({ ...prev, [activeNodeId]: result.node }));
     } catch {
       setNodesData(prev => ({ ...prev, [activeNodeId]: { ...prev[activeNodeId], notes } }));
     }

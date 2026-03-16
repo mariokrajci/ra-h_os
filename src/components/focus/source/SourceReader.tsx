@@ -121,7 +121,8 @@ export default function SourceReader({
     if (mappedSelection.text.length >= 3) {
       onSourceSelect?.(mappedSelection);
     }
-    selection.removeAllRanges();
+    // Do not clear the selection — the user may want to copy the selected text.
+    // The annotation data is already captured in mappedSelection at this point.
   }, [content, onSourceSelect, onTextSelect]);
 
   // Render appropriate formatter based on content type
