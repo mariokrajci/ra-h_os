@@ -71,6 +71,20 @@ npm install -g windows-build-tools
 2. Verify internet connection
 3. Check browser console for specific error messages
 
+### Extension capture returns `401 Unauthorized`
+
+**Symptom:** Browser extension toast reports failed save and server logs show unauthorized quick-add.
+
+**Fixes:**
+1. Pair extension again:
+   - RA-OS Settings → Bookmarklet → **Generate Pairing Code**
+   - extension **Options** → paste code → **Pair**
+2. Ensure token enforcement flag matches your intent:
+   - `RAOS_QUICK_ADD_REQUIRE_TOKEN=true` enables strict token checks
+   - unset/false disables token requirement
+3. Reload extension in `chrome://extensions` after options changes.
+4. If you are using env token mode, ensure `RAOS_EXTENSION_TOKEN` matches extension token.
+
 ## Database Issues
 
 ### Database locked

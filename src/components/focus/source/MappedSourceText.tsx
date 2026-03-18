@@ -133,9 +133,9 @@ export function MappedTextFragment({
 function getSegmentStyle(annotationColors: Annotation['color'][], isActiveJumpTarget: boolean): CSSProperties {
   if (isActiveJumpTarget) {
     return {
-      background: 'rgba(250, 204, 21, 0.42)',
-      color: '#fef08a',
-      padding: '2px 0',
+      background: 'rgba(96, 165, 250, 0.28)',
+      color: 'inherit',
+      outline: '1px solid rgba(96, 165, 250, 0.45)',
       borderRadius: '2px',
     };
   }

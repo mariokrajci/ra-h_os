@@ -105,7 +105,7 @@ describe('parseChatGPTConversation', () => {
           id: 'msg', parent: 'root', children: [],
           message: {
             author: { role: 'assistant', metadata: {} },
-            content: { content_type: 'text', parts: ['Many definitions use **50 to 100 years old**. citeturn893384search0turn893384search2'] },
+            content: { content_type: 'text', parts: ['Many definitions use **50 to 100 years old**. cite\uE202turn893384search0turn893384search2turn949549view4turn949549view1'] },
             metadata: {},
           },
         },
@@ -129,5 +129,48 @@ describe('parseChatGPTConversation', () => {
       },
     };
     expect(parseChatGPTConversation(fixture)).toBe('**You:** Hello world');
+  });
+
+  it('prefers the currently selected branch when current_node is present', () => {
+    const fixture: ChatGPTConversation = {
+      current_node: 'assistant-v2',
+      mapping: {
+        root: { id: 'root', parent: null, children: ['user-1'], message: null },
+        'user-1': {
+          id: 'user-1',
+          parent: 'root',
+          children: ['assistant-v1', 'assistant-v2'],
+          message: {
+            author: { role: 'user', metadata: {} },
+            content: { content_type: 'text', parts: ['Please revise this answer.'] },
+            metadata: {},
+          },
+        },
+        'assistant-v1': {
+          id: 'assistant-v1',
+          parent: 'user-1',
+          children: [],
+          message: {
+            author: { role: 'assistant', metadata: {} },
+            content: { content_type: 'text', parts: ['Old answer variant.'] },
+            metadata: {},
+          },
+        },
+        'assistant-v2': {
+          id: 'assistant-v2',
+          parent: 'user-1',
+          children: [],
+          message: {
+            author: { role: 'assistant', metadata: {} },
+            content: { content_type: 'text', parts: ['New answer variant.'] },
+            metadata: {},
+          },
+        },
+      },
+    };
+
+    expect(parseChatGPTConversation(fixture)).toBe(
+      '**You:** Please revise this answer.\n\n**ChatGPT:** New answer variant.'
+    );
   });
 });

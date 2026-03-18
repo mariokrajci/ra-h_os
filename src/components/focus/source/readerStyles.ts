@@ -6,9 +6,7 @@ export const READER_BODY_LINE_HEIGHT = '1.7';
 export const READER_BODY_COLOR = 'var(--app-text)';
 
 export const READER_CONTAINER_STYLE: CSSProperties = {
-  maxWidth: '680px',
-  margin: '0 auto',
-  padding: '24px 16px',
+  padding: '24px 20px',
 };
 
 export const READER_BODY_TEXT_STYLE: CSSProperties = {

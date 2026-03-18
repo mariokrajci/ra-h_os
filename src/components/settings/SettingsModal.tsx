@@ -42,10 +42,33 @@ function formatThemeLabel(mode: ThemeMode): string {
 function BookmarkletTab() {
   const [appUrl, setAppUrl] = useState('http://localhost:3000');
   const [copied, setCopied] = useState(false);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [pairingExpiresAt, setPairingExpiresAt] = useState<string | null>(null);
+  const [tokenConfigured, setTokenConfigured] = useState(false);
+  const [pairingBusy, setPairingBusy] = useState(false);
+  const [pairingError, setPairingError] = useState<string | null>(null);
   const anchorRef = React.useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     setAppUrl(window.location.origin);
+  }, []);
+
+  const loadPairingStatus = async () => {
+    try {
+      const response = await fetch('/api/bookmarklet/pairing-code');
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to load pairing status');
+      }
+      setTokenConfigured(result.status?.tokenConfigured === true);
+      setPairingExpiresAt(typeof result.status?.pairingCodeExpiresAt === 'string' ? result.status.pairingCodeExpiresAt : null);
+    } catch (error) {
+      setPairingError(error instanceof Error ? error.message : 'Failed to load pairing status');
+    }
+  };
+
+  useEffect(() => {
+    void loadPairingStatus();
   }, []);
 
   const snippet = `javascript:(function(){var s=document.createElement('script');s.src='${appUrl}/bookmarklet.js?_='+Date.now();document.head.appendChild(s);})();`;
@@ -145,6 +168,89 @@ function BookmarkletTab() {
         </a>
         <div style={{ fontSize: '12px', color: 'var(--app-text-muted)', marginTop: '8px' }}>
           Unzip, then load via Chrome → chrome://extensions → Developer mode → Load unpacked.
+        </div>
+      </div>
+
+      <div>
+        <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-text-subtle)', marginBottom: '8px' }}>
+          Extension Pairing
+        </div>
+        <div style={{ fontSize: '14px', color: 'var(--app-text-muted)', lineHeight: 1.6, marginBottom: '12px' }}>
+          Generate a one-time pairing code, then paste it in the extension Options page to store an auth token.
+        </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            className="app-button app-button--pill app-button--secondary"
+            style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 600 }}
+            disabled={pairingBusy}
+            onClick={async () => {
+              setPairingBusy(true);
+              setPairingError(null);
+              try {
+                const response = await fetch('/api/bookmarklet/pairing-code', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'generate' }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                  throw new Error(result.error || 'Failed to generate pairing code');
+                }
+                setPairingCode(result.pairing?.code || null);
+                setPairingExpiresAt(result.pairing?.expiresAt || null);
+              } catch (error) {
+                setPairingError(error instanceof Error ? error.message : 'Failed to generate pairing code');
+              } finally {
+                setPairingBusy(false);
+                void loadPairingStatus();
+              }
+            }}
+          >
+            {pairingBusy ? 'Generating…' : 'Generate Pairing Code'}
+          </button>
+          <button
+            className="app-button app-button--pill app-button--secondary"
+            style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 600 }}
+            disabled={pairingBusy || !tokenConfigured}
+            onClick={async () => {
+              setPairingBusy(true);
+              setPairingError(null);
+              try {
+                const response = await fetch('/api/bookmarklet/pairing-code', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'revoke' }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                  throw new Error(result.error || 'Failed to revoke token');
+                }
+                setPairingCode(null);
+                setPairingExpiresAt(null);
+              } catch (error) {
+                setPairingError(error instanceof Error ? error.message : 'Failed to revoke token');
+              } finally {
+                setPairingBusy(false);
+                void loadPairingStatus();
+              }
+            }}
+          >
+            Revoke Token
+          </button>
+        </div>
+        <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--app-text-muted)', lineHeight: 1.6 }}>
+          <div>Token configured: <strong>{tokenConfigured ? 'Yes' : 'No'}</strong></div>
+          {pairingCode && (
+            <div>
+              Pairing code: <strong style={{ letterSpacing: '0.08em' }}>{pairingCode}</strong>
+            </div>
+          )}
+          {pairingExpiresAt && (
+            <div>Code expires: {new Date(pairingExpiresAt).toLocaleString()}</div>
+          )}
+          {pairingError && (
+            <div style={{ color: 'var(--app-danger-text)' }}>{pairingError}</div>
+          )}
         </div>
       </div>
 
@@ -293,6 +399,8 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             display: 'flex',
             flexDirection: 'column',
             padding: '24px 0',
+            minHeight: 0,
+            overflowY: 'auto',
           }}
         >
           <div
@@ -445,7 +553,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             </button>
           </div>
 
-          <div style={{ flex: 1, overflow: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {activeTab === 'logs' && <LogsViewer key={isOpen ? 'open' : 'closed'} />}
             {activeTab === 'tools' && <ToolsViewer />}
             {activeTab === 'guides' && <SkillsViewer />}

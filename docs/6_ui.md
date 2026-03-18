@@ -226,6 +226,7 @@ Global search modal with 4-tier relevance:
 - The app defaults to your OS color scheme until you override it
 - The left toolbar uses stronger contrast in dark mode so actions and active panes are easier to distinguish
 - Settings content panels now inherit the active theme, including Logs, Database, Skills, API keys, Context, and External Agents
+- Settings navigation and tab content are independently scrollable, so longer sections (for example Bookmarklet setup) remain fully reachable
 
 ---
 
@@ -254,6 +255,29 @@ A more capable option that works without a bookmarks bar and supports full ChatG
 5. The RA-H_OS button appears in your toolbar
 
 **To update after code changes:** go to `chrome://extensions` and click the reload button on the extension. No re-upload needed unless `manifest.json` changed.
+
+**Default keyboard shortcut (ships preconfigured):**
+- macOS: `Ctrl+S`
+- Windows/Linux: `Ctrl+Shift+S`
+- You can customize this in `chrome://extensions/shortcuts`
+
+**Extension settings:** right-click the extension icon → **Options**.
+You can configure:
+- extension token (`X-RAOS-Extension-Token`) for authenticated `/api/quick-add` requests
+- domain blocklist / allowlist mode
+- confirm-before-send safety prompt
+- RA-OS app URL used for capture/pairing requests
+
+**Recommended pairing flow (one-time):**
+1. In RA-OS Settings → Bookmarklet, click **Generate Pairing Code**
+2. Open extension **Options**
+3. Paste the code and click **Pair**
+4. The token is stored automatically in extension local settings
+
+**Privacy model (extension):**
+- selection text is cached in page memory only (ephemeral)
+- content is sent to RA-OS only when you click the extension action
+- blocked domains are never sent
 
 ### How capture works
 

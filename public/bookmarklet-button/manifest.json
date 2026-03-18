@@ -1,19 +1,32 @@
 {
     "manifest_version": 3,
     "name": "RA-H_OS",
-    "version": "1.2",
-    "description": "Runs a custom script on demand in the current tab.",
+    "version": "0.15",
+    "description": "Save pages, selections, and chats to RA-OS.",
     "permissions": [
         "scripting",
-        "activeTab"
+        "activeTab",
+        "tabs",
+        "storage"
     ],
     "host_permissions": [
-        "http://192.168.0.100:3001/*"
+        "http://192.168.0.100:3001/*",
+        "*://*/*"
     ],
     "background": {
         "service_worker": "background.js"
     },
     "action": {
-        "default_title": "Run Bookmarklet"
-    }
+        "default_title": "Save to RA-OS"
+    },
+    "commands": {
+        "_execute_action": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+S",
+                "mac": "Ctrl+S"
+            },
+            "description": "Save current page or selection to RA-OS"
+        }
+    },
+    "options_page": "options.html"
 }

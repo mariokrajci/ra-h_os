@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RA-OS Extension Settings</title>
+  <style>
+    html, body { min-height: 100%; }
+    body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; margin: 20px; color: #222; overflow-y: auto; }
+    .row { margin-bottom: 14px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    textarea, input[type="text"] { width: 100%; max-width: 760px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+    textarea { min-height: 96px; }
+    .hint { font-size: 12px; color: #555; margin-top: 4px; }
+    .inline { display: flex; align-items: center; gap: 8px; }
+    button { padding: 8px 12px; border: 1px solid #aaa; border-radius: 6px; background: #f5f5f5; cursor: pointer; }
+    #status { font-size: 12px; margin-left: 8px; color: #1f6f3f; }
+  </style>
+</head>
+<body>
+  <h2>RA-OS Extension Settings</h2>
+
+  <div class="row">
+    <label for="appUrl">RA-OS App URL</label>
+    <input id="appUrl" type="text" placeholder="http://localhost:3001" />
+    <div class="hint">Used for pairing and capture API requests.</div>
+  </div>
+
+  <div class="row">
+    <label for="token">Extension Token (optional)</label>
+    <input id="token" type="text" placeholder="Paste token used for X-RAOS-Extension-Token header" />
+    <div class="hint">Set the same token in RA-OS server env: <code>RAOS_EXTENSION_TOKEN</code>.</div>
+  </div>
+
+  <div class="row">
+    <label for="pairingCode">Pairing Code</label>
+    <div class="inline">
+      <input id="pairingCode" type="text" placeholder="Enter one-time code from RA-OS Settings" />
+      <button id="pairBtn" type="button">Pair</button>
+    </div>
+    <div class="hint">Generate code in RA-OS Settings → Bookmarklet → Extension pairing.</div>
+  </div>
+
+  <div class="row inline">
+    <input id="confirmBeforeSend" type="checkbox" />
+    <label for="confirmBeforeSend" style="margin: 0; font-weight: 500;">Confirm before send</label>
+  </div>
+
+  <div class="row inline">
+    <input id="allowlistMode" type="checkbox" />
+    <label for="allowlistMode" style="margin: 0; font-weight: 500;">Allowlist mode (only listed domains allowed)</label>
+  </div>
+
+  <div class="row">
+    <label for="allowedDomains">Allowed Domains (one per line)</label>
+    <textarea id="allowedDomains" placeholder="chatgpt.com
+youtube.com"></textarea>
+  </div>
+
+  <div class="row">
+    <label for="blockedDomains">Blocked Domains (one per line)</label>
+    <textarea id="blockedDomains" placeholder="mail.google.com
+bank.example.com"></textarea>
+  </div>
+
+  <button id="saveBtn">Save Settings</button>
+  <span id="status"></span>
+
+  <script src="options.js"></script>
+</body>
+</html>

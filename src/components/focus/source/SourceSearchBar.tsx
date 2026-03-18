@@ -28,6 +28,18 @@ export default function SourceSearchBar({
     inputRef.current?.focus();
   }, []);
 
+  // Close on Escape regardless of focus
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   // Search when query changes
   useEffect(() => {
     if (!query.trim()) {
@@ -195,18 +207,25 @@ export default function SourceSearchBar({
         </svg>
       </button>
 
-      {/* Keyboard hint */}
-      <kbd className="app-button app-button--ghost app-button--compact" style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: '4px',
-        fontSize: '10px',
-        fontFamily: 'inherit',
-        padding: '2px 6px',
-      }}>
+      {/* Keyboard hint / quick-close control */}
+      <button
+        type="button"
+        onClick={onClose}
+        title="Close search"
+        className="app-button app-button--ghost app-button--compact"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '4px',
+          fontSize: '10px',
+          fontFamily: 'inherit',
+          padding: '2px 6px',
+          cursor: 'pointer',
+        }}
+      >
         esc
-      </kbd>
+      </button>
     </div>
   );
 }

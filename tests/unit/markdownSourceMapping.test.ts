@@ -104,7 +104,8 @@ describe('MappedMarkdownRenderer', () => {
     );
 
     expect(html).toContain('data-search-match="current"');
-    expect(html).toContain('rgba(250, 204, 21, 0.42)');
+    expect(html).toContain('rgba(96, 165, 250, 0.28)');
+    expect(html).toContain('outline:1px solid rgba(96, 165, 250, 0.45)');
     expect(html).toContain('rgba(245, 158, 11, 0.28)');
     expect(html).toContain('box-shadow:inset 0 -1px 0 rgba(180, 83, 9, 0.38)');
   });
