@@ -21,6 +21,8 @@ import { getNodeNotesStatus, getNodeSourceStatus } from './nodeIngestionStatus';
 import { applyBookMatchCandidate, getBookMatchCandidates } from '@/components/panes/library/bookMatch';
 import { BookMetadataTab } from './book/BookMetadataTab';
 import { stripLeadingDuplicateTitle } from './contentNormalization';
+import { READER_FORMAT_LABELS, READER_FORMAT_VALUES, type ReaderFormatValue } from '@/lib/readerFormat';
+import { applyMarkdownPasteToTextarea, isPasteAsMarkdownShortcut } from '@/lib/paste/shortcut';
 
 interface PopularDimension {
   dimension: string;
@@ -206,6 +208,7 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
 
   // Source reader mode: 'raw' (monospace) or 'reader' (formatted typography)
   const [sourceReaderMode, setSourceReaderMode] = useState<'raw' | 'reader'>('reader');
+  const [readerFormatSaving, setReaderFormatSaving] = useState(false);
 
   const currentMetadata = currentNode?.metadata ?? {};
   const isBookNode = useMemo(() => {
@@ -1087,6 +1090,36 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
     if (!activeTab || !nodesData[activeTab]) return;
     setSourceEditValue(nodesData[activeTab].chunk || '');
     setSourceEditMode(true);
+  };
+
+  const saveReaderFormatOverride = async (value: 'auto' | ReaderFormatValue) => {
+    if (!activeTab || !nodesData[activeTab]) return;
+    setReaderFormatSaving(true);
+    try {
+      const existing = nodesData[activeTab].metadata ?? {};
+      const nextMetadata = {
+        ...existing,
+        reader_format: value === 'auto' ? null : value,
+      };
+
+      const response = await fetch(`/api/nodes/${activeTab}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metadata: nextMetadata }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to save reader format');
+      }
+      if (result.node) {
+        setNodesData(prev => ({ ...prev, [activeTab]: result.node }));
+      }
+    } catch (error) {
+      console.error('Failed to save reader format:', error);
+      alert('Failed to save source format.');
+    } finally {
+      setReaderFormatSaving(false);
+    }
   };
 
   const startMetadataEdit = () => {
@@ -2905,7 +2938,17 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                         <textarea
                           value={descEditValue}
                           onChange={(e) => setDescEditValue(e.target.value.slice(0, 280))}
-                          onKeyDown={(e) => { if (e.key === 'Escape') cancelDescEdit(); }}
+                          onKeyDown={(e) => {
+                            if (isPasteAsMarkdownShortcut(e)) {
+                              e.preventDefault();
+                              void applyMarkdownPasteToTextarea(e.currentTarget, {
+                                getValue: () => descEditValue,
+                                setValue: (next) => setDescEditValue(next.slice(0, 280)),
+                              });
+                              return;
+                            }
+                            if (e.key === 'Escape') cancelDescEdit();
+                          }}
                           disabled={descSaving}
                           style={{ ...FOCUS_PANEL_BODY_TEXTAREA_STYLE, minHeight: '72px', width: '100%', paddingBottom: '22px' }}
                           placeholder="Brief description (max 280 chars)..."
@@ -3018,6 +3061,14 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                             }
                           }}
                           onKeyDown={(e) => {
+                            if (isPasteAsMarkdownShortcut(e)) {
+                              e.preventDefault();
+                              void applyMarkdownPasteToTextarea(e.currentTarget, {
+                                getValue: () => notesEditValue,
+                                setValue: setNotesEditValue,
+                              });
+                              return;
+                            }
                             // @mention navigation
                             if (mentionActive && mentionResults.length > 0) {
                               if (e.key === 'ArrowDown') {
@@ -3350,10 +3401,49 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       }}>
                         Editing source changes what search uses. This is the raw content that gets embedded.
                       </div>
+                      {activeTab !== null && nodesData[activeTab] && (
+                        <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--app-text-subtle)' }}>
+                            <span>Reader format</span>
+                            <select
+                              value={
+                                nodesData[activeTab]?.metadata?.reader_format && typeof nodesData[activeTab]?.metadata?.reader_format === 'string'
+                                  ? nodesData[activeTab].metadata.reader_format
+                                  : 'auto'
+                              }
+                              onChange={(e) => saveReaderFormatOverride(e.target.value as 'auto' | ReaderFormatValue)}
+                              disabled={readerFormatSaving}
+                              style={{
+                                fontSize: '11px',
+                                padding: '4px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid var(--app-border)',
+                                background: 'var(--app-panel)',
+                                color: 'var(--app-text)',
+                              }}
+                            >
+                              <option value="auto">Auto</option>
+                              {READER_FORMAT_VALUES.map((format: ReaderFormatValue) => (
+                                <option key={format} value={format}>
+                                  {READER_FORMAT_LABELS[format]}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                      )}
                       <textarea
                         value={sourceEditValue}
                         onChange={(e) => setSourceEditValue(e.target.value)}
                         onKeyDown={(e) => {
+                          if (isPasteAsMarkdownShortcut(e)) {
+                            e.preventDefault();
+                            void applyMarkdownPasteToTextarea(e.currentTarget, {
+                              getValue: () => sourceEditValue,
+                              setValue: setSourceEditValue,
+                            });
+                            return;
+                          }
                           if (e.key === 'Escape') {
                             cancelSourceEdit();
                           }
@@ -3502,13 +3592,14 @@ export default function FocusPanel({ openTabs, activeTab, onTabSelect, onNodeCli
                       </div>
 
                       {/* Content display */}
-                      <div style={{ flex: 1, overflow: 'auto' }}>
+                      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         {nodesData[activeTab]?.chunk ? (
                           sourceReaderMode === 'reader' ? (
                             <SourceReader
                               content={nodesData[activeTab].chunk}
                               nodeTitle={nodesData[activeTab]?.title || undefined}
                               sourceUrl={nodesData[activeTab]?.link || undefined}
+                              metadata={nodesData[activeTab]?.metadata || null}
                               onTextSelect={onTextSelect ? (text) => onTextSelect(activeTab, nodesData[activeTab]?.title || 'Untitled', text) : undefined}
                               onSourceSelect={(selection) => {
                                 setPendingAnnotation({

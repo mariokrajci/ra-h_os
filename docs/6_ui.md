@@ -336,6 +336,7 @@ Each dimension can have a custom Lucide icon.
 | Shortcut | Action |
 |----------|--------|
 | `Cmd+K` | Open search |
+| `Option/Alt+V` | Paste clipboard content as Markdown in edit textareas (Quick Add, Notes, Description, Source) |
 | `Escape` | Close modals/overlays |
 
 ---

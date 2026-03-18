@@ -3,11 +3,14 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { parseBookCommand } from '@/services/ingestion/bookCommand';
+import { READER_FORMAT_LABELS, READER_FORMAT_VALUES, type ReaderFormatValue } from '@/lib/readerFormat';
+import { applyMarkdownPasteToTextarea, isPasteAsMarkdownShortcut } from '@/lib/paste/shortcut';
 
 interface QuickAddSubmitPayload {
   input: string;
   mode: 'link' | 'note' | 'chat';
   description?: string;
+  readerFormat?: ReaderFormatValue;
   bookSelection?: {
     title: string;
     author?: string;
@@ -72,11 +75,11 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [manualType, setManualType] = useState<DetectedType | null>(null);
   const [bookCandidates, setBookCandidates] = useState<BookLookupCandidate[]>([]);
   const [selectedBookCandidateIndex, setSelectedBookCandidateIndex] = useState(0);
   const [bookLookupLoading, setBookLookupLoading] = useState(false);
   const [bookLookupError, setBookLookupError] = useState<string | null>(null);
+  const [readerFormat, setReaderFormat] = useState<ReaderFormatValue | 'auto'>('auto');
 
   const isControlled = isOpen !== undefined;
   const isExpanded = isControlled ? isOpen : isExpandedInternal;
@@ -85,13 +88,13 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     : setIsExpandedInternal;
 
   const detectedType = useMemo(() => detectType(input), [input]);
-  const effectiveType = manualType ?? detectedType;
+  const effectiveType = detectedType;
   const parsedBookCommand = useMemo(() => parseBookCommand(input), [input]);
   const isBookFlow = !uploadedFile && parsedBookCommand.kind === 'book';
   const showTypePill = input.trim().length > 0 && !uploadedFile;
 
   useEffect(() => {
-    setManualType(null);
+    setReaderFormat('auto');
   }, [input, uploadedFile]);
 
   useEffect(() => {
@@ -152,18 +155,15 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     };
   }, [isBookFlow, parsedBookCommand]);
 
-  const typeOptions = useMemo<DetectedType[]>(() => {
-    if (detectedType === 'note' || detectedType === 'chat') {
-      return ['note', 'chat'];
-    }
-    return [detectedType, 'note'];
-  }, [detectedType]);
+  const sourceFormatOptions = useMemo<Array<'auto' | ReaderFormatValue>>(
+    () => ['auto', ...READER_FORMAT_VALUES],
+    []
+  );
 
   const cycleType = () => {
-    if (typeOptions.length <= 1) return;
-    const currentIndex = typeOptions.indexOf(effectiveType);
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % typeOptions.length;
-    setManualType(typeOptions[nextIndex] === detectedType ? null : typeOptions[nextIndex]);
+    const currentIndex = sourceFormatOptions.indexOf(readerFormat);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % sourceFormatOptions.length;
+    setReaderFormat(sourceFormatOptions[nextIndex]);
   };
 
   const submitMode: QuickAddSubmitPayload['mode'] = effectiveType === 'chat'
@@ -179,6 +179,9 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (readerFormat !== 'auto') {
+        formData.append('readerFormat', readerFormat);
+      }
       const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
       const isEpub = file.type === 'application/epub+zip' || file.name.toLowerCase().endsWith('.epub');
       const uploadPath = isPdf
@@ -208,7 +211,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     } finally {
       setIsPosting(false);
     }
-  }, []);
+  }, [readerFormat]);
 
   const handleSubmit = async () => {
     if (uploadedFile) {
@@ -222,6 +225,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
       await onSubmit({
         input: input.trim(),
         mode: submitMode,
+        ...(readerFormat !== 'auto' ? { readerFormat } : {}),
         bookSelection: isBookFlow && selectedBookCandidate ? {
           title: selectedBookCandidate.title,
           author: selectedBookCandidate.author,
@@ -242,6 +246,14 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isPasteAsMarkdownShortcut(e)) {
+      e.preventDefault();
+      void applyMarkdownPasteToTextarea(e.currentTarget, {
+        getValue: () => input,
+        setValue: setInput,
+      });
+      return;
+    }
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSubmit();
@@ -251,6 +263,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
       setInput('');
       setUploadedFile(null);
       setUploadError(null);
+      setReaderFormat('auto');
     }
   };
 
@@ -298,6 +311,7 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
     setInput('');
     setUploadedFile(null);
     setUploadError(null);
+    setReaderFormat('auto');
   };
 
   if (!isExpanded) {
@@ -456,14 +470,27 @@ export default function QuickAddInput({ onSubmit, isOpen, onClose }: QuickAddInp
               borderColor: TYPE_COLORS[effectiveType] + '30',
               background: TYPE_COLORS[effectiveType] + '0a',
             }}>
-              <span className="qa-type-pill-main">{TYPE_LABELS[effectiveType]}</span>
-              <span className="qa-type-pill-sub">click to change</span>
+              <span className="qa-type-pill-main">
+                {readerFormat === 'auto' ? 'Auto Format' : READER_FORMAT_LABELS[readerFormat]}
+              </span>
+              <span className="qa-type-pill-sub">
+                {TYPE_LABELS[effectiveType]} • click to change
+              </span>
             </button>
           )}
           <span className="qa-hint">
             {uploadedFile
               ? 'Ready to upload'
-              : <><kbd>{'\u2318\u21B5'}</kbd><span className="qa-hint-sep">send</span><kbd>esc</kbd><span className="qa-hint-sep">close</span></>
+              : (
+                <>
+                  <kbd>{'\u2325V'}</kbd>
+                  <span className="qa-hint-sep">markdown paste</span>
+                  <kbd>{'\u2318\u21B5'}</kbd>
+                  <span className="qa-hint-sep">send</span>
+                  <kbd>esc</kbd>
+                  <span className="qa-hint-sep">close</span>
+                </>
+              )
             }
           </span>
         </div>
