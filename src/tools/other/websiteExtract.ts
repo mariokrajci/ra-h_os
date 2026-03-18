@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
 import { extractCreatedNodeDimensions, extractCreatedNodeId, resolveCreateNodeError } from '../infrastructure/createNodeResult';
 import { finalizeWebsiteNode } from '@/services/ingestion/finalizeSourceNode';
+import { READER_FORMAT_VALUES, type ReaderFormatValue } from '@/lib/readerFormat';
 
 function normalizeWebsiteTitle(url: string, extractedTitle?: string): string {
   let parsed: URL | null = null;
@@ -44,9 +45,10 @@ export const websiteExtractTool = tool({
     url: z.string().describe('The website URL to add to knowledge base'),
     title: z.string().optional().describe('Custom title (auto-generated if not provided)'),
     dimensions: z.array(z.string()).min(1).max(5).optional().describe('Dimension tags to apply to the created node (locked dimensions first)'),
+    readerFormat: z.enum(READER_FORMAT_VALUES).optional().describe('Optional reader format override'),
     apiBaseUrl: z.string().optional().describe('Internal API base URL override')
   }),
-  execute: async ({ url, title, dimensions, apiBaseUrl }) => {
+  execute: async ({ url, title, dimensions, readerFormat, apiBaseUrl }) => {
     try {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return {
@@ -72,6 +74,8 @@ export const websiteExtractTool = tool({
           dimensions: trimmedDimensions,
           metadata: {
             source: 'website',
+            source_family: 'website',
+            reader_format: (readerFormat || 'markdown') as ReaderFormatValue,
             hostname: new URL(url).hostname,
             source_status: 'processing',
             notes_status: 'pending',

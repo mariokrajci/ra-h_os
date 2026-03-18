@@ -244,4 +244,141 @@ describe('MappedMarkdownRenderer', () => {
     expect(html).not.toContain('## Using this repository |');
   });
 
+  it('removes zero-width anchor stubs emitted by some docs sites', () => {
+    const markdown = [
+      'Agent Skills are folders of instructions.',
+      '',
+      '## ',
+      '',
+      '[\u200B',
+      '',
+      '](#why-agent-skills)',
+      '',
+      'Why Agent Skills?',
+      '',
+      '[\u200B](#adoption)',
+      '',
+      'Adoption',
+    ].join('\n');
+
+    const html = renderToStaticMarkup(
+      React.createElement(MappedMarkdownRenderer, {
+        content: markdown,
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).toContain('Why Agent Skills?');
+    expect(html).toContain('Adoption');
+    expect(html).not.toContain('](#why-agent-skills)');
+    expect(html).not.toContain('](#adoption)');
+    expect(html).not.toContain('<p>[</p>');
+  });
+
+  it('converts broken card link blocks into valid heading links', () => {
+    const markdown = [
+      'Get started',
+      '',
+      '[',
+      '',
+      '## What are skills?',
+      '',
+      'Learn about skills, how they work, and why they matter.',
+      '',
+      '](/what-are-skills)[',
+      '',
+      '## Specification',
+      '',
+      'The complete format specification for SKILL.md files.',
+      '',
+      '](/specification)',
+    ].join('\n');
+
+    const html = renderToStaticMarkup(
+      React.createElement(MappedMarkdownRenderer, {
+        content: markdown,
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).not.toContain('](/what-are-skills)[');
+    expect(html).not.toContain('<p>[</p>');
+    expect(html).toContain('<h2');
+    expect(html).toContain('href="/what-are-skills"');
+    expect(html).toContain('href="/specification"');
+    expect(html).toContain('Learn about skills, how they work, and why they matter.');
+    expect(html).toContain('The complete format specification for SKILL.md files.');
+  });
+
+  it('resolves relative links against source URL origin', () => {
+    const markdown = [
+      '## [What are skills?](/what-are-skills)',
+      '',
+      'See [Specification](/specification) for details.',
+    ].join('\n');
+
+    const html = renderToStaticMarkup(
+      React.createElement(MappedMarkdownRenderer, {
+        content: markdown,
+        sourceUrl: 'https://agentskills.io',
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).toContain('href="https://agentskills.io/what-are-skills"');
+    expect(html).toContain('href="https://agentskills.io/specification"');
+  });
+
+  it('merges dangling markdown heading markers with following title text', () => {
+    const markdown = [
+      '## ',
+      '',
+      'Why Agent Skills?',
+      '',
+      '##   ',
+      '',
+      'Adoption',
+      '',
+      'Some paragraph.',
+    ].join('\n');
+
+    const html = renderToStaticMarkup(
+      React.createElement(MappedMarkdownRenderer, {
+        content: markdown,
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).toContain('<h2');
+    expect(html).toContain('Why Agent Skills?');
+    expect(html).toContain('Adoption');
+    expect(html).not.toContain('<h2 style="font-size:1.3em;font-weight:bold;margin:0;color:#f5f5f5"></h2>');
+  });
+
+  it('strips dangling opening link brackets left by noisy extraction', () => {
+    const markdown = [
+      '[Explore Models',
+      '',
+      '30T',
+      '',
+      '[Monthly Tokens](https://openrouter.ai/rankings)',
+    ].join('\n');
+
+    const html = renderToStaticMarkup(
+      React.createElement(MappedMarkdownRenderer, {
+        content: markdown,
+        annotationRanges: [],
+        activeRange: null,
+      })
+    );
+
+    expect(html).toContain('Explore Models');
+    expect(html).not.toContain('[Explore Models');
+    expect(html).toContain('href="https://openrouter.ai/rankings"');
+  });
+
 });

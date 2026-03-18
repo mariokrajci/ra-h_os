@@ -1,5 +1,5 @@
 import type { NodeMetadata } from '@/types/database';
-import { detectContentType, type ContentType } from '../source/ContentDetector';
+import { resolveReaderFormat } from '../source/ContentDetector';
 
 export type ReaderMode = 'pdf' | 'epub' | 'text';
 export type TextFallbackType = 'book' | 'markdown' | 'transcript' | 'raw';
@@ -73,27 +73,21 @@ export function getReaderSource(
   return link || '';
 }
 
-export function resolveTextFallbackType(content: string): TextFallbackType {
-  const detectedType = detectContentType(content);
-  const trimmedContent = content.trim();
-
-  if (
-    /^#{1,6}\s/m.test(trimmedContent) ||
-    /^[-*+]\s/m.test(trimmedContent) ||
-    /^\d+\.\s/m.test(trimmedContent) ||
-    /```[\s\S]*?```/.test(trimmedContent) ||
-    /\[.+\]\(.+\)/.test(trimmedContent)
-  ) {
-    return 'markdown';
-  }
-
-  switch (detectedType) {
+export function resolveTextFallbackType(
+  content: string,
+  metadata?: NodeMetadata | null,
+  sourceUrl?: string,
+): TextFallbackType {
+  const resolved = resolveReaderFormat(content, sourceUrl, metadata);
+  switch (resolved) {
     case 'markdown':
       return 'markdown';
     case 'transcript':
       return 'transcript';
     case 'book':
     case 'article':
+    case 'pdf':
+    case 'epub':
       return 'book';
     default:
       return 'raw';

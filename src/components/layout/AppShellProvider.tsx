@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 
 import type { DatabaseEvent } from '@/services/events';
 import { createInitialShellRefreshState, reduceShellEvent, type ShellRefreshState } from './shellEvents';
+import type { ReaderFormatValue } from '@/lib/readerFormat';
 
 export interface PendingNode {
   id: string;
@@ -28,6 +29,7 @@ interface QuickAddPayload {
   input: string;
   mode: 'link' | 'note' | 'chat';
   description?: string;
+  readerFormat?: ReaderFormatValue;
   bookSelection?: QuickAddBookSelection;
 }
 
@@ -74,12 +76,13 @@ export function AppShellProvider({ children }: { children: React.ReactNode }) {
     input,
     mode,
     description,
+    readerFormat,
     bookSelection,
   }: QuickAddPayload) => {
     const response = await fetch('/api/quick-add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input, mode, description, bookSelection }),
+      body: JSON.stringify({ input, mode, description, readerFormat, bookSelection }),
     });
 
     if (!response.ok) {

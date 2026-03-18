@@ -1,4 +1,8 @@
+import type { ReaderFormatValue } from '@/lib/readerFormat';
+
 export interface NodeMetadata {
+  source_family?: 'website' | 'chat' | 'youtube' | 'podcast' | 'pdf' | 'epub' | 'note';
+  reader_format?: ReaderFormatValue | null;
   content_kind?: 'book';
   book_detection_status?: 'none' | 'detected' | 'confirmed';
   book_metadata_status?: 'pending' | 'matched' | 'ambiguous' | 'failed';

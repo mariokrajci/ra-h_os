@@ -10,6 +10,7 @@ interface MarkdownFormatterProps {
   activeRange?: TextRange | null;
   theme?: ReaderTheme;
   suppressedLeadingHeadingTitle?: string;
+  sourceUrl?: string;
 }
 
 export default function MarkdownFormatter({
@@ -18,6 +19,7 @@ export default function MarkdownFormatter({
   activeRange,
   theme = 'warm',
   suppressedLeadingHeadingTitle,
+  sourceUrl,
 }: MarkdownFormatterProps) {
   return (
     <MappedMarkdownRenderer
@@ -26,6 +28,7 @@ export default function MarkdownFormatter({
       activeRange={activeRange}
       theme={theme}
       suppressedLeadingHeadingTitle={suppressedLeadingHeadingTitle}
+      sourceUrl={sourceUrl}
     />
   );
 }

@@ -4,6 +4,9 @@ import {
   sanitizeGitHubReadmeRst,
   deriveGitHubReadmeTitle,
   convertMermaidToText,
+  normalizeWebsiteMarkdownArtifacts,
+  buildWebsiteSummary,
+  shouldPreferSummaryForDirectoryPage,
 } from '@/services/typescript/extractors/website';
 
 describe('sanitizeWebsiteText', () => {
@@ -170,5 +173,78 @@ describe('deriveGitHubReadmeTitle', () => {
     );
 
     expect(title).toBe('OpenViking: The Context Database for AI Agents');
+  });
+});
+
+describe('normalizeWebsiteMarkdownArtifacts', () => {
+  it('repairs chained and multiline markdown links from card-heavy pages', () => {
+    const input = [
+      '[Get API Key](/settings/keys)[Explore Models',
+      '',
+      '](/models)',
+      '',
+      '[',
+      '',
+      '30T',
+      '',
+      'Monthly Tokens',
+      '',
+      '](/rankings)',
+    ].join('\n');
+
+    const normalized = normalizeWebsiteMarkdownArtifacts(input, 'https://openrouter.ai');
+
+    expect(normalized).toContain('[Get API Key](https://openrouter.ai/settings/keys)');
+    expect(normalized).toContain('[Explore Models](https://openrouter.ai/models)');
+    expect(normalized).toContain('[30T Monthly Tokens](https://openrouter.ai/rankings)');
+    expect(normalized).not.toContain('](/models)');
+    expect(normalized).not.toContain('[Explore Models\n');
+    expect(normalized).not.toContain('](/rankings)');
+  });
+
+  it('inserts spacing when site text is glued directly after a markdown link', () => {
+    const input = '## [Docfork](/mcp/servers/docfork/docfork-mcp)official';
+    const normalized = normalizeWebsiteMarkdownArtifacts(input, 'https://glama.ai');
+
+    expect(normalized).toBe('## [Docfork](https://glama.ai/mcp/servers/docfork/docfork-mcp) official');
+  });
+
+  it('drops merged card-link blobs with embedded heading markers', () => {
+    const input = '[### One API for Any Model Access all major models through a single, unified interface. OpenAI SDK works out of the box. Browse all](/models)';
+    const normalized = normalizeWebsiteMarkdownArtifacts(input, 'https://openrouter.ai');
+
+    expect(normalized).toBe('');
+  });
+});
+
+describe('directory page summary fallback', () => {
+  it('prefers metadata summary for glama MCP servers directory pages', () => {
+    const noisy = [
+      '## [Docfork](https://glama.ai/mcp/servers/docfork/docfork-mcp) official',
+      '',
+      'A',
+      '',
+      'security',
+      '',
+      'A',
+      '',
+      'license',
+      '',
+      'A',
+      '',
+      'quality',
+      '',
+      'Last updated 14 days ago',
+    ].join('\n');
+
+    expect(shouldPreferSummaryForDirectoryPage(noisy, 'https://glama.ai/mcp/servers')).toBe(true);
+    expect(
+      buildWebsiteSummary(
+        'Popular MCP Servers',
+        'Everything MCP — servers updated daily. The most comprehensive registry of Model Context Protocol (MCP) servers, clients, tools, and integrations.',
+      )
+    ).toBe(
+      '# Popular MCP Servers\n\nEverything MCP — servers updated daily. The most comprehensive registry of Model Context Protocol (MCP) servers, clients, tools, and integrations.'
+    );
   });
 });

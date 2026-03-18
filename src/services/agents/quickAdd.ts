@@ -5,14 +5,14 @@ import { websiteExtractTool } from '@/tools/other/websiteExtract';
 import { paperExtractTool } from '@/tools/other/paperExtract';
 import { podcastExtractTool } from '@/tools/other/podcastExtract';
 import { formatNodeForChat } from '@/tools/infrastructure/nodeFormatter';
-import { summarizeTranscript } from './transcriptSummarizer';
-import { detectInputType, resolveQuickAddRouting, type QuickAddInputType, type QuickAddMode } from './quickAddDetection';
+import { resolveQuickAddRouting, type QuickAddInputType, type QuickAddMode } from './quickAddDetection';
 import { eventBroadcaster } from '@/services/events';
 import { fetchBookMetadata } from '@/services/ingestion/bookMetadata';
 import type { BookCommandParseResult } from '@/services/ingestion/bookCommand';
 import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 import { logBookTelemetry } from '@/services/analytics/bookTelemetry';
 import { cacheBookCoverForNode } from '@/services/ingestion/bookCoverCache';
+import { isReaderFormatValue, type ReaderFormatValue } from '@/lib/readerFormat';
 
 export type { QuickAddMode, QuickAddInputType } from './quickAddDetection';
 export { detectInputType } from './quickAddDetection';
@@ -21,9 +21,11 @@ export interface QuickAddInput {
   rawInput: string;
   mode?: QuickAddMode;
   description?: string;
+  readerFormat?: ReaderFormatValue;
   baseUrl?: string;
   sourceUrl?: string;
   sourceTitle?: string;
+  append?: boolean;
   bookSelection?: {
     title: string;
     author?: string;
@@ -168,13 +170,22 @@ function isCreateNodeResponse(value: unknown): value is CreateNodeResponse {
   return true;
 }
 
-async function handleExtractionQuickAdd(type: ExtractionQuickAddType, url: string, task: string, apiBaseUrl: string): Promise<string> {
+async function handleExtractionQuickAdd(
+  type: ExtractionQuickAddType,
+  url: string,
+  task: string,
+  apiBaseUrl: string,
+  readerFormat?: ReaderFormatValue,
+): Promise<string> {
   const { toolName, execute } = EXTRACTION_TOOL_MAP[type];
   if (!execute) {
     throw new Error(`Tool ${toolName} does not have an execute function`);
   }
   const normalizedUrl = normalizeUrlLikeInput(url);
-  const rawResult = await execute({ url: normalizedUrl, apiBaseUrl }, { toolCallId: 'quickadd-extract', messages: [] });
+  const rawResult = await execute(
+    { url: normalizedUrl, apiBaseUrl, ...(readerFormat ? { readerFormat } : {}) },
+    { toolCallId: 'quickadd-extract', messages: [] }
+  );
 
   if (!isExtractionToolResult(rawResult)) {
     throw new Error(`Unexpected response from ${toolName}`);
@@ -207,6 +218,7 @@ async function handleNoteQuickAdd(
   task: string,
   userDescription: string | undefined,
   apiBaseUrl: string,
+  readerFormat?: ReaderFormatValue,
   command?: BookCommandParseResult,
   bookSelection?: QuickAddInput['bookSelection'],
   sourceUrl?: string,
@@ -258,6 +270,8 @@ async function handleNoteQuickAdd(
     ...(isBookCommand ? { dimensions: ['books'] } : {}),
     metadata: {
       source: 'quick-add-note',
+      source_family: 'note',
+      reader_format: readerFormat || 'raw',
       ...(sourceTitle ? { source_title: sourceTitle } : {}),
       refined_at: new Date().toISOString(),
       ...(isBookCommand ? {
@@ -326,32 +340,63 @@ async function handleNoteQuickAdd(
   });
 }
 
-async function handleChatTranscriptQuickAdd(rawInput: string, task: string, apiBaseUrl: string, sourceUrl?: string, sourceTitle?: string): Promise<string> {
+async function handleChatTranscriptQuickAdd(
+  rawInput: string,
+  task: string,
+  apiBaseUrl: string,
+  readerFormat?: ReaderFormatValue,
+  sourceUrl?: string,
+  sourceTitle?: string,
+  append?: boolean,
+): Promise<string> {
   const transcript = rawInput.trim();
   if (!transcript) {
     throw new Error('Input is required to import a chat transcript');
   }
 
-  // Append to existing node if sourceUrl matches
+  // Update existing node if sourceUrl matches
   if (sourceUrl) {
     const existing = await nodeService.getNodeByLink(sourceUrl);
     if (existing) {
-      const summaryResult = await summarizeTranscript(transcript);
-      const newContent = summaryResult.summary?.trim() || transcript.slice(0, 500);
-      const updatedNotes = existing.notes
-        ? `${existing.notes}\n\n---\n\n${newContent}`
-        : newContent;
+      const existingMetadata =
+        existing.metadata && typeof existing.metadata === 'object'
+          ? (existing.metadata as Record<string, unknown>)
+          : {};
+      const existingReaderFormat = existingMetadata.reader_format;
+      const normalizedReaderFormat = readerFormat
+        || (isReaderFormatValue(existingReaderFormat) ? existingReaderFormat : 'chat');
+      const patch = append
+        // Selection: append to chunk with separator
+        ? {
+            chunk: existing.chunk ? `${existing.chunk}\n\n---\n\n${transcript}` : transcript,
+            chunk_status: 'not_chunked',
+            metadata: {
+              ...existingMetadata,
+              source_family: 'chat',
+              reader_format: normalizedReaderFormat,
+            },
+          }
+        // Full conversation: replace chunk entirely
+        : {
+            chunk: transcript,
+            chunk_status: 'not_chunked',
+            metadata: {
+              ...existingMetadata,
+              source_family: 'chat',
+              reader_format: normalizedReaderFormat,
+            },
+          };
       const response = await fetch(`${apiBaseUrl}/api/nodes/${existing.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: updatedNotes }),
+        body: JSON.stringify(patch),
       });
-      if (!response.ok) throw new Error('Failed to append to existing chat node');
+      if (!response.ok) throw new Error('Failed to update existing chat node');
       const nodeReference = formatNodeForChat({ id: existing.id, title: existing.title });
       return buildStructuredSummary({
         task,
         action: 'updateNode',
-        resultMessage: `Appended to chat node ${nodeReference}.`,
+        resultMessage: append ? `Appended selection to ${nodeReference}.` : `Updated source transcript for ${nodeReference}.`,
         nodeReference,
       });
     }
@@ -362,6 +407,8 @@ async function handleChatTranscriptQuickAdd(rawInput: string, task: string, apiB
 
   const metadata = {
     source: 'quick-add-chat',
+    source_family: 'chat',
+    reader_format: readerFormat || 'chat',
     transcript_length_chars: transcript.length,
     transcript_length_words: wordCount,
   };
@@ -419,7 +466,17 @@ function resolveApiBaseUrl(baseUrl?: string): string {
   return 'http://localhost:3000';
 }
 
-export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl, bookSelection, sourceUrl, sourceTitle }: QuickAddInput): Promise<QuickAddResult> {
+export async function enqueueQuickAdd({
+  rawInput,
+  mode,
+  description,
+  readerFormat,
+  baseUrl,
+  bookSelection,
+  sourceUrl,
+  sourceTitle,
+  append,
+}: QuickAddInput): Promise<QuickAddResult> {
   const routing = resolveQuickAddRouting(rawInput, mode);
   const inputType = routing.inputType;
   if (rawInput.trim().startsWith('/')) {
@@ -449,13 +506,22 @@ export async function enqueueQuickAdd({ rawInput, mode, description, baseUrl, bo
   // Run async - fire and forget
   setImmediate(async () => {
     try {
-      let summary: string;
       if (inputType === 'note') {
-        summary = await handleNoteQuickAdd(routing.normalizedInput, task, description, apiBaseUrl, routing.command, bookSelection, sourceUrl, sourceTitle);
+        await handleNoteQuickAdd(
+          routing.normalizedInput,
+          task,
+          description,
+          apiBaseUrl,
+          readerFormat,
+          routing.command,
+          bookSelection,
+          sourceUrl,
+          sourceTitle
+        );
       } else if (inputType === 'chat') {
-        summary = await handleChatTranscriptQuickAdd(rawInput, task, apiBaseUrl, sourceUrl, sourceTitle);
+        await handleChatTranscriptQuickAdd(rawInput, task, apiBaseUrl, readerFormat, sourceUrl, sourceTitle, append);
       } else {
-        summary = await handleExtractionQuickAdd(inputType as ExtractionQuickAddType, rawInput, task, apiBaseUrl);
+        await handleExtractionQuickAdd(inputType as ExtractionQuickAddType, rawInput, task, apiBaseUrl, readerFormat);
       }
 
       console.log(`[QuickAdd] Completed: ${task}`);

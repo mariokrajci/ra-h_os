@@ -2,8 +2,21 @@
  * Content type detection for Source Reader
  * Analyzes raw content to determine the best formatting approach
  */
+import type { NodeMetadata } from '@/types/database';
+import { isReaderFormatValue, READER_FORMAT_LABELS, type ReaderFormatValue } from '@/lib/readerFormat';
 
 export type ContentType = 'transcript' | 'book' | 'markdown' | 'article' | 'raw';
+export type ReaderFormat = ReaderFormatValue;
+
+const SOURCE_FAMILY_DEFAULT_FORMAT: Record<NonNullable<NodeMetadata['source_family']>, ReaderFormat> = {
+  website: 'markdown',
+  chat: 'chat',
+  youtube: 'transcript',
+  podcast: 'transcript',
+  pdf: 'pdf',
+  epub: 'epub',
+  note: 'raw',
+};
 
 // Timestamp patterns for transcript detection
 const TIMESTAMP_PATTERNS = [
@@ -60,6 +73,8 @@ export function detectContentType(content: string, sourceUrl?: string): ContentT
 
   // 2. Check for markdown patterns (before book — well-formatted markdown is unlikely to be a book)
   const markdownScore = calculateMarkdownScore(content);
+  const markdownLinkCount = countMarkdownLinks(content);
+  if (/^#{1,6}\s/m.test(content) && markdownLinkCount >= 2) return 'markdown';
   if (markdownScore > 0.3) return 'markdown';
 
   // 3. Check for book indicators — require 2+ strong signals
@@ -74,6 +89,33 @@ export function detectContentType(content: string, sourceUrl?: string): ContentT
   return 'raw';
 }
 
+export function resolveReaderFormat(
+  content: string,
+  sourceUrl?: string,
+  metadata?: NodeMetadata | null,
+): ReaderFormat {
+  const fileType = metadata?.file_type;
+  if (fileType === 'pdf' || fileType === 'epub') return fileType;
+
+  const explicitFormat = metadata?.reader_format;
+  if (isReaderFormatValue(explicitFormat)) {
+    return explicitFormat;
+  }
+
+  const sourceFamily = metadata?.source_family;
+  if (sourceFamily && sourceFamily in SOURCE_FAMILY_DEFAULT_FORMAT) {
+    return SOURCE_FAMILY_DEFAULT_FORMAT[sourceFamily];
+  }
+
+  return detectContentType(content, sourceUrl);
+}
+
+export function toTextContentType(format: ReaderFormat): ContentType {
+  if (format === 'chat') return 'raw';
+  if (format === 'pdf' || format === 'epub') return 'raw';
+  return format;
+}
+
 /**
  * Calculate a "markdown-ness" score for content
  * Returns a value between 0 and 1
@@ -81,6 +123,10 @@ export function detectContentType(content: string, sourceUrl?: string): ContentT
 function calculateMarkdownScore(content: string): number {
   const matchCount = MARKDOWN_MARKERS.filter(m => m.test(content)).length;
   return matchCount / MARKDOWN_MARKERS.length;
+}
+
+function countMarkdownLinks(content: string): number {
+  return (content.match(/\[[^\]]+\]\([^)]+\)/g) || []).length;
 }
 
 /**
@@ -94,4 +140,8 @@ export function getContentTypeLabel(type: ContentType): string {
     case 'article': return 'Article';
     case 'raw': return 'Plain Text';
   }
+}
+
+export function getReaderFormatLabel(format: ReaderFormat): string {
+  return READER_FORMAT_LABELS[format];
 }

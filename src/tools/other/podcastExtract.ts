@@ -9,6 +9,7 @@ import { extractCreatedNodeDimensions, extractCreatedNodeId, resolveCreateNodeEr
 import { getOpenAIChatModel } from '@/config/openaiModels';
 import { logAiUsage, normalizeUsageFromAiSdk } from '@/services/analytics/usageLogger';
 import { clampDescription } from '@/services/database/descriptionService';
+import { READER_FORMAT_VALUES, type ReaderFormatValue } from '@/lib/readerFormat';
 
 async function analyzePodcastWithAI(episodeTitle: string, podcastName: string, description: string) {
   try {
@@ -69,9 +70,10 @@ export const podcastExtractTool = tool({
     url: z.string().describe('The podcast episode URL (Spotify, Apple, Pocket Casts, RSS feed, or episode page)'),
     title: z.string().optional().describe('Optional override for the episode title'),
     dimensions: z.array(z.string()).min(1).max(5).optional().describe('Dimensions/tags for the node'),
+    readerFormat: z.enum(READER_FORMAT_VALUES).optional().describe('Optional reader format override'),
     apiBaseUrl: z.string().optional().describe('Internal API base URL override'),
   }),
-  execute: async ({ url, title, dimensions, apiBaseUrl }) => {
+  execute: async ({ url, title, dimensions, readerFormat, apiBaseUrl }) => {
     try {
       // Phase 1: Extract podcast metadata
       const extraction = await extractPodcast(url);
@@ -108,12 +110,16 @@ export const podcastExtractTool = tool({
         description?: string;
         link: string;
         dimensions: string[];
-        metadata: typeof meta;
+        metadata: Record<string, unknown>;
       } = {
         title: episodeTitle,
         link: url,
         dimensions: nodeDimensions,
-        metadata: meta,
+        metadata: {
+          ...meta,
+          source_family: 'podcast',
+          reader_format: (readerFormat || 'transcript') as ReaderFormatValue,
+        },
       };
 
       if (ai.nodeDescription) {

@@ -4,6 +4,7 @@ import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 import { fileRegistryService } from '@/services/storage/fileRegistryService';
 import { fileService } from '@/services/storage/fileService';
 import { PaperExtractor } from '@/services/typescript/extractors/paper';
+import { isReaderFormatValue } from '@/lib/readerFormat';
 
 export const runtime = 'nodejs';
 
@@ -15,6 +16,8 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file');
+    const readerFormatRaw = formData.get('readerFormat');
+    const readerFormat = isReaderFormatValue(readerFormatRaw) ? readerFormatRaw : undefined;
 
     // Validate file presence
     if (!file || !(file instanceof File)) {
@@ -69,6 +72,8 @@ export async function POST(request: NextRequest) {
         chunk: extraction.chunk,
         metadata: {
           source: 'pdf_upload',
+          source_family: 'pdf',
+          reader_format: readerFormat || 'pdf',
           original_filename: file.name,
           pages: extraction.metadata.pages,
           text_length: extraction.metadata.text_length,
@@ -111,6 +116,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         metadata: {
           source: 'pdf_upload',
+          source_family: 'pdf',
+          reader_format: readerFormat || 'pdf',
           original_filename: file.name,
           pages: extraction.metadata.pages,
           text_length: extraction.metadata.text_length,

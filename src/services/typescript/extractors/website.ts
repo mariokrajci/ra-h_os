@@ -14,6 +14,8 @@ interface WebsiteMetadata {
   og_image?: string;
   site_name?: string;
   extraction_method?: string;
+  source_family?: 'website';
+  reader_format?: 'markdown';
 }
 
 interface ExtractionResult {
@@ -63,6 +65,42 @@ function isLikelyNoise(line: string): boolean {
   return UI_NOISE_PATTERNS.some((pattern) => pattern.test(line));
 }
 
+export function buildWebsiteSummary(title: string, description?: string): string {
+  const normalizedTitle = (title || '').trim().replace(/\s+/g, ' ');
+  const normalizedDescription = (description || '').trim().replace(/\s+/g, ' ');
+  if (!normalizedTitle && !normalizedDescription) return '';
+  if (!normalizedDescription) return `# ${normalizedTitle}`;
+  return `# ${normalizedTitle}\n\n${normalizedDescription}`;
+}
+
+export function shouldPreferSummaryForDirectoryPage(markdown: string, sourceUrl?: string): boolean {
+  if (!markdown) return false;
+
+  try {
+    if (sourceUrl) {
+      const parsed = new URL(sourceUrl);
+      if (/^glama\.ai$/i.test(parsed.hostname) && /^\/mcp\/servers\/?$/i.test(parsed.pathname)) {
+        return true;
+      }
+    }
+  } catch {
+    // ignore URL parse failures
+  }
+
+  const lines = markdown
+    .split('\n')
+    .map((line) => line.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 120);
+
+  const tinyLines = lines.filter((line) => line.length <= 3).length;
+  const badgeSignals = lines.filter((line) => line === 'security' || line === 'license' || line === 'quality').length;
+  const lastUpdatedSignals = lines.filter((line) => line.startsWith('last updated')).length;
+  const links = (markdown.match(/\[[^\]]+\]\([^)]+\)/g) || []).length;
+
+  return (tinyLines >= 6 && badgeSignals >= 2) || (links >= 3 && lastUpdatedSignals >= 1 && tinyLines >= 4);
+}
+
 export function sanitizeWebsiteText(raw: string): string {
   const lines = raw
     .split('\n')
@@ -86,6 +124,42 @@ export function sanitizeWebsiteText(raw: string): string {
   }
 
   return deduped.join('\n\n').slice(0, 120_000);
+}
+
+export function normalizeWebsiteMarkdownArtifacts(markdown: string, sourceUrl?: string): string {
+  let normalized = markdown.replace(/\r\n/g, '\n');
+
+  normalized = normalized.replace(/\)\[/g, ')\n\n[');
+  normalized = normalized.replace(/(\]\([^)]+\))([A-Za-z0-9])/g, '$1 $2');
+
+  normalized = normalized.replace(
+    /\[\s*([\s\S]*?)\s*\]\(([^)]+)\)/g,
+    (_match, rawLabel, rawHref) => {
+      const label = String(rawLabel || '').replace(/\s+/g, ' ').trim();
+      const href = String(rawHref || '').trim();
+      if (!label || !href) return '';
+      if (label.length > 180) return '';
+      if (label.includes('###') && label.length > 80) return '';
+      return `[${label}](${href})`;
+    }
+  );
+
+  normalized = normalized.replace(/^\[([^\]\n]{1,200})$/gm, '$1');
+
+  if (sourceUrl) {
+    normalized = normalized.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (full, label, rawHref) => {
+      const href = String(rawHref || '').trim();
+      if (!href) return full;
+      if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return full;
+      try {
+        return `[${label}](${new URL(href, sourceUrl).toString()})`;
+      } catch {
+        return full;
+      }
+    });
+  }
+
+  return normalized.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function buildRstReferenceMap(raw: string): RstReferenceMap {
@@ -324,12 +398,14 @@ export class WebsiteExtractor {
     const rawTitle = titleMatch?.[1]?.trim() ?? '';
     const title = (rawTitle.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()) || 'Extracted Content';
 
-    const cleanedMarkdown = this.cleanMarkdown(markdown);
+    const cleanedMarkdown = this.cleanMarkdown(markdown, url);
 
     // Build metadata
     const metadata: WebsiteMetadata = {
       title,
       extraction_method: 'jina',
+      source_family: 'website',
+      reader_format: 'markdown',
     };
 
     // Format content consistently with cheerio output
@@ -400,12 +476,14 @@ export class WebsiteExtractor {
       site_name: 'GitHub',
       extraction_method: 'github_readme_api',
       description: data.name ? `Repository README (${data.name})` : 'Repository README',
+      source_family: 'website',
+      reader_format: 'markdown',
     };
 
     const isRstReadme = typeof data.name === 'string' && /\.rst$/i.test(data.name);
     const cleanedMarkdown = isRstReadme
       ? sanitizeGitHubReadmeRst(markdown)
-      : this.cleanMarkdown(markdown);
+      : this.cleanMarkdown(markdown, data.html_url || url);
 
     return {
       content: this.formatContent(metadata, cleanedMarkdown),
@@ -425,7 +503,7 @@ export class WebsiteExtractor {
   /**
    * Keep markdown structure intact while removing obvious UI noise lines.
    */
-  private cleanMarkdown(markdown: string): string {
+  private cleanMarkdown(markdown: string, sourceUrl?: string): string {
     const headingToMarkdown = (_match: string, level: string, inner: string) => {
       const text = inner
         .replace(/<[^>]+>/g, ' ')
@@ -491,12 +569,13 @@ export class WebsiteExtractor {
       previousBlank = blank;
     }
 
-    return normalized.join('\n').trim().slice(0, 200_000);
+    const cleaned = normalized.join('\n').trim().slice(0, 200_000);
+    return normalizeWebsiteMarkdownArtifacts(cleaned, sourceUrl);
   }
 
-  private htmlToMarkdown(html: string): string {
+  private htmlToMarkdown(html: string, sourceUrl?: string): string {
     const converted = this.turndown.turndown(html);
-    return this.cleanMarkdown(converted);
+    return this.cleanMarkdown(converted, sourceUrl);
   }
 
   /**
@@ -505,6 +584,8 @@ export class WebsiteExtractor {
   private extractMetadata($: cheerio.CheerioAPI): WebsiteMetadata {
     const metadata: WebsiteMetadata = {
       title: '',
+      source_family: 'website',
+      reader_format: 'markdown',
     };
     
     // Title extraction (priority order)
@@ -553,7 +634,7 @@ export class WebsiteExtractor {
   /**
    * Extract main content from HTML
    */
-  private extractMainContent($: cheerio.CheerioAPI): string {
+  private extractMainContent($: cheerio.CheerioAPI, sourceUrl?: string): string {
     // Remove script and style elements
     $('script, style, noscript').remove();
 
@@ -569,7 +650,7 @@ export class WebsiteExtractor {
       if (readme.length > 0) {
         const readmeHtml = readme.html();
         if (readmeHtml && readmeHtml.length > 100) {
-          const markdown = this.htmlToMarkdown(readmeHtml);
+          const markdown = this.htmlToMarkdown(readmeHtml, sourceUrl);
           if (markdown.length > 200) {
             return markdown;
           }
@@ -602,7 +683,7 @@ export class WebsiteExtractor {
         cloned.find('nav, header, footer, aside, .nav, .header, .footer, .sidebar, .menu, .advertisement, .breadcrumb, .breadcrumbs').remove();
         const html = cloned.html();
         if (html && html.trim().length > 0) {
-          const markdown = this.htmlToMarkdown(html);
+          const markdown = this.htmlToMarkdown(html, sourceUrl);
           if (markdown.length > 200) {
             mainContent = markdown;
             break;
@@ -615,7 +696,7 @@ export class WebsiteExtractor {
     if (!mainContent) {
       const bodyHtml = $('body').html() || '';
       if (bodyHtml.trim()) {
-        mainContent = this.htmlToMarkdown(bodyHtml);
+        mainContent = this.htmlToMarkdown(bodyHtml, sourceUrl);
       } else {
         mainContent = this.cleanContent($('body').text());
       }
@@ -678,7 +759,14 @@ export class WebsiteExtractor {
 
     const metadata = this.extractMetadata($);
     metadata.extraction_method = 'cheerio';
-    const mainContent = this.extractMainContent($);
+    let mainContent = this.extractMainContent($, url);
+    if (shouldPreferSummaryForDirectoryPage(mainContent, url)) {
+      const summary = buildWebsiteSummary(metadata.title, metadata.description);
+      if (summary) {
+        mainContent = summary;
+        metadata.extraction_method = 'cheerio_directory_summary';
+      }
+    }
 
     const content = this.formatContent(metadata, mainContent);
 
@@ -714,8 +802,8 @@ export class WebsiteExtractor {
     try {
       const result = await this.extractWithCheerio(url);
 
-      // If content is substantial, cheerio worked
-      if (result.chunk.length > 200) {
+      // If content is substantial, or we intentionally emitted a compact directory summary, cheerio worked
+      if (result.chunk.length > 200 || result.metadata.extraction_method === 'cheerio_directory_summary') {
         return result;
       }
 

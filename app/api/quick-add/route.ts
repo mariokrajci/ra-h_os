@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enqueueQuickAdd, QuickAddMode } from '@/services/agents/quickAdd';
+import { isReaderFormatValue } from '@/lib/readerFormat';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { input, mode, description, bookSelection, sourceUrl, sourceTitle } = body as {
+    const { input, mode, description, readerFormat, bookSelection, sourceUrl, sourceTitle, append } = body as {
       input?: unknown;
       mode?: unknown;
       description?: unknown;
+      readerFormat?: unknown;
       bookSelection?: unknown;
       sourceUrl?: unknown;
       sourceTitle?: unknown;
+      append?: unknown;
     };
 
     if (typeof input !== 'string' || input.trim().length === 0) {
@@ -25,6 +28,7 @@ export async function POST(request: NextRequest) {
 
     const normalizedDescription: string | undefined =
       typeof description === 'string' && description.trim() ? description.trim() : undefined;
+    const normalizedReaderFormat = isReaderFormatValue(readerFormat) ? readerFormat : undefined;
     const normalizedSourceUrl: string | undefined =
       typeof sourceUrl === 'string' && sourceUrl.trim() ? sourceUrl.trim() : undefined;
     const normalizedSourceTitle: string | undefined =
@@ -47,10 +51,12 @@ export async function POST(request: NextRequest) {
       rawInput: input.trim(),
       mode: normalizedMode,
       description: normalizedDescription,
+      readerFormat: normalizedReaderFormat,
       baseUrl: request.nextUrl.origin,
       bookSelection: normalizedBookSelection?.title ? normalizedBookSelection : undefined,
       sourceUrl: normalizedSourceUrl,
       sourceTitle: normalizedSourceTitle,
+      append: append === true,
     });
 
     return NextResponse.json({ success: true, delegation });

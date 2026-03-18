@@ -87,7 +87,7 @@ export default function BookReader({
   } | null>(null);
 
   const detectedMode = useMemo(() => detectReaderMode(metadata, link, content), [content, link, metadata]);
-  const textFallbackType = useMemo(() => resolveTextFallbackType(content), [content]);
+  const textFallbackType = useMemo(() => resolveTextFallbackType(content, metadata, link), [content, link, metadata]);
   const mode = viewerModeOverride ?? detectedMode;
   const src = useMemo(() => getReaderSource(nodeId, metadata, link), [link, metadata, nodeId]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);

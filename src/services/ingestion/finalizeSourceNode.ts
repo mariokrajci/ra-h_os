@@ -5,6 +5,7 @@ import { extractYouTube } from '@/services/typescript/extractors/youtube';
 import { extractPaper } from '@/services/typescript/extractors/paper';
 import { buildSourceNotesInput } from './generateSourceNotes';
 import { generateDescription } from '@/services/database/descriptionService';
+import type { NodeMetadata } from '@/types/database';
 
 type FinalizerSource = 'website' | 'youtube' | 'pdf';
 
@@ -12,6 +13,19 @@ interface FinalizerParams {
   nodeId: number;
   title: string;
   url: string;
+}
+
+type DisplayContract = Pick<NodeMetadata, 'source_family' | 'reader_format'>;
+
+function getDisplayContract(sourceType: FinalizerSource): DisplayContract {
+  switch (sourceType) {
+    case 'website':
+      return { source_family: 'website', reader_format: 'markdown' };
+    case 'youtube':
+      return { source_family: 'youtube', reader_format: 'transcript' };
+    case 'pdf':
+      return { source_family: 'pdf', reader_format: 'pdf' };
+  }
 }
 
 function isPlaceholderTitle(title: string, sourceType: FinalizerSource): boolean {
@@ -43,9 +57,15 @@ function pickPromotedTitle(
 }
 
 async function markFailed(nodeId: number, metadata: Record<string, unknown>) {
+  const sourceType = typeof metadata.source === 'string' ? metadata.source : undefined;
+  const contract = sourceType === 'website' || sourceType === 'youtube' || sourceType === 'pdf'
+    ? getDisplayContract(sourceType)
+    : {};
+
   await nodeService.updateNode(nodeId, {
     metadata: {
       ...metadata,
+      ...contract,
       source_status: 'failed',
       notes_status: 'failed',
     },
@@ -70,10 +90,15 @@ async function finalizeExtractedNode(
       return;
     }
 
+    const displayContract = getDisplayContract(sourceType);
+    const sourceFamily = (existingMetadata.source_family as NodeMetadata['source_family']) || displayContract.source_family;
+    const readerFormat = existingMetadata.reader_format ?? displayContract.reader_format;
     const enrichedMetadata: Record<string, unknown> = {
       ...existingMetadata,
       ...(result.metadata || {}),
       source: existingMetadata.source || sourceType,
+      source_family: sourceFamily,
+      reader_format: readerFormat,
     };
 
     const promotedTitle = pickPromotedTitle(node.title || params.title, enrichedMetadata.title, sourceType);
@@ -130,6 +155,8 @@ export async function finalizeWebsiteNode(params: FinalizerParams) {
         hostname: new URL(params.url).hostname,
         published_date: result.metadata.date,
         content_length: result.chunk.length,
+        source_family: 'website',
+        reader_format: 'markdown',
       },
     };
   });
@@ -153,6 +180,8 @@ export async function finalizeYouTubeNode(params: FinalizerParams) {
         total_segments: result.metadata.total_segments,
         language: result.metadata.language,
         extraction_method: result.metadata.extraction_method,
+        source_family: 'youtube',
+        reader_format: 'transcript',
       },
     };
   });
@@ -185,6 +214,9 @@ export async function finalizePdfNode(params: FinalizerParams) {
         notes_generation_strategy: notesInput.strategy,
         notes_generation_sections: notesInput.sectionTitles,
         content_length: result.chunk.length,
+        file_type: 'pdf',
+        source_family: 'pdf',
+        reader_format: 'pdf',
       },
     };
   });

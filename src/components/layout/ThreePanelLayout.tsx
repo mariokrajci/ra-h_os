@@ -31,6 +31,7 @@ import { getSplitPaneBasis } from './splitPaneLayout';
 import { NodePane, DimensionsPane, MapPane, ViewsPane, TablePane, WikiPane, LibraryPane, LogPane } from '../panes';
 import QuickAddInput from '../agents/QuickAddInput';
 import type { PaneType, SlotState, PaneAction } from '../panes/types';
+import type { ReaderFormatValue } from '@/lib/readerFormat';
 
 export default function ThreePanelLayout() {
   // Container ref for resize calculations
@@ -426,11 +427,13 @@ export default function ThreePanelLayout() {
     input,
     mode,
     description,
+    readerFormat,
     bookSelection,
   }: {
     input: string;
     mode: 'link' | 'note' | 'chat';
     description?: string;
+    readerFormat?: ReaderFormatValue;
     bookSelection?: {
       title: string;
       author?: string;
@@ -442,7 +445,7 @@ export default function ThreePanelLayout() {
     };
   }) => {
     try {
-      await submitQuickAdd({ input, mode, description, bookSelection });
+      await submitQuickAdd({ input, mode, description, readerFormat, bookSelection });
 
       // Ensure feed pane is visible
       ensureFeedOpen();

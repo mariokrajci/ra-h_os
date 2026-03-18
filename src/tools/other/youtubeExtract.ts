@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
 import { extractCreatedNodeDimensions, extractCreatedNodeId, resolveCreateNodeError } from '../infrastructure/createNodeResult';
 import { finalizeYouTubeNode } from '@/services/ingestion/finalizeSourceNode';
+import { READER_FORMAT_VALUES, type ReaderFormatValue } from '@/lib/readerFormat';
 
 function extractVideoId(url: string): string | null {
   if (url.includes('youtu.be')) {
@@ -49,9 +50,10 @@ export const youtubeExtractTool = tool({
     url: z.string().describe('The YouTube video URL to add to knowledge base'),
     title: z.string().optional().describe('Custom title (auto-generated if not provided)'),
     dimensions: z.array(z.string()).min(1).max(5).optional().describe('Dimension tags to apply to the created node (locked dimensions first)'),
+    readerFormat: z.enum(READER_FORMAT_VALUES).optional().describe('Optional reader format override'),
     apiBaseUrl: z.string().optional().describe('Internal API base URL override')
   }),
-  execute: async ({ url, title, dimensions, apiBaseUrl }) => {
+  execute: async ({ url, title, dimensions, readerFormat, apiBaseUrl }) => {
     try {
       if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
         return {
@@ -78,6 +80,8 @@ export const youtubeExtractTool = tool({
           dimensions: trimmedDimensions,
           metadata: {
             source: 'youtube',
+            source_family: 'youtube',
+            reader_format: (readerFormat || 'transcript') as ReaderFormatValue,
             source_status: 'processing',
             notes_status: 'pending',
             video_id: basic.videoId,

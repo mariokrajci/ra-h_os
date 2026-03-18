@@ -17,6 +17,7 @@ interface MappedMarkdownRendererProps {
   activeRange?: TextRange | null;
   theme?: ReaderTheme;
   suppressedLeadingHeadingTitle?: string;
+  sourceUrl?: string;
 }
 
 interface PositionLike {
@@ -45,8 +46,14 @@ export default function MappedMarkdownRenderer({
   activeRange,
   theme = 'dark',
   suppressedLeadingHeadingTitle,
+  sourceUrl,
 }: MappedMarkdownRendererProps) {
-  const normalizedContent = normalizeEmbeddedHtmlMarkdown(content);
+  const normalizedContent = normalizeRelativeMarkdownLinks(
+    normalizeDanglingOpenLinkLines(
+      normalizeDanglingHeadings(normalizeEmbeddedHtmlMarkdown(content))
+    ),
+    sourceUrl
+  );
   const tree = parser.parse(normalizedContent) as MarkdownNode;
   const palette = getTextFallbackPalette(theme);
   const renderedChildren = maybeSuppressLeadingHeading(
@@ -107,7 +114,7 @@ function collectNodeText(node: MarkdownNode): string {
 
 function normalizeEmbeddedHtmlMarkdown(content: string): string {
   if (!content.includes('<')) {
-    return content;
+    return normalizeBrokenCardLinks(normalizeAnchorStubLinks(content));
   }
 
   // Extract <details> blocks before the main pipeline — the block tokenizer would
@@ -140,7 +147,71 @@ function normalizeEmbeddedHtmlMarkdown(content: string): string {
     });
   }
 
-  return normalized;
+  return normalizeBrokenCardLinks(normalizeAnchorStubLinks(normalized));
+}
+
+function normalizeAnchorStubLinks(content: string): string {
+  // Some docs sites emit anchor helper links like:
+  // [\u200B](#section) or multiline variants with blank lines inside [].
+  // They render as literal "[" + "](#...)" fragments in the reader, so remove
+  // only empty/zero-width in-page anchor stubs.
+  return content
+    .replace(/\[\s*(?:[\u200B\u200C\u200D\uFEFF]|\s)*\]\(#[-\w:.]+\)/g, '')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+function normalizeBrokenCardLinks(content: string): string {
+  const cardGroupPattern = /\[\s*((?:\n*##[^\n]+\n+[\s\S]*?\n+\]\([^)]+\)\[?)+)/g;
+  const normalized = content.replace(cardGroupPattern, (_match, groupBody) => {
+    const cards: string[] = [];
+    const cardUnitPattern = /##\s+([^\n]+)\n+([\s\S]*?)\n+\]\(([^)]+)\)\[?/g;
+    let unitMatch: RegExpExecArray | null;
+
+    while ((unitMatch = cardUnitPattern.exec(groupBody)) !== null) {
+      const title = String(unitMatch[1] || '').trim();
+      const body = String(unitMatch[2] || '').trim();
+      const url = String(unitMatch[3] || '').trim();
+      if (!title || !url) continue;
+      cards.push(`## [${title}](${url})\n\n${body}`);
+    }
+
+    return cards.length > 0 ? cards.join('\n\n') : _match;
+  });
+
+  return normalized.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function normalizeRelativeMarkdownLinks(content: string, sourceUrl?: string): string {
+  if (!sourceUrl) {
+    return content;
+  }
+
+  return content.replace(/\[([^\]]*)\]\(([^)]+)\)/g, (full, label, rawHref) => {
+    const href = String(rawHref || '').trim();
+    if (!href) return full;
+    if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return full;
+    try {
+      const resolved = new URL(href, sourceUrl).toString();
+      return `[${label}](${resolved})`;
+    } catch {
+      return full;
+    }
+  });
+}
+
+function normalizeDanglingHeadings(content: string): string {
+  return content
+    .replace(
+      /^(#{1,6})\s*$\n+([^\n#][^\n]*)$/gm,
+      (_match, hashes, title) => `${hashes} ${String(title).trim()}`
+    )
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+function normalizeDanglingOpenLinkLines(content: string): string {
+  return content
+    .replace(/^\[([^\]\n]{1,200})$/gm, '$1')
+    .replace(/\n{3,}/g, '\n\n');
 }
 
 function convertHtmlBlocksToMarkdown(fragment: string): string {

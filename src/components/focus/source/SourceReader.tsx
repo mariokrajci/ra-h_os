@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { detectContentType, getContentTypeLabel } from './ContentDetector';
+import { getReaderFormatLabel, resolveReaderFormat, toTextContentType } from './ContentDetector';
 import RawFormatter from './formatters/RawFormatter';
 import TranscriptFormatter from './formatters/TranscriptFormatter';
 import BookFormatter from './formatters/BookFormatter';
 import MarkdownFormatter from './formatters/MarkdownFormatter';
 import SourceSearchBar from './SourceSearchBar';
-import type { Annotation } from '@/types/database';
+import type { Annotation, NodeMetadata } from '@/types/database';
 import { useAppTheme } from '@/components/theme/AppThemeProvider';
 import {
   extractMappedSelection,
@@ -20,6 +20,7 @@ interface SourceReaderProps {
   content: string;
   nodeTitle?: string;
   sourceUrl?: string;
+  metadata?: NodeMetadata | null;
   onTextSelect?: (text: string) => void;
   onSourceSelect?: (selection: SourceSelection) => void;
   annotations?: Annotation[];
@@ -37,6 +38,7 @@ export default function SourceReader({
   content,
   nodeTitle,
   sourceUrl,
+  metadata,
   onTextSelect,
   onSourceSelect,
   annotations = [],
@@ -47,12 +49,16 @@ export default function SourceReader({
   const [showSearch, setShowSearch] = useState(false);
   const [searchHighlight, setSearchHighlight] = useState<string | null>(null);
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
-  const [scrollTrigger, setScrollTrigger] = useState(0);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Detect content type (memoized for performance)
-  const contentType = useMemo(() => detectContentType(content, sourceUrl), [content, sourceUrl]);
-  const contentTypeLabel = getContentTypeLabel(contentType);
+  // Resolve reader format from explicit contract first, then heuristics fallback.
+  const readerFormat = useMemo(
+    () => resolveReaderFormat(content, sourceUrl, metadata),
+    [content, metadata, sourceUrl]
+  );
+  const contentType = useMemo(() => toTextContentType(readerFormat), [readerFormat]);
+  const contentTypeLabel = getReaderFormatLabel(readerFormat);
   const readerTheme = resolvedTheme === 'light' ? 'warm' : 'dark';
 
   // Combined highlight: search takes precedence over external highlight
@@ -80,20 +86,32 @@ export default function SourceReader({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Scroll to current match when search highlight changes
+  // Scroll to current match whenever activeRange changes (i.e. user navigates between matches)
   useEffect(() => {
-    if (!searchHighlight || !contentRef.current) return;
+    if (!activeRange || !showSearch) return;
 
-    // Small delay to let React render the mark element
-    const timer = setTimeout(() => {
-      const currentMatch = contentRef.current?.querySelector('mark[data-search-match="current"]');
-      if (currentMatch) {
-        currentMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Wait for the next animation frame — by then React has committed the new mark to the DOM
+    const raf = requestAnimationFrame(() => {
+      const container = contentRef.current;
+      const currentMatch = container?.querySelector('mark[data-search-match="current"]');
+      if (!container || !currentMatch) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const matchRect = currentMatch.getBoundingClientRect();
+      const pad = 60;
+
+      const matchTop = matchRect.top - containerRect.top + container.scrollTop;
+      const matchBottom = matchTop + matchRect.height;
+
+      if (matchTop - pad < container.scrollTop) {
+        container.scrollTo({ top: Math.max(0, matchTop - pad), behavior: 'smooth' });
+      } else if (matchBottom + pad > container.scrollTop + container.clientHeight) {
+        container.scrollTo({ top: matchBottom + pad - container.clientHeight, behavior: 'smooth' });
       }
-    }, 50);
+    });
 
-    return () => clearTimeout(timer);
-  }, [searchHighlight, scrollTrigger]);
+    return () => cancelAnimationFrame(raf);
+  }, [activeRange, showSearch]);
 
   const handleSearchClose = useCallback(() => {
     setShowSearch(false);
@@ -104,8 +122,19 @@ export default function SourceReader({
   const handleHighlightChange = useCallback((text: string | null, matchIndex: number) => {
     setSearchHighlight(text);
     setSearchMatchIndex(matchIndex);
-    // Trigger scroll even if same text (for navigating between matches)
-    setScrollTrigger(prev => prev + 1);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Use a native scroll listener on the ref so we catch scroll regardless of layout
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const onScroll = () => setShowScrollTop(el.scrollTop > 200);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
   }, []);
 
   const handleMouseUp = useCallback(() => {
@@ -141,6 +170,7 @@ export default function SourceReader({
             activeRange={activeRange}
             theme={readerTheme}
             suppressedLeadingHeadingTitle={nodeTitle}
+            sourceUrl={sourceUrl}
           />
         );
       default:
@@ -172,7 +202,7 @@ export default function SourceReader({
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
           }}>
-            Detected: {contentTypeLabel}
+            Format: {contentTypeLabel}
           </span>
           <button
             onClick={() => setShowSearch(!showSearch)}
@@ -204,15 +234,42 @@ export default function SourceReader({
       )}
 
       {/* Formatted content */}
-      <div
-        ref={contentRef}
-        onMouseUp={handleMouseUp}
-        style={{
-          flex: 1,
-          overflow: 'auto',
-        }}
-      >
-        {renderContent()}
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <div
+          ref={contentRef}
+          onMouseUp={handleMouseUp}
+          style={{ height: '100%', overflow: 'auto' }}
+        >
+          {renderContent()}
+        </div>
+
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            title="Back to top"
+            style={{
+              position: 'absolute',
+              bottom: '16px',
+              right: '16px',
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: '1px solid var(--app-hairline)',
+              background: 'var(--app-surface-strong)',
+              color: 'var(--app-text-subtle)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: 0.85,
+              zIndex: 10,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );

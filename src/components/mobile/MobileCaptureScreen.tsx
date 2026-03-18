@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
+import type { ReaderFormatValue } from '@/lib/readerFormat';
 
 type CaptureMode = 'note' | 'link';
 
@@ -15,6 +16,7 @@ export default function MobileCaptureScreen({
     input: string;
     mode: 'link' | 'note' | 'chat';
     description?: string;
+    readerFormat?: ReaderFormatValue;
   }) => Promise<void>;
   animation: string | undefined;
 }) {

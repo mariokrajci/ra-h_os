@@ -4,6 +4,7 @@ import { bookEnrichmentQueue } from '@/services/ingestion/bookEnrichmentQueue';
 import { fileRegistryService } from '@/services/storage/fileRegistryService';
 import { fileService } from '@/services/storage/fileService';
 import { extractEpubFromBuffer } from '@/services/typescript/extractors/epub';
+import { isReaderFormatValue } from '@/lib/readerFormat';
 
 export const runtime = 'nodejs';
 
@@ -13,6 +14,8 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file');
+    const readerFormatRaw = formData.get('readerFormat');
+    const readerFormat = isReaderFormatValue(readerFormatRaw) ? readerFormatRaw : undefined;
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json(
@@ -51,6 +54,8 @@ export async function POST(request: NextRequest) {
         chunk: extraction.chunk,
         metadata: {
           source: 'epub_upload',
+          source_family: 'epub',
+          reader_format: readerFormat || 'epub',
           original_filename: file.name,
           chapter_count: extraction.metadata.chapter_count,
           text_length: extraction.metadata.text_length,
@@ -93,6 +98,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         metadata: {
           source: 'epub_upload',
+          source_family: 'epub',
+          reader_format: readerFormat || 'epub',
           original_filename: file.name,
           chapter_count: extraction.metadata.chapter_count,
           text_length: extraction.metadata.text_length,

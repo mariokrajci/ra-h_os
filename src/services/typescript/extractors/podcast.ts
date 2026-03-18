@@ -44,6 +44,8 @@ export interface ExtractionResult {
   chunk: string;
   metadata: PodcastEpisodeResult & {
     source: 'podcast_episode';
+    source_family?: 'podcast';
+    reader_format?: 'transcript';
     source_status: 'pending' | 'available' | 'failed';
     notes_status?: 'pending' | 'processing' | 'available' | 'failed';
     transcript_status: 'queued' | 'processing' | 'available' | 'unavailable';
@@ -463,6 +465,8 @@ export async function extractPodcast(url: string): Promise<ExtractionResult> {
 
   const metadata: ExtractionResult['metadata'] = {
     source: 'podcast_episode',
+    source_family: 'podcast',
+    reader_format: 'transcript',
     podcast_name: resolved.podcast_name || 'Unknown Podcast',
     episode_title: resolved.episode_title || 'Unknown Episode',
     episode_url: resolved.episode_url || url,

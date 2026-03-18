@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { formatNodeForChat } from '../infrastructure/nodeFormatter';
 import { extractCreatedNodeDimensions, extractCreatedNodeId, resolveCreateNodeError } from '../infrastructure/createNodeResult';
 import { finalizePdfNode } from '@/services/ingestion/finalizeSourceNode';
+import { READER_FORMAT_VALUES, type ReaderFormatValue } from '@/lib/readerFormat';
 
 function getPdfTitle(url: string, providedTitle?: string): string {
   if (providedTitle?.trim()) return providedTitle.trim();
@@ -21,9 +22,10 @@ export const paperExtractTool = tool({
     url: z.string().describe('The PDF URL to add to inbox'),
     title: z.string().optional().describe('Custom title (auto-generated if not provided)'),
     dimensions: z.array(z.string()).min(1).max(5).optional().describe('Dimension tags to apply to the created node (locked dimensions first)'),
+    readerFormat: z.enum(READER_FORMAT_VALUES).optional().describe('Optional reader format override'),
     apiBaseUrl: z.string().optional().describe('Internal API base URL override')
   }),
-  execute: async ({ url, title, dimensions, apiBaseUrl }) => {
+  execute: async ({ url, title, dimensions, readerFormat, apiBaseUrl }) => {
     try {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return {
@@ -57,6 +59,8 @@ export const paperExtractTool = tool({
           dimensions: trimmedDimensions,
           metadata: {
             source: 'pdf',
+            source_family: 'pdf',
+            reader_format: (readerFormat || 'pdf') as ReaderFormatValue,
             hostname: new URL(url).hostname,
             source_status: 'processing',
             notes_status: 'pending',

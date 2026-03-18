@@ -29,6 +29,8 @@ interface YouTubeMetadata {
   language?: string;
   provider: string;
   extraction_method: string;
+  source_family?: 'youtube';
+  reader_format?: 'transcript';
 }
 
 interface ExtractionResult {
@@ -213,6 +215,8 @@ export class YouTubeExtractor {
         language: language || 'unknown',
         provider: 'YouTube',
         extraction_method: extractionMethod,
+        source_family: 'youtube',
+        reader_format: 'transcript',
       };
 
       return {
