@@ -255,6 +255,24 @@ A more capable option that works without a bookmarks bar and supports full ChatG
 
 **To update after code changes:** go to `chrome://extensions` and click the reload button on the extension. No re-upload needed unless `manifest.json` changed.
 
+**Extension settings:** right-click the extension icon → **Options**.
+You can configure:
+- extension token (`X-RAOS-Extension-Token`) for authenticated `/api/quick-add` requests
+- domain blocklist / allowlist mode
+- confirm-before-send safety prompt
+- RA-OS app URL used for capture/pairing requests
+
+**Recommended pairing flow (one-time):**
+1. In RA-OS Settings → Bookmarklet, click **Generate Pairing Code**
+2. Open extension **Options**
+3. Paste the code and click **Pair**
+4. The token is stored automatically in extension local settings
+
+**Privacy model (extension):**
+- selection text is cached in page memory only (ephemeral)
+- content is sent to RA-OS only when you click the extension action
+- blocked domains are never sent
+
 ### How capture works
 
 | Scenario | Behaviour |
