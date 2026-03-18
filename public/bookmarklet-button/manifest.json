@@ -19,5 +19,14 @@
     "action": {
         "default_title": "Save to RA-OS"
     },
+    "commands": {
+        "_execute_action": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+S",
+                "mac": "Ctrl+S"
+            },
+            "description": "Save current page or selection to RA-OS"
+        }
+    },
     "options_page": "options.html"
 }

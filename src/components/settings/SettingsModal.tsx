@@ -399,6 +399,8 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             display: 'flex',
             flexDirection: 'column',
             padding: '24px 0',
+            minHeight: 0,
+            overflowY: 'auto',
           }}
         >
           <div
@@ -551,7 +553,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab }: SettingsM
             </button>
           </div>
 
-          <div style={{ flex: 1, overflow: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {activeTab === 'logs' && <LogsViewer key={isOpen ? 'open' : 'closed'} />}
             {activeTab === 'tools' && <ToolsViewer />}
             {activeTab === 'guides' && <SkillsViewer />}
