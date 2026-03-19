@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "RA-H_OS",
-    "version": "0.15",
+    "version": "0.16",
     "description": "Save pages, selections, and chats to RA-OS.",
     "permissions": [
         "scripting",

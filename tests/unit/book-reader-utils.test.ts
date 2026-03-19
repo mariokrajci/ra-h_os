@@ -37,9 +37,10 @@ describe('book reader utils', () => {
   });
 
   it('detects markdown and transcript content for text fallback rendering', () => {
-    expect(resolveTextFallbackType('# Heading\n\n- one\n- two\n\n`code`')).toBe('markdown');
+    expect(resolveTextFallbackType('# Heading\n\n- one\n- two\n\n`code`\n\nThis markdown sample is intentionally long enough to pass detector thresholds.')).toBe('markdown');
     expect(resolveTextFallbackType('[00:01] HOST: hello\n[00:03] GUEST: hi\n[00:05] HOST: welcome')).toBe('transcript');
     expect(resolveTextFallbackType('A plain paragraph without markdown syntax.')).toBe('raw');
+    expect(resolveTextFallbackType('**You:** hi', { reader_format: 'chat' })).toBe('chat');
   });
 
   it('returns readable palette colors for both reader themes', () => {

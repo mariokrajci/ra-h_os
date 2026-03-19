@@ -2,7 +2,7 @@ import type { NodeMetadata } from '@/types/database';
 import { resolveReaderFormat } from '../source/ContentDetector';
 
 export type ReaderMode = 'pdf' | 'epub' | 'text';
-export type TextFallbackType = 'book' | 'markdown' | 'transcript' | 'raw';
+export type TextFallbackType = 'book' | 'markdown' | 'transcript' | 'chat' | 'raw';
 export type ReaderTheme = 'warm' | 'dark';
 
 interface TextFallbackPalette {
@@ -80,6 +80,8 @@ export function resolveTextFallbackType(
 ): TextFallbackType {
   const resolved = resolveReaderFormat(content, sourceUrl, metadata);
   switch (resolved) {
+    case 'chat':
+      return 'chat';
     case 'markdown':
       return 'markdown';
     case 'transcript':

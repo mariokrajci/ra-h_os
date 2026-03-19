@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import type { CSSProperties } from 'react';
 import { titlesMatch } from '@/components/focus/contentNormalization';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
@@ -18,6 +19,7 @@ interface MappedMarkdownRendererProps {
   theme?: ReaderTheme;
   suppressedLeadingHeadingTitle?: string;
   sourceUrl?: string;
+  containerStyle?: CSSProperties;
 }
 
 interface PositionLike {
@@ -47,6 +49,7 @@ export default function MappedMarkdownRenderer({
   theme = 'dark',
   suppressedLeadingHeadingTitle,
   sourceUrl,
+  containerStyle,
 }: MappedMarkdownRendererProps) {
   const normalizedContent = normalizeRelativeMarkdownLinks(
     normalizeDanglingOpenLinkLines(
@@ -67,6 +70,7 @@ export default function MappedMarkdownRenderer({
       className="app-prose"
       style={{
         ...READER_CONTAINER_STYLE,
+        ...containerStyle,
         fontFamily: READER_FONT_FAMILY,
         fontSize: READER_BODY_FONT_SIZE,
         lineHeight: READER_BODY_LINE_HEIGHT,

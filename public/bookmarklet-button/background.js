@@ -108,6 +108,15 @@ async function requestSendConfirmation(tabId, targetUrl) {
 // Fetch ChatGPT conversation via internal API (same-origin, runs in tab context).
 // selectionText: raw selected text string to filter messages by, or null for all.
 async function fetchChatGPTConversation(selectionText) {
+  const log = (...args) => {
+    try {
+      // This function runs in page context via executeScript; avoid external references.
+      if (typeof console !== 'undefined' && console?.log) console.log(...args);
+    } catch {
+      // noop
+    }
+  };
+
   const match = window.location.pathname.match(/\/c\/([a-f0-9-]+)/i);
   if (!match) {
     console.error('[RA-OS] Could not extract conversation ID from URL:', window.location.pathname);
@@ -115,7 +124,7 @@ async function fetchChatGPTConversation(selectionText) {
   }
 
   const conversationId = match[1];
-  debugLog('[RA-OS] Fetching conversation:', conversationId, '| selectionText length:', selectionText ? selectionText.length : 0);
+  log('[RA-OS] Fetching conversation:', conversationId, '| selectionText length:', selectionText ? selectionText.length : 0);
 
   try {
     const session = await fetch('/api/auth/session').then((r) => r.json());
@@ -131,7 +140,7 @@ async function fetchChatGPTConversation(selectionText) {
       },
     });
 
-    debugLog('[RA-OS] API response status:', res.status);
+    log('[RA-OS] API response status:', res.status);
     if (!res.ok) {
       console.error('[RA-OS] API request failed with status:', res.status);
       return null;
@@ -144,7 +153,7 @@ async function fetchChatGPTConversation(selectionText) {
     }
 
     const nodes = data.mapping;
-    debugLog('[RA-OS] Mapping has', Object.keys(nodes).length, 'nodes');
+    log('[RA-OS] Mapping has', Object.keys(nodes).length, 'nodes');
 
     const rootId = Object.keys(nodes).find((id) => {
       const parent = nodes[id].parent;
@@ -260,10 +269,32 @@ async function fetchChatGPTConversation(selectionText) {
 
     }
 
-    debugLog('[RA-OS] Extracted', messages.length, 'messages');
+    log('[RA-OS] Extracted', messages.length, 'messages');
     return messages.length > 0 ? messages.join('\n\n') : null;
   } catch (err) {
     console.error('[RA-OS] Fetch error:', err);
+    return null;
+  }
+}
+
+// Fallback extraction from rendered ChatGPT DOM when internal API is unavailable.
+function fetchChatGPTConversationFromDOM() {
+  try {
+    const nodes = Array.from(document.querySelectorAll('[data-message-author-role]'));
+    if (!nodes.length) return null;
+
+    const messages = [];
+    for (const node of nodes) {
+      const role = (node.getAttribute('data-message-author-role') || '').toLowerCase();
+      if (role !== 'user' && role !== 'assistant') continue;
+      const text = (node.innerText || '').trim();
+      if (!text) continue;
+      const label = role === 'user' ? '**You:**' : '**ChatGPT:**';
+      messages.push(`${label} ${text}`);
+    }
+
+    return messages.length > 0 ? messages.join('\n\n') : null;
+  } catch {
     return null;
   }
 }
@@ -348,9 +379,27 @@ chrome.action.onClicked.addListener(async (tab) => {
         mode = 'fallback-selection';
         payload = { input: selectionText, mode: 'chat', append: true, sourceUrl: tab.url, sourceTitle: tab.title || '' };
       } else {
-        console.warn('[RA-OS] ChatGPT API returned null — nothing to save');
-        await showToast(tab.id, 'Nothing to save — API unavailable', true);
-        return;
+        console.warn('[RA-OS] ChatGPT API returned null — trying DOM fallback');
+        try {
+          const domResults = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            world: 'MAIN',
+            func: fetchChatGPTConversationFromDOM,
+          });
+          const domConversation = domResults?.[0]?.result || null;
+          if (domConversation) {
+            mode = 'chatgpt-dom-fallback';
+            payload = { input: domConversation, mode: 'chat', sourceUrl: tab.url, sourceTitle: tab.title || '' };
+          }
+        } catch (domErr) {
+          console.error('[RA-OS] DOM fallback failed:', domErr);
+        }
+
+        if (!payload) {
+          console.warn('[RA-OS] ChatGPT DOM fallback also failed — nothing to save');
+          await showToast(tab.id, 'Nothing to save — ChatGPT export unavailable', true);
+          return;
+        }
       }
     }
 
@@ -410,27 +459,12 @@ chrome.action.onClicked.addListener(async (tab) => {
     await clearSelectionCache(tab.id);
   }
 
-  await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: (ok) => {
-      const existing = document.getElementById('__raos_toast__');
-      if (existing) existing.remove();
-      const toast = document.createElement('div');
-      toast.id = '__raos_toast__';
-      toast.textContent = ok ? 'Saved to RA-OS' : 'Failed to save — is the app running?';
-      toast.style.cssText = [
-        'position:fixed', 'bottom:24px', 'right:24px', 'z-index:2147483647',
-        'padding:10px 18px', 'border-radius:8px',
-        'font-family:-apple-system,BlinkMacSystemFont,sans-serif',
-        'font-size:14px', 'font-weight:500', 'color:#fff',
-        'background:' + (ok ? '#2d3748' : '#e53e3e'),
-        'box-shadow:0 4px 16px rgba(0,0,0,0.3)', 'transition:opacity 0.3s', 'opacity:1',
-      ].join(';');
-      document.body.appendChild(toast);
-      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
-    },
-    args: [success],
-  });
+  const successMessage = mode === 'chatgpt-dom-fallback'
+    ? 'Saved to RA-OS (ChatGPT API unavailable; used page fallback)'
+    : mode === 'fallback-selection'
+      ? 'Saved to RA-OS (ChatGPT API unavailable; saved selection)'
+      : 'Saved to RA-OS';
+  await showToast(tab.id, success ? successMessage : 'Failed to save — is the app running?', !success);
 });
 
 async function showToast(tabId, message, isError) {

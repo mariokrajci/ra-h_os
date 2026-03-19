@@ -1,6 +1,7 @@
 "use client";
 
 import MappedMarkdownRenderer from '../MappedMarkdownRenderer';
+import type { CSSProperties } from 'react';
 import type { AnnotationHighlightRange, TextRange } from '../sourceMapping';
 import type { ReaderTheme } from '@/components/focus/reader/utils';
 
@@ -11,6 +12,7 @@ interface MarkdownFormatterProps {
   theme?: ReaderTheme;
   suppressedLeadingHeadingTitle?: string;
   sourceUrl?: string;
+  containerStyle?: CSSProperties;
 }
 
 export default function MarkdownFormatter({
@@ -20,6 +22,7 @@ export default function MarkdownFormatter({
   theme = 'warm',
   suppressedLeadingHeadingTitle,
   sourceUrl,
+  containerStyle,
 }: MarkdownFormatterProps) {
   return (
     <MappedMarkdownRenderer
@@ -29,6 +32,7 @@ export default function MarkdownFormatter({
       theme={theme}
       suppressedLeadingHeadingTitle={suppressedLeadingHeadingTitle}
       sourceUrl={sourceUrl}
+      containerStyle={containerStyle}
     />
   );
 }

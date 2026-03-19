@@ -5,7 +5,7 @@
 import type { NodeMetadata } from '@/types/database';
 import { isReaderFormatValue, READER_FORMAT_LABELS, type ReaderFormatValue } from '@/lib/readerFormat';
 
-export type ContentType = 'transcript' | 'book' | 'markdown' | 'article' | 'raw';
+export type ContentType = 'chat' | 'transcript' | 'book' | 'markdown' | 'article' | 'raw';
 export type ReaderFormat = ReaderFormatValue;
 
 const SOURCE_FAMILY_DEFAULT_FORMAT: Record<NonNullable<NodeMetadata['source_family']>, ReaderFormat> = {
@@ -111,7 +111,7 @@ export function resolveReaderFormat(
 }
 
 export function toTextContentType(format: ReaderFormat): ContentType {
-  if (format === 'chat') return 'raw';
+  if (format === 'chat') return 'chat';
   if (format === 'pdf' || format === 'epub') return 'raw';
   return format;
 }
@@ -134,6 +134,7 @@ function countMarkdownLinks(content: string): number {
  */
 export function getContentTypeLabel(type: ContentType): string {
   switch (type) {
+    case 'chat': return 'Chat Transcript';
     case 'transcript': return 'Transcript';
     case 'book': return 'Book/Chapter';
     case 'markdown': return 'Markdown';

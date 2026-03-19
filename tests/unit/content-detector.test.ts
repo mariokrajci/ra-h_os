@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectContentType, resolveReaderFormat } from '@/components/focus/source/ContentDetector';
+import { detectContentType, resolveReaderFormat, toTextContentType } from '@/components/focus/source/ContentDetector';
 
 describe('detectContentType', () => {
   it('classifies markdown install manuals as markdown, not transcript', () => {
@@ -86,5 +86,9 @@ Better [prices](https://openrouter.ai/models?order=pricing-low-to-high), better 
     });
 
     expect(resolved).toBe('transcript');
+  });
+
+  it('maps chat reader format to markdown text rendering', () => {
+    expect(toTextContentType('chat')).toBe('chat');
   });
 });

@@ -6,6 +6,7 @@ import RawFormatter from './formatters/RawFormatter';
 import TranscriptFormatter from './formatters/TranscriptFormatter';
 import BookFormatter from './formatters/BookFormatter';
 import MarkdownFormatter from './formatters/MarkdownFormatter';
+import ChatFormatter from './formatters/ChatFormatter';
 import SourceSearchBar from './SourceSearchBar';
 import type { Annotation, NodeMetadata } from '@/types/database';
 import { useAppTheme } from '@/components/theme/AppThemeProvider';
@@ -157,6 +158,8 @@ export default function SourceReader({
   // Render appropriate formatter based on content type
   const renderContent = () => {
     switch (contentType) {
+      case 'chat':
+        return <ChatFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} theme={readerTheme} />;
       case 'transcript':
         return <TranscriptFormatter content={content} annotationRanges={annotationRanges} activeRange={activeRange} theme={readerTheme} />;
       case 'book':

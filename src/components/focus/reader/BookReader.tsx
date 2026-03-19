@@ -7,6 +7,7 @@ import BookFormatter from '../source/formatters/BookFormatter';
 import MarkdownFormatter from '../source/formatters/MarkdownFormatter';
 import RawFormatter from '../source/formatters/RawFormatter';
 import TranscriptFormatter from '../source/formatters/TranscriptFormatter';
+import ChatFormatter from '../source/formatters/ChatFormatter';
 import type { Annotation, NodeMetadata } from '@/types/database';
 import BookReaderNav, { type ReaderNavItem } from './BookReaderNav';
 import BookReaderProgressBar from './BookReaderProgressBar';
@@ -272,6 +273,8 @@ export default function BookReader({
             >
               {textFallbackType === 'markdown' ? (
                 <MarkdownFormatter content={content} theme={theme} />
+              ) : textFallbackType === 'chat' ? (
+                <ChatFormatter content={content} theme={theme} />
               ) : textFallbackType === 'transcript' ? (
                 <TranscriptFormatter content={content} theme={theme} />
               ) : textFallbackType === 'book' ? (
